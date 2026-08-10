@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	parseRemoteRevision,
 	publishContentRevision,
+	resolveApplicationRevision,
 	resolveContentRevision,
 	synchronizeContent,
 } from "../scripts/sync-content.mjs";
@@ -45,6 +46,21 @@ describe("content revision resolution", () => {
 			}),
 		).resolves.toBe(revisionB);
 		expect(runGit).not.toHaveBeenCalled();
+	});
+
+	it("resolves application HEAD when a Deploy Hook supplies no commit SHA", async () => {
+		const runGit = vi.fn().mockResolvedValue(`${revisionA}\n`);
+
+		await expect(
+			resolveApplicationRevision({
+				appRoot: "/app",
+				environmentRevision: "main",
+				runGit,
+			}),
+		).resolves.toBe(revisionA);
+		expect(runGit).toHaveBeenCalledWith(["rev-parse", "HEAD"], {
+			cwd: "/app",
+		});
 	});
 });
 
