@@ -1,0 +1,50 @@
+{
+	"name": "toen",
+	"version": "0.1.0",
+	"private": true,
+	"packageManager": "pnpm@11.15.1",
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"check": "biome check .",
+		"check:write": "biome check --write .",
+		"format": "biome format --write .",
+		"lint": "biome lint .",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:e2e": "bddgen && playwright test",
+		"test:e2e:ci": "bash scripts/test-e2e-ci.sh",
+		"verify": "pnpm test && pnpm check && pnpm typecheck",
+		"build:worker": "opennextjs-cloudflare build",
+		"ci:build": "pnpm verify && pnpm build:worker",
+		"deploy:worker": "opennextjs-cloudflare deploy",
+		"deploy": "pnpm build:worker && pnpm deploy:worker",
+		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+	},
+	"dependencies": {
+		"@opennextjs/cloudflare": "^1.19.9",
+		"jose": "6.2.8",
+		"next": "16.2.11",
+		"react": "^19.1.7",
+		"react-dom": "^19.1.7",
+		"react-markdown": "10.1.0",
+		"yaml": "2.9.0",
+		"zod": "4.4.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.7",
+		"@playwright/test": "1.62.1",
+		"@tailwindcss/postcss": "^4",
+		"@types/node": "^20.19.43",
+		"@types/react": "^19.1.7",
+		"@types/react-dom": "^19.1.7",
+		"playwright-bdd": "9.2.0",
+		"tailwindcss": "^4",
+		"typescript": "^5.7.4",
+		"vitest": "4.1.10",
+		"wrangler": "^4.120.0"
+	}
+}
