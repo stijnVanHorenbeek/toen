@@ -36,7 +36,7 @@ export function EventDraftForm() {
 						onClick={() => void draft.requestPublish()}
 						className="min-h-12 border border-ink/30 px-6 font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						{draft.isPublishing ? "Pull request maken…" : "Maak pull request"}
+						{draft.isPublishing ? "Publiceren…" : "Publiceer gebeurtenis"}
 					</button>
 				</div>
 			</div>

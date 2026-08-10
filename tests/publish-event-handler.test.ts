@@ -1,10 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import { handlePublishEventRequest } from "../src/lib/admin/publish-event-handler";
-import type { GitHubFetch } from "../src/lib/github/event-publisher";
+import {
+	ContentConflictError,
+	type GitHubFetch,
+} from "../src/lib/github/event-publisher";
 
 const accessEnvironment = {
 	ACCESS_TEAM_DOMAIN: "https://example.cloudflareaccess.com",
 	ACCESS_POLICY_AUD: "application-audience",
+};
+const liveEnvironment = {
+	...accessEnvironment,
+	GITHUB_PUBLISH_MODE: "live" as const,
+	GITHUB_APP_ID: "123456",
+	GITHUB_APP_INSTALLATION_ID: "789012",
+	GITHUB_APP_PRIVATE_KEY: "private-key",
+	GITHUB_REPOSITORY: "example-owner/toen-content",
+	GITHUB_BASE_BRANCH: "main",
+	CONTENT_DEPLOY_HOOK_URL:
+		"https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/hook-id",
 };
 const draft = {
 	slug: "val-van-constantinopel-1453",
@@ -131,6 +145,78 @@ describe("handlePublishEventRequest", () => {
 
 		expect(response.status).toBe(503);
 		expect(publish).not.toHaveBeenCalled();
+	});
+
+	it("forces dry-run when complete live credentials are also present", async () => {
+		const authenticate = vi
+			.fn()
+			.mockResolvedValue({ email: "editor@example.com" });
+		const publish = vi.fn().mockResolvedValue({
+			status: "dry-run",
+			path: "content/events/test.md",
+			markdown: "document",
+		});
+
+		const response = await handlePublishEventRequest(
+			createRequest(draft),
+			{ ...liveEnvironment, GITHUB_PUBLISH_MODE: "dry-run" },
+			{ authenticate, publish },
+		);
+
+		expect(response.status).toBe(200);
+		expect(publish).toHaveBeenCalledWith(
+			expect.objectContaining({ config: null }),
+		);
+	});
+
+	it.each([
+		["committed-and-triggered", "created", 201],
+		["committed-and-triggered", "unchanged", 200],
+		["committed-trigger-failed", "created", 202],
+	])("maps %s %s to HTTP %i", async (status, change, expectedStatus) => {
+		const authenticate = vi
+			.fn()
+			.mockResolvedValue({ email: "editor@example.com" });
+		const publish = vi.fn().mockResolvedValue({
+			status,
+			change,
+			path: "content/events/test.md",
+			markdown: "document",
+			commitSha: "commit-sha",
+			commitUrl:
+				"https://github.com/example-owner/toen-content/commit/commit-sha",
+		});
+		const deployFetch = vi.fn<typeof fetch>();
+
+		const response = await handlePublishEventRequest(
+			createRequest(draft),
+			liveEnvironment,
+			{ authenticate, publish, deployFetch },
+		);
+
+		expect(response.status).toBe(expectedStatus);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(publish).toHaveBeenCalledWith(
+			expect.objectContaining({ deployFetch }),
+		);
+	});
+
+	it("maps a concurrent content conflict to no-store 409", async () => {
+		const authenticate = vi
+			.fn()
+			.mockResolvedValue({ email: "editor@example.com" });
+		const publish = vi
+			.fn()
+			.mockRejectedValue(new ContentConflictError("content/events/test.md"));
+
+		const response = await handlePublishEventRequest(
+			createRequest(draft),
+			liveEnvironment,
+			{ authenticate, publish },
+		);
+
+		expect(response.status).toBe(409);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
 	});
 
 	it("returns a dry run when GitHub App credentials are missing", async () => {

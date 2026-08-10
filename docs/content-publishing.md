@@ -4,7 +4,9 @@
 
 The dedicated content repository stores and validates the canonical Markdown catalog. Before verification or a build, the application resolves its `main` branch once, checks out that exact immutable commit, runs the content repository validation, and generates the local `content/events` directory. Runtime requests never fetch from GitHub.
 
-The publisher still uses the bootstrap pull-request flow until direct content commits and the deployment hook are implemented.
+The current new-event publisher writes canonical Markdown directly to the configured content branch. Missing files are created and identical retries do not create duplicate commits. A differing existing file returns a conflict instead of overwriting content; safe edits need a future edit flow carrying the expected content revision. After each successful reconciliation, the Worker calls a vaulted Cloudflare Deploy Hook.
+
+A successful commit with a failed hook call is reported as partial success. The editor can retry safely: the publisher recognizes unchanged Markdown and retries only the deployment trigger. Concurrent differing edits return a conflict instead of overwriting content. Infrastructure migration remains incomplete until the replacement GitHub App, vault value, and Deploy Hook are configured.
 
 ## Target model
 
@@ -33,7 +35,7 @@ The application repository stores the application code. The GitHub App must not 
 7. The build validates the complete content catalog and records the application and content revisions.
 8. The build deploys the Worker only when all checks pass.
 
-A failed deployment must keep the previous Worker version active. The admin interface must show the commit and deployment result.
+A failed deployment must keep the previous Worker version active. The admin interface currently shows the content commit and whether deployment triggering succeeded; build-result reporting remains future work.
 
 ## Runtime behavior
 

@@ -22,26 +22,45 @@ export function EventPublishStatus({
 		return (
 			<p className="mb-6 border-amber-700 border-l-2 pl-4 text-sm leading-6">
 				<strong className="block">Niets naar GitHub geschreven</strong>
-				GitHub App-credentials ontbreken. Preview blijft beschikbaar.
+				Publiceren staat in dry-runmodus. Preview blijft beschikbaar.
 			</p>
 		);
 	}
 
-	if (result?.status === "created") {
+	if (result?.status === "committed-trigger-failed") {
+		return (
+			<p
+				role="alert"
+				className="mb-6 border-amber-700 border-l-2 pl-4 text-sm leading-6"
+			>
+				<strong className="block">Commit opgeslagen</strong>
+				Deployment kon niet worden gestart. Probeer opnieuw; dezelfde inhoud
+				wordt niet dubbel opgeslagen. <CommitLink url={result.commitUrl} />
+			</p>
+		);
+	}
+
+	if (result?.status === "committed-and-triggered") {
 		return (
 			<p className="mb-6 border-green-700 border-l-2 pl-4 text-sm leading-6">
-				Pull request {result.pullRequestNumber} gemaakt.{" "}
-				<a
-					href={result.pullRequestUrl}
-					target="_blank"
-					rel="noreferrer"
-					className="font-semibold underline underline-offset-4"
-				>
-					Open op GitHub
-				</a>
+				Commit opgeslagen en deployment gestart.{" "}
+				<CommitLink url={result.commitUrl} />
 			</p>
 		);
 	}
 
 	return null;
+}
+
+function CommitLink({ url }: { url: string }) {
+	return (
+		<a
+			href={url}
+			target="_blank"
+			rel="noreferrer"
+			className="font-semibold underline underline-offset-4"
+		>
+			Open commit op GitHub
+		</a>
+	);
 }

@@ -13,7 +13,7 @@ Feature: Admin drafting
     And I open the event admin
     When I complete a valid event draft
     And I request the Markdown preview
-    And I request a pull request
+    And I request publication
     Then I see that nothing was written to GitHub
 
   Scenario: Do not restore a stale preview after an edit
@@ -25,10 +25,20 @@ Feature: Admin drafting
     Then the stale draft cannot be published
 
   Scenario: Do not publish the same successful draft twice
-    Given GitHub publishing creates a pull request
+    Given GitHub publishing commits and triggers deployment
     And I open the event admin
     When I complete a valid event draft
     And I request the Markdown preview
-    And I request a pull request
-    Then the created pull request is shown
+    And I request publication
+    Then the created commit is shown
     And the same draft cannot be published again
+
+  Scenario: Retry deployment after the commit was saved
+    Given GitHub publishing saves a commit before deployment triggering fails
+    And I open the event admin
+    When I complete a valid event draft
+    And I request the Markdown preview
+    And I request publication
+    Then I see that the commit was saved but deployment needs a retry
+    When I request publication again
+    Then the created commit is shown

@@ -30,7 +30,6 @@ export async function createInstallationToken({
 			repositories: [repository],
 			permissions: {
 				contents: "write",
-				pull_requests: "write",
 			},
 		},
 		schema: installationTokenSchema,

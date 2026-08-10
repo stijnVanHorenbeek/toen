@@ -3,13 +3,16 @@
 import { useRef, useState } from "react";
 import type { EventDraftPreview } from "@/lib/content/event-draft";
 
+type CommitPublishResult = EventDraftPreview & {
+	change: "created" | "unchanged";
+	commitSha: string;
+	commitUrl: string;
+};
+
 export type EventPublishResult =
 	| (EventDraftPreview & { status: "dry-run" })
-	| (EventDraftPreview & {
-			status: "created";
-			pullRequestNumber: number;
-			pullRequestUrl: string;
-	  });
+	| (CommitPublishResult & { status: "committed-and-triggered" })
+	| (CommitPublishResult & { status: "committed-trigger-failed" });
 
 export function useEventDraft() {
 	const [draft, setDraft] = useState<unknown>(null);
@@ -59,13 +62,13 @@ export function useEventDraft() {
 		try {
 			const response = await postEvent("/api/admin/events/publish", draft);
 			if (!response.ok || !isEventPublishResult(response.body)) {
-				throw new Error(apiError(response.body, "Pull request maken mislukt."));
+				throw new Error(apiError(response.body, "Publiceren mislukt."));
 			}
 			setPublishResult(response.body);
-			if (response.body.status === "created") setDraft(null);
+			if (response.body.status === "committed-and-triggered") setDraft(null);
 		} catch (error) {
 			setPublishResult(null);
-			setPublishError(errorMessage(error, "Pull request maken mislukt."));
+			setPublishError(errorMessage(error, "Publiceren mislukt."));
 		} finally {
 			publishInFlight.current = false;
 			setIsPublishing(false);
@@ -115,13 +118,15 @@ function isEventDraftPreview(value: unknown): value is EventDraftPreview {
 
 function isEventPublishResult(value: unknown): value is EventPublishResult {
 	if (!isRecord(value)) return false;
-	const { status, pullRequestNumber, pullRequestUrl } = value;
+	const { status, change, commitSha, commitUrl } = value;
 	if (!isEventDraftPreview(value)) return false;
 	if (status === "dry-run") return true;
 	return (
-		status === "created" &&
-		typeof pullRequestNumber === "number" &&
-		typeof pullRequestUrl === "string"
+		(status === "committed-and-triggered" ||
+			status === "committed-trigger-failed") &&
+		(change === "created" || change === "unchanged") &&
+		typeof commitSha === "string" &&
+		typeof commitUrl === "string"
 	);
 }
 

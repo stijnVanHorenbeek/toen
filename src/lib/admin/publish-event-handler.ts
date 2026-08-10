@@ -6,7 +6,11 @@ import {
 	accessConfigFromEnvironment,
 	authenticateAccessRequest,
 } from "../access/authenticate-access";
-import { type GitHubFetch, publishEventDraft } from "../github/event-publisher";
+import {
+	ContentConflictError,
+	type GitHubFetch,
+	publishEventDraft,
+} from "../github/event-publisher";
 import {
 	type GitHubEnvironment,
 	githubAppConfigFromEnvironment,
@@ -21,6 +25,7 @@ type HandlerDependencies = {
 		config: AccessConfig,
 	) => Promise<AccessIdentity | null>;
 	githubFetch?: GitHubFetch;
+	deployFetch?: typeof fetch;
 	publish?: typeof publishEventDraft;
 };
 
@@ -69,14 +74,21 @@ export async function handlePublishEventRequest(
 		const result = await publish({
 			draft: await request.json(),
 			editor: identity.email,
-			config: githubConfig,
+			config: publishMode === "live" ? githubConfig : null,
 			githubFetch: dependencies.githubFetch,
+			deployFetch: dependencies.deployFetch,
 		});
 		return Response.json(result, {
-			status: result.status === "created" ? 201 : 200,
+			status: publishResponseStatus(result),
 			headers: { "Cache-Control": "no-store" },
 		});
 	} catch (error) {
+		if (error instanceof ContentConflictError) {
+			return jsonError(
+				"Gebeurtenis is ondertussen gewijzigd. Controleer en probeer opnieuw.",
+				409,
+			);
+		}
 		if (error instanceof SyntaxError || error instanceof ZodError) {
 			return jsonError("Ongeldige gebeurtenis.", 400);
 		}
@@ -88,6 +100,14 @@ export async function handlePublishEventRequest(
 		);
 		return jsonError("Publiceren naar GitHub is mislukt.", 502);
 	}
+}
+
+function publishResponseStatus(
+	result: Awaited<ReturnType<typeof publishEventDraft>>,
+): number {
+	if (result.status === "dry-run") return 200;
+	if (result.status === "committed-trigger-failed") return 202;
+	return result.change === "unchanged" ? 200 : 201;
 }
 
 function jsonError(error: string, status: number): Response {

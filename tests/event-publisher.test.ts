@@ -1,6 +1,7 @@
 import { createPrivateKey as importPrivateKey } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
+	ContentConflictError,
 	type GitHubAppConfig,
 	type GitHubFetch,
 	publishEventDraft,
@@ -13,50 +14,88 @@ import {
 const draft = {
 	slug: "val-van-constantinopel-1453",
 	title: "Constantinopel valt",
-	date: {
-		year: 1453,
-		era: "ce",
-		precision: "day",
-		month: 5,
-		day: 29,
-	},
+	date: { year: 1453, era: "ce", precision: "day", month: 5, day: 29 },
 	summary: "Ottomaanse troepen nemen Constantinopel in.",
 	topics: ["politiek", "oorlog"],
 	profiles: ["algemeen"],
 	sources: [
 		{
 			title: "Fall of Constantinople",
-			publisher: "Encyclopaedia Britannica",
-			url: "https://www.britannica.com/event/Fall-of-Constantinople-1453",
+			publisher: "Britannica",
+			url: "https://example.com/source",
 		},
 	],
 	body: "De stad werd na een beleg ingenomen.",
 };
 
-describe("githubAppConfigFromEnvironment", () => {
-	it("returns no write configuration when the private key is missing", async () => {
+const deployHookUrl =
+	"https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/hook-id";
+
+async function config(): Promise<GitHubAppConfig> {
+	return {
+		appId: "12345",
+		installationId: "67890",
+		privateKey: await createGitHubPrivateKey(),
+		owner: "example-owner",
+		repository: "toen-content",
+		baseBranch: "main",
+		deployHookUrl,
+	};
+}
+
+function sequencedFetch(
+	responses: Response[],
+	requests: Array<{ url: string; init?: RequestInit }>,
+): GitHubFetch {
+	return async (url, init) => {
+		requests.push({ url: String(url), init });
+		const response = responses.shift();
+		if (!response) throw new Error("Unexpected GitHub request");
+		return response;
+	};
+}
+
+describe("github configuration", () => {
+	it("defaults missing publishing mode to dry-run", async () => {
+		await expect(githubPublishModeFromEnvironment({})).resolves.toBe("dry-run");
+	});
+
+	it("requires a constrained deploy hook URL for complete configuration", async () => {
+		const base = {
+			GITHUB_APP_ID: "123456",
+			GITHUB_APP_INSTALLATION_ID: "789012",
+			GITHUB_APP_PRIVATE_KEY: "private-key",
+			GITHUB_REPOSITORY: "example-owner/toen-content",
+			GITHUB_BASE_BRANCH: "main",
+		};
+		await expect(githubAppConfigFromEnvironment(base)).resolves.toBeNull();
+		for (const invalidUrl of [
+			"http://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/id",
+			"https://api.cloudflare.com:444/client/v4/workers/builds/deploy_hooks/id",
+			"https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/id?x=1",
+			"https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/id#x",
+			"https://example.com/client/v4/workers/builds/deploy_hooks/id",
+		]) {
+			await expect(
+				githubAppConfigFromEnvironment({
+					...base,
+					CONTENT_DEPLOY_HOOK_URL: invalidUrl,
+				}),
+			).resolves.toBeNull();
+		}
 		await expect(
 			githubAppConfigFromEnvironment({
-				GITHUB_APP_ID: "123456",
-				GITHUB_APP_INSTALLATION_ID: "789012",
-				GITHUB_REPOSITORY: "example-owner/toen",
-				GITHUB_BASE_BRANCH: "main",
+				...base,
+				CONTENT_DEPLOY_HOOK_URL: deployHookUrl,
 			}),
-		).resolves.toBeNull();
+		).resolves.toMatchObject({
+			owner: "example-owner",
+			repository: "toen-content",
+			deployHookUrl,
+		});
 	});
 
-	it("reads live publishing mode from Secrets Store", async () => {
-		const get = vi.fn().mockResolvedValue("live");
-
-		await expect(
-			githubPublishModeFromEnvironment({
-				GITHUB_PUBLISH_MODE_STORE: { get },
-			}),
-		).resolves.toBe("live");
-		expect(get).toHaveBeenCalledOnce();
-	});
-
-	it("reads all GitHub configuration from Secrets Store bindings", async () => {
+	it("reads deploy hook URL from Secrets Store", async () => {
 		const stored = (value: string) => ({
 			get: vi.fn().mockResolvedValue(value),
 		});
@@ -64,336 +103,244 @@ describe("githubAppConfigFromEnvironment", () => {
 			GITHUB_APP_ID_STORE: stored("123456"),
 			GITHUB_APP_INSTALLATION_ID_STORE: stored("789012"),
 			GITHUB_APP_PRIVATE_KEY_STORE: stored("private-key"),
-			GITHUB_REPOSITORY_STORE: stored("example-owner/toen"),
+			GITHUB_REPOSITORY_STORE: stored("example-owner/toen-content"),
 			GITHUB_BASE_BRANCH_STORE: stored("main"),
+			CONTENT_DEPLOY_HOOK_URL_STORE: stored(deployHookUrl),
 		};
-
-		await expect(githubAppConfigFromEnvironment(environment)).resolves.toEqual({
-			appId: "123456",
-			installationId: "789012",
-			privateKey: "private-key",
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		});
-		for (const binding of Object.values(environment)) {
+		await expect(
+			githubAppConfigFromEnvironment(environment),
+		).resolves.toMatchObject({ deployHookUrl });
+		for (const binding of Object.values(environment))
 			expect(binding.get).toHaveBeenCalledOnce();
-		}
 	});
 });
 
 describe("publishEventDraft", () => {
-	it("returns a dry run without network access when App config is missing", async () => {
+	it("dry-runs without any network access", async () => {
 		const githubFetch = vi.fn<GitHubFetch>();
-
+		const deployFetch = vi.fn<typeof fetch>();
 		const result = await publishEventDraft({
 			draft,
 			editor: "editor@example.com",
 			config: null,
 			githubFetch,
+			deployFetch,
 		});
-
 		expect(result.status).toBe("dry-run");
-		expect(result.path).toBe("content/events/val-van-constantinopel-1453.md");
 		expect(githubFetch).not.toHaveBeenCalled();
+		expect(deployFetch).not.toHaveBeenCalled();
 	});
 
-	it("creates a branch, Markdown commit, and pull request as the App", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
+	it("creates missing Markdown in the configured content repository and triggers deployment", async () => {
 		const requests: Array<{ url: string; init?: RequestInit }> = [];
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([]),
-			Response.json({}, { status: 404 }),
-			Response.json({ object: { sha: "base-sha" } }),
-			Response.json({ ref: "refs/heads/content/test" }, { status: 201 }),
-			Response.json({}, { status: 404 }),
-			Response.json({ commit: { sha: "commit-sha" } }, { status: 201 }),
-			Response.json(
-				{ number: 17, html_url: "https://github.com/example/toen/pull/17" },
-				{ status: 201 },
-			),
-		];
-		const githubFetch: GitHubFetch = async (url, init) => {
-			requests.push({ url: String(url), init });
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
-
+		const githubFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "base-sha" } }),
+				Response.json({}, { status: 404 }),
+				Response.json({ commit: { sha: "commit-sha" } }, { status: 201 }),
+			],
+			requests,
+		);
+		const deployFetch = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(new Response(null, { status: 202 }));
 		const result = await publishEventDraft({
 			draft,
 			editor: "editor@example.com",
-			config,
+			config: await config(),
 			githubFetch,
-			branchSuffix: "test",
+			deployFetch,
 		});
 
 		expect(result).toMatchObject({
-			status: "created",
-			pullRequestNumber: 17,
-			pullRequestUrl: "https://github.com/example/toen/pull/17",
-			branch: "content/val-van-constantinopel-1453-test",
+			status: "committed-and-triggered",
+			change: "created",
+			commitSha: "commit-sha",
 		});
-		expect(requests.map(({ url }) => url)).toEqual([
-			"https://api.github.com/app/installations/67890/access_tokens",
-			"https://api.github.com/repos/example-owner/toen/pulls?state=open&head=example-owner%3Acontent%2Fval-van-constantinopel-1453-test&base=main",
-			"https://api.github.com/repos/example-owner/toen/git/ref/heads/content/val-van-constantinopel-1453-test",
-			"https://api.github.com/repos/example-owner/toen/git/ref/heads/main",
-			"https://api.github.com/repos/example-owner/toen/git/refs",
-			"https://api.github.com/repos/example-owner/toen/contents/content/events/val-van-constantinopel-1453.md?ref=content%2Fval-van-constantinopel-1453-test",
-			"https://api.github.com/repos/example-owner/toen/contents/content/events/val-van-constantinopel-1453.md",
-			"https://api.github.com/repos/example-owner/toen/pulls",
+		expect(deployFetch).toHaveBeenCalledWith(deployHookUrl, { method: "POST" });
+		expect(requests[0]?.url).toContain(
+			"/app/installations/67890/access_tokens",
+		);
+		expect(JSON.parse(String(requests[0]?.init?.body))).toEqual({
+			repositories: ["toen-content"],
+			permissions: { contents: "write" },
+		});
+		expect(requests.slice(1).map(({ url }) => url)).toEqual([
+			"https://api.github.com/repos/example-owner/toen-content/git/ref/heads/main",
+			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/val-van-constantinopel-1453.md?ref=base-sha",
+			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/val-van-constantinopel-1453.md",
 		]);
-
-		const commitRequest = JSON.parse(String(requests[6]?.init?.body));
-		expect(decodeBase64(commitRequest.content)).toContain(
+		const body = JSON.parse(String(requests[3]?.init?.body));
+		expect(body).not.toHaveProperty("sha");
+		expect(body.branch).toBe("main");
+		expect(body.message).toContain("Editor: editor@example.com");
+		expect(Buffer.from(body.content, "base64").toString("utf8")).toContain(
 			"title: Constantinopel valt",
 		);
-		const pullRequest = JSON.parse(String(requests[7]?.init?.body));
-		expect(pullRequest.body).toContain("editor@example.com");
+		expect(new Headers(requests[3]?.init?.headers).get("Authorization")).toBe(
+			"Bearer installation-token",
+		);
 	});
 
-	it("returns an existing pull request for the same publish operation", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
-		const requests: string[] = [];
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([
-				{
-					number: 17,
-					html_url: "https://github.com/example/toen/pull/17",
-				},
-			]),
-		];
-		const githubFetch: GitHubFetch = async (url) => {
-			requests.push(String(url));
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
-
-		const result = await publishEventDraft({
-			draft,
-			editor: "editor@example.com",
-			config,
-			githubFetch,
-			branchSuffix: "test",
-		});
-
-		expect(result).toMatchObject({
-			status: "created",
-			pullRequestNumber: 17,
-			pullRequestUrl: "https://github.com/example/toen/pull/17",
-			branch: "content/val-van-constantinopel-1453-test",
-		});
-		expect(requests).toHaveLength(2);
-	});
-
-	it("continues a publish after only the branch was created", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
+	it("refuses to overwrite differing existing Markdown from the create flow", async () => {
 		const requests: Array<{ url: string; init?: RequestInit }> = [];
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([]),
-			Response.json({ object: { sha: "branch-sha" } }),
-			Response.json({}, { status: 404 }),
-			Response.json({ commit: { sha: "commit-sha" } }, { status: 201 }),
-			Response.json(
-				{ number: 17, html_url: "https://github.com/example/toen/pull/17" },
-				{ status: 201 },
-			),
-		];
-		const githubFetch: GitHubFetch = async (url, init) => {
-			requests.push({ url: String(url), init });
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
+		const deployFetch = vi.fn<typeof fetch>();
+		const githubFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "snapshot-sha" } }),
+				Response.json({
+					content: Buffer.from("newer content").toString("base64"),
+					encoding: "base64",
+					sha: "blob-sha",
+				}),
+			],
+			requests,
+		);
 
-		const result = await publishEventDraft({
-			draft,
-			editor: "editor@example.com",
-			config,
-			githubFetch,
-			branchSuffix: "test",
-		});
-
-		expect(result).toMatchObject({ status: "created", pullRequestNumber: 17 });
+		await expect(
+			publishEventDraft({
+				draft,
+				editor: "editor@example.com",
+				config: await config(),
+				githubFetch,
+				deployFetch,
+			}),
+		).rejects.toBeInstanceOf(ContentConflictError);
 		expect(requests.map(({ init }) => init?.method)).toEqual([
 			"POST",
 			"GET",
 			"GET",
-			"GET",
-			"PUT",
-			"POST",
 		]);
+		expect(deployFetch).not.toHaveBeenCalled();
 	});
 
-	it("continues a publish after the canonical file was created", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
+	it("reads identical Markdown at one immutable snapshot and retriggers deployment", async () => {
 		const preview = await publishEventDraft({
 			draft,
 			editor: "editor@example.com",
 			config: null,
 		});
 		const requests: Array<{ url: string; init?: RequestInit }> = [];
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([]),
-			Response.json({ object: { sha: "branch-sha" } }),
-			Response.json({
-				content: Buffer.from(preview.markdown).toString("base64"),
-				encoding: "base64",
-				sha: "commit-sha",
-			}),
-			Response.json(
-				{ number: 17, html_url: "https://github.com/example/toen/pull/17" },
-				{ status: 201 },
-			),
-		];
-		const githubFetch: GitHubFetch = async (url, init) => {
-			requests.push({ url: String(url), init });
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
-
+		const githubFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "snapshot-sha" } }),
+				Response.json({
+					content: Buffer.from(preview.markdown).toString("base64"),
+					encoding: "base64",
+					sha: "blob-sha",
+				}),
+			],
+			requests,
+		);
+		const deployFetch = vi
+			.fn()
+			.mockResolvedValue(new Response(null, { status: 200 }));
 		const result = await publishEventDraft({
 			draft,
 			editor: "editor@example.com",
-			config,
+			config: await config(),
 			githubFetch,
-			branchSuffix: "test",
+			deployFetch,
 		});
 
-		expect(result).toMatchObject({ status: "created", pullRequestNumber: 17 });
-		expect(requests.map(({ init }) => init?.method)).toEqual([
-			"POST",
-			"GET",
-			"GET",
-			"GET",
-			"POST",
-		]);
+		expect(result).toMatchObject({
+			status: "committed-and-triggered",
+			change: "unchanged",
+			commitSha: "snapshot-sha",
+		});
+		expect(requests[2]?.url).toContain("?ref=snapshot-sha");
+		expect(deployFetch).toHaveBeenCalledOnce();
 	});
 
-	it("does not overwrite different content on a retry branch", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([]),
-			Response.json({ object: { sha: "branch-sha" } }),
-			Response.json({
-				content: Buffer.from("different content").toString("base64"),
-				encoding: "base64",
-				sha: "commit-sha",
-			}),
-		];
-		const githubFetch: GitHubFetch = async () => {
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
+	it("returns partial success when deploy hook fails so retry can retrigger", async () => {
+		const requests: Array<{ url: string; init?: RequestInit }> = [];
+		const githubFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "base-sha" } }),
+				Response.json({}, { status: 404 }),
+				Response.json({ commit: { sha: "commit-sha" } }, { status: 201 }),
+			],
+			requests,
+		);
+		const result = await publishEventDraft({
+			draft,
+			editor: "editor@example.com",
+			config: await config(),
+			githubFetch,
+			deployFetch: vi
+				.fn()
+				.mockResolvedValue(new Response(null, { status: 500 })),
+		});
+		expect(result).toMatchObject({
+			status: "committed-trigger-failed",
+			change: "created",
+			commitSha: "commit-sha",
+		});
+	});
 
+	it("reconciles a concurrent identical write and rejects a differing conflict", async () => {
+		const preview = await publishEventDraft({
+			draft,
+			editor: "editor@example.com",
+			config: null,
+		});
+		const common = [
+			Response.json({ token: "installation-token" }),
+			Response.json({ object: { sha: "base-sha" } }),
+			Response.json({}, { status: 404 }),
+			Response.json({}, { status: 409 }),
+			Response.json({ object: { sha: "winner-sha" } }),
+		];
+		const identicalFetch = sequencedFetch(
+			[
+				...common,
+				Response.json({
+					content: Buffer.from(preview.markdown).toString("base64"),
+					encoding: "base64",
+					sha: "new-blob",
+				}),
+			],
+			[],
+		);
 		await expect(
 			publishEventDraft({
 				draft,
 				editor: "editor@example.com",
-				config,
-				githubFetch,
-				branchSuffix: "test",
+				config: await config(),
+				githubFetch: identicalFetch,
+				deployFetch: vi
+					.fn()
+					.mockResolvedValue(new Response(null, { status: 200 })),
 			}),
-		).rejects.toThrow("Existing branch content differs");
-	});
+		).resolves.toMatchObject({ change: "unchanged", commitSha: "winner-sha" });
 
-	it("uses a stable branch for retries of the same content", async () => {
-		const config: GitHubAppConfig = {
-			appId: "12345",
-			installationId: "67890",
-			privateKey: await createGitHubPrivateKey(),
-			owner: "example-owner",
-			repository: "toen",
-			baseBranch: "main",
-		};
-		const responses = [
-			Response.json({ token: "installation-token" }),
-			Response.json([
-				{
-					number: 17,
-					html_url: "https://github.com/example/toen/pull/17",
-				},
-			]),
-			Response.json({ token: "installation-token" }),
-			Response.json([
-				{
-					number: 17,
-					html_url: "https://github.com/example/toen/pull/17",
-				},
-			]),
-		];
-		const githubFetch: GitHubFetch = async () => {
-			const response = responses.shift();
-			if (!response) throw new Error("Unexpected GitHub request");
-			return response;
-		};
-
-		const first = await publishEventDraft({
-			draft,
-			editor: "editor@example.com",
-			config,
-			githubFetch,
-		});
-		const retry = await publishEventDraft({
-			draft,
-			editor: "editor@example.com",
-			config,
-			githubFetch,
-		});
-
-		expect(first.status).toBe("created");
-		expect(retry.status).toBe("created");
-		if (first.status !== "created" || retry.status !== "created") {
-			throw new Error("Expected created pull requests");
-		}
-		expect(first.branch).toMatch(
-			/^content\/val-van-constantinopel-1453-[a-f0-9]{12}$/,
+		const differingFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "base-sha" } }),
+				Response.json({}, { status: 404 }),
+				Response.json({}, { status: 422 }),
+				Response.json({ object: { sha: "winner-sha" } }),
+				Response.json({
+					content: Buffer.from("other editor").toString("base64"),
+					encoding: "base64",
+					sha: "new-blob",
+				}),
+			],
+			[],
 		);
-		expect(retry.branch).toBe(first.branch);
+		await expect(
+			publishEventDraft({
+				draft,
+				editor: "editor@example.com",
+				config: await config(),
+				githubFetch: differingFetch,
+			}),
+		).rejects.toBeInstanceOf(ContentConflictError);
 	});
 });
 
@@ -416,8 +363,4 @@ async function createGitHubPrivateKey(): Promise<string> {
 	})
 		.export({ format: "pem", type: "pkcs1" })
 		.toString();
-}
-
-function decodeBase64(value: string): string {
-	return Buffer.from(value, "base64").toString("utf8");
 }

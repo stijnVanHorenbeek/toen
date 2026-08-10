@@ -35,21 +35,37 @@ Given("Markdown preview responses are delayed", async ({ page }) => {
 	});
 });
 
-Given("GitHub publishing creates a pull request", async ({ page }) => {
+Given("GitHub publishing commits and triggers deployment", async ({ page }) => {
 	await page.route("**/api/admin/events/publish", async (route) => {
 		await route.fulfill({
 			status: 201,
 			contentType: "application/json",
-			body: JSON.stringify({
-				status: "created",
-				path: "content/events/val-van-constantinopel-1453.md",
-				markdown: "title: Constantinopel valt",
-				pullRequestNumber: 17,
-				pullRequestUrl: "https://github.com/example/toen/pull/17",
-			}),
+			body: JSON.stringify(publishResult("committed-and-triggered", "created")),
 		});
 	});
 });
+
+Given(
+	"GitHub publishing saves a commit before deployment triggering fails",
+	async ({ page }) => {
+		let attempt = 0;
+		await page.route("**/api/admin/events/publish", async (route) => {
+			attempt += 1;
+			await route.fulfill({
+				status: attempt === 1 ? 202 : 200,
+				contentType: "application/json",
+				body: JSON.stringify(
+					publishResult(
+						attempt === 1
+							? "committed-trigger-failed"
+							: "committed-and-triggered",
+						attempt === 1 ? "created" : "unchanged",
+					),
+				),
+			});
+		});
+	},
+);
 
 When("I complete a valid event draft", async ({ page }) => {
 	await page.getByLabel("Slug").fill("val-van-constantinopel-1453");
@@ -76,17 +92,19 @@ When("I request the Markdown preview", async ({ page }) => {
 	await page.getByRole("button", { name: "Genereer preview" }).click();
 });
 
-When("I request a pull request", async ({ page }) => {
-	await page.getByRole("button", { name: "Maak pull request" }).click();
-});
+When("I request publication", requestPublication);
+When("I request publication again", requestPublication);
 
 When("I change the title before the preview returns", async ({ page }) => {
 	await page.getByLabel("Titel", { exact: true }).fill("Gewijzigde titel");
 });
 
-Then("the target event path is {string}", async ({ page }, path: string) => {
-	await expect(page.getByText(path, { exact: true })).toBeVisible();
-});
+Then(
+	"the target event path is {string}",
+	async ({ page }, expectedPath: string) => {
+		await expect(page.getByText(expectedPath, { exact: true })).toBeVisible();
+	},
+);
 
 Then(
 	"the Markdown preview contains {string}",
@@ -103,18 +121,53 @@ Then("the stale draft cannot be published", async ({ page }) => {
 	await page.waitForTimeout(400);
 	await expect(page.getByTestId("markdown-preview")).toHaveCount(0);
 	await expect(
-		page.getByRole("button", { name: "Maak pull request" }),
+		page.getByRole("button", { name: "Publiceer gebeurtenis" }),
 	).toBeDisabled();
 });
 
-Then("the created pull request is shown", async ({ page }) => {
+Then("the created commit is shown", async ({ page }) => {
 	await expect(
-		page.getByRole("link", { name: "Open op GitHub" }),
-	).toHaveAttribute("href", "https://github.com/example/toen/pull/17");
+		page.getByRole("link", { name: "Open commit op GitHub" }),
+	).toHaveAttribute(
+		"href",
+		"https://github.com/example/toen-content/commit/commit-sha",
+	);
 });
+
+Then(
+	"I see that the commit was saved but deployment needs a retry",
+	async ({ page }) => {
+		await expect(page.getByText("Commit opgeslagen")).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Publiceer gebeurtenis" }),
+		).toBeEnabled();
+	},
+);
 
 Then("the same draft cannot be published again", async ({ page }) => {
 	await expect(
-		page.getByRole("button", { name: "Maak pull request" }),
+		page.getByRole("button", { name: "Publiceer gebeurtenis" }),
 	).toBeDisabled();
 });
+
+async function requestPublication({
+	page,
+}: {
+	page: import("@playwright/test").Page;
+}) {
+	await page.getByRole("button", { name: "Publiceer gebeurtenis" }).click();
+}
+
+function publishResult(
+	status: "committed-and-triggered" | "committed-trigger-failed",
+	change: "created" | "unchanged",
+) {
+	return {
+		status,
+		change,
+		path: "content/events/val-van-constantinopel-1453.md",
+		markdown: "title: Constantinopel valt",
+		commitSha: "commit-sha",
+		commitUrl: "https://github.com/example/toen-content/commit/commit-sha",
+	};
+}

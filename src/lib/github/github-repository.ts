@@ -8,7 +8,6 @@ import {
 const gitReferenceSchema = z.object({
 	object: z.object({ sha: z.string().min(1) }),
 });
-const createdReferenceSchema = z.object({ ref: z.string().min(1) });
 const contentCommitSchema = z.object({
 	commit: z.object({ sha: z.string().min(1) }),
 });
@@ -17,17 +16,23 @@ const contentFileSchema = z.object({
 	encoding: z.literal("base64"),
 	sha: z.string().min(1),
 });
-const pullRequestSchema = z.object({
-	number: z.number().int().positive(),
-	html_url: z.url(),
-});
-const pullRequestsSchema = z.array(pullRequestSchema);
+
+type ContentFile = z.infer<typeof contentFileSchema>;
 
 export type GitHubRepositoryConfig = {
 	owner: string;
 	repository: string;
 	baseBranch: string;
 };
+
+export type FileChange = "created" | "unchanged";
+
+export class ContentConflictError extends Error {
+	constructor(readonly path: string) {
+		super(`Content changed concurrently at ${path}`);
+		this.name = "ContentConflictError";
+	}
+}
 
 export class GitHubRepository {
 	readonly #config: GitHubRepositoryConfig;
@@ -48,119 +53,74 @@ export class GitHubRepository {
 		this.#token = token;
 	}
 
-	async findOpenPullRequest(
-		branch: string,
-	): Promise<{ number: number; url: string } | null> {
-		const query = new URLSearchParams({
-			state: "open",
-			head: `${this.#config.owner}:${branch}`,
-			base: this.#config.baseBranch,
-		});
-		const pullRequests = await this.#request({
-			method: "GET",
-			path: `/pulls?${query}`,
-			schema: pullRequestsSchema,
-		});
-		const pullRequest = pullRequests[0];
-		return pullRequest
-			? { number: pullRequest.number, url: pullRequest.html_url }
-			: null;
-	}
-
-	async ensureBranch(branch: string): Promise<void> {
-		try {
-			await this.#request({
-				method: "GET",
-				path: `/git/ref/heads/${branch}`,
-				schema: gitReferenceSchema,
-			});
-			return;
-		} catch (error) {
-			if (!isNotFound(error)) throw error;
-		}
-
-		const base = await this.#request({
-			method: "GET",
-			path: `/git/ref/heads/${this.#config.baseBranch}`,
-			schema: gitReferenceSchema,
-		});
-		await this.#request({
-			method: "POST",
-			path: "/git/refs",
-			body: { ref: `refs/heads/${branch}`, sha: base.object.sha },
-			schema: createdReferenceSchema,
-		});
-	}
-
-	async ensureFile({
-		branch,
+	async upsertFile({
 		content,
 		message,
 		path,
 	}: {
-		branch: string;
 		content: string;
 		message: string;
 		path: string;
-	}): Promise<void> {
-		const query = new URLSearchParams({ ref: branch });
+	}): Promise<{ change: FileChange; commitSha: string }> {
+		const existing = await this.#snapshotFile(path);
+		if (existing.file) {
+			if (decodeBase64(existing.file.content) !== content) {
+				throw new ContentConflictError(path);
+			}
+			return { change: "unchanged", commitSha: existing.commitSha };
+		}
+
 		try {
-			const existing = await this.#request({
+			const commit = await this.#request({
+				method: "PUT",
+				path: `/contents/${path}`,
+				body: {
+					branch: this.#config.baseBranch,
+					content: encodeBase64(content),
+					message,
+				},
+				schema: contentCommitSchema,
+			});
+			return { change: "created", commitSha: commit.commit.sha };
+		} catch (error) {
+			if (!isWriteConflict(error)) throw error;
+		}
+
+		const reconciled = await this.#snapshotFile(path);
+		if (reconciled.file && decodeBase64(reconciled.file.content) === content) {
+			return { change: "unchanged", commitSha: reconciled.commitSha };
+		}
+		throw new ContentConflictError(path);
+	}
+
+	async #snapshotFile(
+		path: string,
+	): Promise<{ commitSha: string; file: ContentFile | null }> {
+		const commitSha = await this.#headSha();
+		return { commitSha, file: await this.#findFile(path, commitSha) };
+	}
+
+	async #findFile(path: string, ref: string): Promise<ContentFile | null> {
+		const query = new URLSearchParams({ ref });
+		try {
+			return await this.#request({
 				method: "GET",
 				path: `/contents/${path}?${query}`,
 				schema: contentFileSchema,
 			});
-			if (decodeBase64(existing.content) !== content) {
-				throw new Error(`Existing branch content differs at ${path}`);
-			}
-			return;
 		} catch (error) {
-			if (!isNotFound(error)) throw error;
+			if (isNotFound(error)) return null;
+			throw error;
 		}
-
-		await this.createFile({ branch, content, message, path });
 	}
 
-	async createFile({
-		branch,
-		content,
-		message,
-		path,
-	}: {
-		branch: string;
-		content: string;
-		message: string;
-		path: string;
-	}): Promise<void> {
-		await this.#request({
-			method: "PUT",
-			path: `/contents/${path}`,
-			body: { branch, content: encodeBase64(content), message },
-			schema: contentCommitSchema,
+	async #headSha(): Promise<string> {
+		const reference = await this.#request({
+			method: "GET",
+			path: `/git/ref/heads/${this.#config.baseBranch}`,
+			schema: gitReferenceSchema,
 		});
-	}
-
-	async createPullRequest({
-		body,
-		branch,
-		title,
-	}: {
-		body: string;
-		branch: string;
-		title: string;
-	}): Promise<{ number: number; url: string }> {
-		const pullRequest = await this.#request({
-			method: "POST",
-			path: "/pulls",
-			body: {
-				base: this.#config.baseBranch,
-				body,
-				head: branch,
-				title,
-			},
-			schema: pullRequestSchema,
-		});
-		return { number: pullRequest.number, url: pullRequest.html_url };
+		return reference.object.sha;
 	}
 
 	async #request<Output>({
@@ -170,7 +130,7 @@ export class GitHubRepository {
 		schema,
 	}: {
 		body?: unknown;
-		method: "GET" | "POST" | "PUT";
+		method: "GET" | "PUT";
 		path: string;
 		schema: z.ZodType<Output>;
 	}): Promise<Output> {
@@ -200,4 +160,11 @@ function decodeBase64(value: string): string {
 
 function isNotFound(error: unknown): boolean {
 	return error instanceof GitHubRequestError && error.status === 404;
+}
+
+function isWriteConflict(error: unknown): boolean {
+	return (
+		error instanceof GitHubRequestError &&
+		(error.status === 409 || error.status === 422)
+	);
 }

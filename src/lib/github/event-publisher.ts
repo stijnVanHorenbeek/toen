@@ -12,21 +12,25 @@ import {
 } from "./github-repository";
 import type { GitHubFetch } from "./github-request";
 
+export { ContentConflictError } from "./github-repository";
 export type { GitHubFetch } from "./github-request";
 
-export type GitHubAppConfig = GitHubAppCredentials & GitHubRepositoryConfig;
+export type GitHubAppConfig = GitHubAppCredentials &
+	GitHubRepositoryConfig & {
+		deployHookUrl: string;
+	};
 
 type PublishEventDraftOptions = {
 	draft: unknown;
 	editor: string;
 	config: GitHubAppConfig | null;
 	githubFetch?: GitHubFetch;
-	branchSuffix?: string;
+	deployFetch?: typeof fetch;
 };
 
 export async function publishEventDraft({
-	branchSuffix,
 	config,
+	deployFetch = fetch,
 	draft,
 	editor,
 	githubFetch = fetch,
@@ -37,8 +41,6 @@ export async function publishEventDraft({
 		return { status: "dry-run" as const, ...preview };
 	}
 
-	const suffix = branchSuffix ?? (await contentDigest(preview.markdown));
-	const branch = `content/${event.slug}-${suffix}`;
 	const token = await createInstallationToken({
 		credentials: config,
 		fetch: githubFetch,
@@ -49,52 +51,25 @@ export async function publishEventDraft({
 		fetch: githubFetch,
 		token,
 	});
-	const existingPullRequest = await repository.findOpenPullRequest(branch);
-	if (existingPullRequest) {
-		return {
-			status: "created" as const,
-			...preview,
-			branch,
-			pullRequestNumber: existingPullRequest.number,
-			pullRequestUrl: existingPullRequest.url,
-		};
-	}
-
-	await repository.ensureBranch(branch);
-	await repository.ensureFile({
-		branch,
+	const published = await repository.upsertFile({
 		content: preview.markdown,
-		message: `feat(content): add ${event.slug}`,
+		message: `feat(content): publish ${event.slug}\n\nEditor: ${editor}`,
 		path: preview.path,
 	});
-	const pullRequest = await repository.createPullRequest({
-		branch,
-		title: `feat(content): add ${event.title}`,
-		body: [
-			"Automatisch aangemaakt vanuit Toen.",
-			"",
-			`Redacteur: ${editor}`,
-			`Bestand: \`${preview.path}\``,
-		].join("\n"),
-	});
-
-	return {
-		status: "created" as const,
+	const result = {
 		...preview,
-		branch,
-		pullRequestNumber: pullRequest.number,
-		pullRequestUrl: pullRequest.url,
+		...published,
+		commitUrl: `https://github.com/${config.owner}/${config.repository}/commit/${published.commitSha}`,
 	};
-}
 
-async function contentDigest(content: string): Promise<string> {
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(content),
-	);
-	return Array.from(new Uint8Array(digest), (byte) =>
-		byte.toString(16).padStart(2, "0"),
-	)
-		.join("")
-		.slice(0, 12);
+	try {
+		const response = await deployFetch(config.deployHookUrl, {
+			method: "POST",
+		});
+		if (!response.ok)
+			throw new Error(`Deploy hook failed with ${response.status}`);
+		return { status: "committed-and-triggered" as const, ...result };
+	} catch {
+		return { status: "committed-trigger-failed" as const, ...result };
+	}
 }
