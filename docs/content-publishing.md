@@ -1,10 +1,10 @@
 # Content publishing
 
-## Current model
+## Current migration phase
 
-During bootstrap, the GitHub App creates a branch, commit, and pull request in the application repository. A human reviews and merges the pull request.
+The dedicated content repository stores and validates the canonical Markdown catalog. Before verification or a build, the application resolves its `main` branch once, checks out that exact immutable commit, runs the content repository validation, and generates the local `content/events` directory. Runtime requests never fetch from GitHub.
 
-This model stays in use until the content repository is ready.
+The publisher still uses the bootstrap pull-request flow until direct content commits and the deployment hook are implemented.
 
 ## Target model
 
@@ -28,10 +28,10 @@ The application repository stores the application code. The GitHub App must not 
 2. The Worker validates the content request.
 3. The Worker gets a short-lived GitHub App installation token.
 4. The GitHub App commits the Markdown file to the default content branch.
-5. The deployment workflow validates the complete content catalog.
-6. The workflow checks out the exact content commit SHA.
-7. The workflow builds the application with that content revision.
-8. The workflow deploys the Worker only when all checks pass.
+5. A Cloudflare Deploy Hook starts an application build. Rapid commits may coalesce to the latest content snapshot.
+6. The build resolves the content branch once and checks out that exact commit SHA.
+7. The build validates the complete content catalog and records the application and content revisions.
+8. The build deploys the Worker only when all checks pass.
 
 A failed deployment must keep the previous Worker version active. The admin interface must show the commit and deployment result.
 

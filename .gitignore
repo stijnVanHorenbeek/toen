@@ -20,6 +20,10 @@
 # production
 /build
 
+# generated canonical content
+/content/events/
+/content/revision.json
+
 # misc
 .DS_Store
 *.pem
