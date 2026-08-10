@@ -50,6 +50,11 @@
 			"secret_name": "toen-github-publish-mode"
 		},
 		{
+			"binding": "CONTENT_DEPLOY_HOOK_URL_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-content-deploy-hook-url"
+		},
+		{
 			"binding": "GITHUB_APP_ID_STORE",
 			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
 			"secret_name": "toen-github-app-id"
