@@ -16,6 +16,8 @@ import {
 	githubAppConfigFromEnvironment,
 	githubPublishModeFromEnvironment,
 } from "../github/github-config";
+import { messages } from "../i18n/messages.nl-BE";
+import { eventValidationIssues } from "./event-validation-issues";
 
 export type AdminEnvironment = AccessEnvironment & GitHubEnvironment;
 
@@ -38,13 +40,24 @@ export async function handlePublishEventRequest(
 	try {
 		accessConfig = await accessConfigFromEnvironment(environment);
 	} catch {
-		return jsonError("Adminconfiguratie is niet beschikbaar.", 503);
+		return jsonError(
+			messages.api.adminConfigUnavailable,
+			503,
+			"admin_config_unavailable",
+		);
 	}
-	if (!accessConfig) return jsonError("Admin is niet geconfigureerd.", 503);
+	if (!accessConfig) {
+		return jsonError(
+			messages.api.adminNotConfigured,
+			503,
+			"admin_not_configured",
+		);
+	}
 
 	const authenticate = dependencies.authenticate ?? authenticateAccessRequest;
 	const identity = await authenticate(request, accessConfig);
-	if (!identity) return jsonError("Niet geautoriseerd.", 401);
+	if (!identity)
+		return jsonError(messages.api.unauthorized, 401, "unauthorized");
 
 	const mediaType = request.headers
 		.get("Content-Type")
@@ -52,7 +65,11 @@ export async function handlePublishEventRequest(
 		?.trim()
 		.toLowerCase();
 	if (mediaType !== "application/json") {
-		return jsonError("Content-Type moet application/json zijn.", 415);
+		return jsonError(
+			messages.api.unsupportedMedia,
+			415,
+			"unsupported_media_type",
+		);
 	}
 
 	let githubConfig: Awaited<ReturnType<typeof githubAppConfigFromEnvironment>>;
@@ -63,10 +80,18 @@ export async function handlePublishEventRequest(
 			githubPublishModeFromEnvironment(environment),
 		]);
 	} catch {
-		return jsonError("GitHub-configuratie is niet beschikbaar.", 503);
+		return jsonError(
+			messages.api.publishConfigUnavailable,
+			503,
+			"publish_config_unavailable",
+		);
 	}
 	if (!publishMode || (publishMode === "live" && !githubConfig)) {
-		return jsonError("GitHub is niet geconfigureerd.", 503);
+		return jsonError(
+			messages.api.publishNotConfigured,
+			503,
+			"publish_not_configured",
+		);
 	}
 
 	try {
@@ -84,13 +109,15 @@ export async function handlePublishEventRequest(
 		});
 	} catch (error) {
 		if (error instanceof ContentConflictError) {
-			return jsonError(
-				"Gebeurtenis is ondertussen gewijzigd. Controleer en probeer opnieuw.",
-				409,
-			);
+			return jsonError(messages.api.conflict, 409, "content_conflict");
 		}
-		if (error instanceof SyntaxError || error instanceof ZodError) {
-			return jsonError("Ongeldige gebeurtenis.", 400);
+		if (error instanceof ZodError) {
+			return jsonError(messages.errors.invalidEvent, 400, "invalid_event", {
+				issues: eventValidationIssues(error),
+			});
+		}
+		if (error instanceof SyntaxError) {
+			return jsonError(messages.errors.invalidJson, 400, "invalid_json");
 		}
 		console.error(
 			JSON.stringify({
@@ -98,7 +125,7 @@ export async function handlePublishEventRequest(
 				error: error instanceof Error ? error.name : "UnknownError",
 			}),
 		);
-		return jsonError("Publiceren naar GitHub is mislukt.", 502);
+		return jsonError(messages.errors.publishFailed, 502, "publish_failed");
 	}
 }
 
@@ -110,9 +137,14 @@ function publishResponseStatus(
 	return result.change === "unchanged" ? 200 : 201;
 }
 
-function jsonError(error: string, status: number): Response {
+function jsonError(
+	error: string,
+	status: number,
+	code: string,
+	extra: Record<string, unknown> = {},
+): Response {
 	return Response.json(
-		{ error },
+		{ code, error, ...extra },
 		{ status, headers: { "Cache-Control": "no-store" } },
 	);
 }

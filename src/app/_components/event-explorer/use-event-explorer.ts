@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { EventCatalogEntry } from "@/lib/content/event-catalog";
+import {
+	collectTopicLabels,
+	type EventCatalogEntry,
+} from "@/lib/content/event-catalog";
 import {
 	type RecommendationPreferences,
 	type RecommendationResult,
 	recommendEvents,
 } from "@/lib/content/recommend-events";
+import type { VakrichtingId } from "@/lib/content/taxonomy";
+import { compareLocalized } from "@/lib/i18n/locale";
 
 export type EventExplorerValue = {
 	state: RecommendationPreferences;
@@ -18,7 +23,8 @@ export type EventExplorerValue = {
 		toggleTopic: (topic: string) => void;
 	};
 	meta: {
-		profileOptions: string[];
+		profileOptions: VakrichtingId[];
+		topicLabels: Record<string, string>;
 		topicOptions: string[];
 		recommendations: RecommendationResult;
 	};
@@ -53,6 +59,7 @@ export function useEventExplorerValue(
 		() => collectTags(events.flatMap((event) => event.topics)),
 		[events],
 	);
+	const topicLabels = useMemo(() => collectTopicLabels(events), [events]);
 	const recommendations = useMemo(
 		() =>
 			recommendEvents(events, {
@@ -81,7 +88,7 @@ export function useEventExplorerValue(
 	return {
 		state,
 		actions: { update, toggleTopic },
-		meta: { profileOptions, topicOptions, recommendations },
+		meta: { profileOptions, topicLabels, topicOptions, recommendations },
 	};
 }
 
@@ -95,8 +102,8 @@ function getYearRange(events: EventCatalogEntry[]) {
 	};
 }
 
-function collectTags(values: string[]): string[] {
-	return [...new Set(values)].sort();
+function collectTags<Value extends string>(values: Value[]): Value[] {
+	return [...new Set(values)].sort(compareLocalized);
 }
 
 function getLocalISODate(): string {

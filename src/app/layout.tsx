@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible, Newsreader } from "next/font/google";
+import { primaryLocale } from "@/lib/i18n/locale";
+import { messages } from "@/lib/i18n/messages.nl-BE";
 import "./globals.css";
 
 const bodyFont = Atkinson_Hyperlegible({
@@ -15,10 +17,10 @@ const displayFont = Newsreader({
 
 export const metadata: Metadata = {
 	title: {
-		default: "Toen.",
-		template: "%s | Toen.",
+		default: messages.site.name,
+		template: `%s | ${messages.site.name}`,
 	},
-	description: "Historische gebeurtenissen, verteld vanuit hun eigen dag.",
+	description: messages.site.description,
 };
 
 export default function RootLayout({
@@ -27,7 +29,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="nl">
+		<html lang={primaryLocale}>
 			<head>
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 			</head>
