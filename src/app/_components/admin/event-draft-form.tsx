@@ -1,55 +1,145 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { EventDraftFields } from "./event-draft-fields";
-import { EventDraftPreview } from "./event-draft-preview";
-import { EventPublishStatus } from "./event-publish-status";
-import { useEventDraft } from "./use-event-draft";
+import dynamic from "next/dynamic";
+import { useEffect, useRef } from "react";
+import { messages } from "@/lib/i18n/messages.nl-BE";
+import {
+	EventAuthoringProvider,
+	useEventAuthoring,
+} from "./event-authoring-context";
+import { ClassificationStage, StoryStage } from "./event-authoring-fields";
 
-export function EventDraftForm() {
-	const draft = useEventDraft();
+const ReviewStage = dynamic(
+	() => import("./event-authoring-review").then((module) => module.ReviewStage),
+	{
+		loading: () => (
+			<p role="status" className="authoring-panel text-ink/70">
+				{messages.admin.review.loading}
+			</p>
+		),
+	},
+);
 
-	function submit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		void draft.requestPreview(new FormData(event.currentTarget));
-	}
-
+export function EventDraftForm({
+	topicLabels,
+	topicOptions,
+}: {
+	topicLabels: Record<string, string>;
+	topicOptions: string[];
+}) {
 	return (
-		<form
-			onSubmit={submit}
-			onInput={draft.invalidatePreview}
-			className="grid gap-12 lg:grid-cols-[1fr_0.8fr]"
+		<EventAuthoringProvider
+			topicOptions={topicOptions}
+			topicLabels={topicLabels}
 		>
-			<div>
-				<EventDraftFields />
-				<div className="mt-8 flex flex-wrap gap-3">
-					<button
-						type="submit"
-						disabled={draft.isPreviewing || draft.isPublishing}
-						className="min-h-12 bg-accent px-6 font-semibold text-paper disabled:cursor-wait disabled:opacity-60"
-					>
-						{draft.isPreviewing ? "Preview genereren…" : "Genereer preview"}
-					</button>
-					<button
-						type="button"
-						disabled={!draft.canPublish || draft.isPublishing}
-						onClick={() => void draft.requestPublish()}
-						className="min-h-12 border border-ink/30 px-6 font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-					>
-						{draft.isPublishing ? "Publiceren…" : "Publiceer gebeurtenis"}
-					</button>
-				</div>
+			<EventAuthoringWorkspace />
+		</EventAuthoringProvider>
+	);
+}
+
+function EventAuthoringWorkspace() {
+	const { state } = useEventAuthoring();
+	const previousStep = useRef(state.step);
+	useEffect(() => {
+		if (previousStep.current === state.step) return;
+		previousStep.current = state.step;
+		if (Object.keys(state.errors).length > 0) return;
+		const frame = requestAnimationFrame(() => {
+			const heading = document.getElementById(
+				[
+					"story-stage-title",
+					"classification-stage-title",
+					"review-stage-title",
+				][state.step - 1],
+			);
+			heading?.focus();
+			heading?.scrollIntoView({ block: "start" });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [state.errors, state.step]);
+	return (
+		<div>
+			<RestoreDraftNotice />
+			<div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-ink/20 border-y py-4">
+				<ol
+					aria-label={messages.admin.progress}
+					className="flex flex-wrap gap-x-6 gap-y-2 text-sm"
+				>
+					{messages.admin.steps.map((label, index) => (
+						<li
+							key={label}
+							aria-current={state.step === index + 1 ? "step" : undefined}
+							className={
+								state.step === index + 1
+									? "font-semibold text-accent"
+									: "text-ink/65"
+							}
+						>
+							{index + 1}. {label}
+						</li>
+					))}
+				</ol>
+				<SaveStatus />
 			</div>
-			<aside aria-live="polite" className="lg:sticky lg:top-8 lg:self-start">
-				<h2 className="mb-5 font-serif text-2xl font-semibold">
-					Markdown-preview
-				</h2>
-				<EventPublishStatus
-					error={draft.publishError}
-					result={draft.publishResult}
-				/>
-				<EventDraftPreview error={draft.previewError} preview={draft.preview} />
-			</aside>
-		</form>
+			{state.step === 1 ? <StoryStage /> : null}
+			{state.step === 2 ? <ClassificationStage /> : null}
+			{state.step === 3 ? <ReviewStage /> : null}
+		</div>
+	);
+}
+
+function RestoreDraftNotice() {
+	const { state, actions } = useEventAuthoring();
+	if (!state.restoredDraft) return null;
+	return (
+		<section
+			aria-labelledby="restore-title"
+			className="mb-8 rounded-md border-2 border-accent bg-white p-6"
+		>
+			<h2 id="restore-title" className="font-serif text-2xl font-semibold">
+				{messages.admin.draft.found}
+			</h2>
+			<p className="mt-2 max-w-2xl text-ink/75">
+				{messages.admin.draft.foundDescription}
+			</p>
+			<div className="mt-5 flex flex-wrap gap-3">
+				<button
+					type="button"
+					onClick={actions.restoreDraft}
+					className="primary-button"
+				>
+					{messages.admin.draft.restore}
+				</button>
+				<button
+					type="button"
+					onClick={actions.discardStoredDraft}
+					className="secondary-button"
+				>
+					{messages.admin.draft.discard}
+				</button>
+			</div>
+		</section>
+	);
+}
+
+function SaveStatus() {
+	const { state } = useEventAuthoring();
+	const copy =
+		state.saveStatus === "idle"
+			? ""
+			: {
+					saving: messages.admin.draft.saving,
+					saved: messages.admin.draft.saved,
+					failed: messages.admin.draft.failed,
+				}[state.saveStatus];
+	return (
+		<p
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+			className="text-ink/70 text-sm"
+		>
+			{copy}
+		</p>
 	);
 }

@@ -42,6 +42,46 @@ describe("event documents", () => {
 		expect(serializeEventDocument(event)).toBe(canonicalDocument);
 	});
 
+	it("persists selected topic labels in stable topic order", () => {
+		const event = parseEventDocument(slug, canonicalDocument);
+		const labeled = {
+			...event,
+			topics: ["europa", "cafe-cultuur"],
+			topicLabels: {
+				"cafe-cultuur": "Café-cultuur",
+				europa: "Europa",
+			},
+		};
+
+		const markdown = serializeEventDocument(labeled);
+		expect(markdown).toContain(
+			"topicLabels:\n  europa: Europa\n  cafe-cultuur: Café-cultuur\n",
+		);
+		expect(parseEventDocument(slug, markdown).topicLabels).toEqual({
+			europa: "Europa",
+			"cafe-cultuur": "Café-cultuur",
+		});
+	});
+
+	it("rejects noncanonical topic identifiers and label keys", () => {
+		const event = parseEventDocument(slug, canonicalDocument);
+		expect(() =>
+			serializeEventDocument({ ...event, topics: ["Café"] }),
+		).toThrow();
+		expect(() =>
+			serializeEventDocument({
+				...event,
+				topicLabels: { "Café-cultuur": "Café-cultuur" },
+			}),
+		).toThrow();
+		expect(() =>
+			serializeEventDocument({
+				...event,
+				topicLabels: { ongebruikt: "Ongebruikt" },
+			}),
+		).toThrow();
+	});
+
 	it("loads canonical events by slug", async () => {
 		const events = await getAllEvents();
 		const event = await getEventBySlug(slug);

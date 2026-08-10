@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { EventCatalogEntry } from "@/lib/content/event-catalog";
-import { formatEventTag } from "./event-labels";
+import { formatEventTag } from "@/lib/i18n/locale";
 
 export function EventCard({ event }: { event: EventCatalogEntry }) {
 	return (
@@ -10,7 +10,7 @@ export function EventCard({ event }: { event: EventCatalogEntry }) {
 				<p className="font-semibold text-accent text-sm uppercase tracking-[0.15em]">
 					{formatHistoricalDate(event.date)}
 				</p>
-				<EventTopics topics={event.topics} />
+				<EventTopics topics={event.topics} topicLabels={event.topicLabels} />
 			</div>
 			<div className="max-w-3xl">
 				<h3 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] sm:text-4xl">
@@ -29,7 +29,13 @@ export function EventCard({ event }: { event: EventCatalogEntry }) {
 	);
 }
 
-function EventTopics({ topics }: { topics: string[] }) {
+function EventTopics({
+	topicLabels = {},
+	topics,
+}: {
+	topicLabels?: Record<string, string>;
+	topics: string[];
+}) {
 	return (
 		<ul className="mt-3 flex flex-wrap gap-2">
 			{topics.map((topic) => (
@@ -37,7 +43,7 @@ function EventTopics({ topics }: { topics: string[] }) {
 					key={topic}
 					className="rounded-full border border-ink/20 px-2.5 py-1 text-[0.65rem] text-ink/55 uppercase tracking-wider"
 				>
-					{formatEventTag(topic)}
+					{topicLabels[topic] ?? formatEventTag(topic)}
 				</li>
 			))}
 		</ul>

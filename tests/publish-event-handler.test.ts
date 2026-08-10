@@ -201,6 +201,30 @@ describe("handlePublishEventRequest", () => {
 		);
 	});
 
+	it("returns a stable code for invalid event content", async () => {
+		const authenticate = vi
+			.fn()
+			.mockResolvedValue({ email: "editor@example.com" });
+
+		const response = await handlePublishEventRequest(
+			createRequest({ title: "" }),
+			accessEnvironment,
+			{ authenticate },
+		);
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			code: "invalid_event",
+			error: "Controleer de gemarkeerde velden.",
+			issues: expect.arrayContaining([
+				expect.objectContaining({
+					field: "title",
+					message: "Vul een titel in.",
+				}),
+			]),
+		});
+	});
+
 	it("maps a concurrent content conflict to no-store 409", async () => {
 		const authenticate = vi
 			.fn()
@@ -234,7 +258,7 @@ describe("handlePublishEventRequest", () => {
 		expect(response.status).toBe(200);
 		await expect(response.json()).resolves.toMatchObject({
 			status: "dry-run",
-			path: "content/events/val-van-constantinopel-1453.md",
+			path: "content/events/constantinopel-valt-1453.md",
 		});
 		expect(githubFetch).not.toHaveBeenCalled();
 	});

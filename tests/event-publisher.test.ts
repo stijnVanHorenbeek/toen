@@ -168,8 +168,8 @@ describe("publishEventDraft", () => {
 		});
 		expect(requests.slice(1).map(({ url }) => url)).toEqual([
 			"https://api.github.com/repos/example-owner/toen-content/git/ref/heads/main",
-			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/val-van-constantinopel-1453.md?ref=base-sha",
-			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/val-van-constantinopel-1453.md",
+			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/constantinopel-valt-1453.md?ref=base-sha",
+			"https://api.github.com/repos/example-owner/toen-content/contents/content/events/constantinopel-valt-1453.md",
 		]);
 		const body = JSON.parse(String(requests[3]?.init?.body));
 		expect(body).not.toHaveProperty("sha");

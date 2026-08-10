@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { VakrichtingId } from "@/lib/content/taxonomy";
+import { formatEventTag, formatVakrichting } from "@/lib/i18n/locale";
+import { messages } from "@/lib/i18n/messages.nl-BE";
 import { useEventExplorer } from "./event-explorer-context";
-import { formatEventTag } from "./event-labels";
 
 const controlClassName =
 	"min-h-11 rounded-sm border border-ink/25 bg-transparent px-3 font-normal text-base tracking-normal";
@@ -13,7 +15,7 @@ export function EventFilters() {
 	return (
 		<>
 			<FilterGrid>
-				<FilterField htmlFor="event-week" label="Week">
+				<FilterField htmlFor="event-week" label={messages.home.week}>
 					<input
 						id="event-week"
 						type="date"
@@ -26,13 +28,13 @@ export function EventFilters() {
 				</FilterField>
 				<YearFilter
 					id="event-year-min"
-					label="Van jaar"
+					label={messages.home.fromYear}
 					value={state.yearMin}
 					onChange={(value) => actions.update("yearMin", value)}
 				/>
 				<YearFilter
 					id="event-year-max"
-					label="Tot jaar"
+					label={messages.home.toYear}
 					value={state.yearMax}
 					onChange={(value) => actions.update("yearMax", value)}
 				/>
@@ -46,7 +48,7 @@ export function EventFilters() {
 function FilterGrid({ children }: { children: ReactNode }) {
 	return (
 		<fieldset className="grid gap-5 border-ink/15 border-y py-6 lg:grid-cols-[1.15fr_0.75fr_0.75fr_1fr] lg:items-end">
-			<legend className="sr-only">Lescontext</legend>
+			<legend className="sr-only">{messages.home.lessonContext}</legend>
 			{children}
 		</fieldset>
 	);
@@ -100,19 +102,21 @@ function ProfileFilter() {
 	const { state, actions, meta } = useEventExplorer();
 
 	return (
-		<FilterField htmlFor="event-profile" label="Profiel">
+		<FilterField htmlFor="event-profile" label={messages.home.profile}>
 			<select
 				id="event-profile"
 				value={state.profile}
-				onChange={(event) => actions.update("profile", event.target.value)}
+				onChange={(event) =>
+					actions.update("profile", event.target.value as VakrichtingId)
+				}
 				className={controlClassName}
 			>
-				<option value="algemeen">Algemeen</option>
+				<option value="algemeen">{formatVakrichting("algemeen")}</option>
 				{meta.profileOptions
 					.filter((value) => value !== "algemeen")
 					.map((value) => (
 						<option key={value} value={value}>
-							{formatEventTag(value)}
+							{formatVakrichting(value)}
 						</option>
 					))}
 			</select>
@@ -126,7 +130,7 @@ function TopicFilters() {
 	return (
 		<div className="flex flex-wrap gap-x-5 gap-y-3 border-ink/15 border-b py-5">
 			<span className="font-semibold text-xs uppercase tracking-[0.15em]">
-				Onderwerpen
+				{messages.home.topics}
 			</span>
 			{meta.topicOptions.map((topic) => (
 				<label key={topic} className="flex items-center gap-2 text-sm">
@@ -136,7 +140,7 @@ function TopicFilters() {
 						onChange={() => actions.toggleTopic(topic)}
 						className="size-4 accent-accent"
 					/>
-					{formatEventTag(topic)}
+					{meta.topicLabels[topic] ?? formatEventTag(topic)}
 				</label>
 			))}
 		</div>

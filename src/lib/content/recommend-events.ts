@@ -1,5 +1,6 @@
 import type { HistoricalDate } from "./event";
 import type { EventCatalogEntry } from "./event-catalog";
+import type { VakrichtingId } from "./taxonomy";
 
 const dayMilliseconds = 24 * 60 * 60 * 1000;
 const referenceYear = 2000;
@@ -9,7 +10,7 @@ export type RecommendationPreferences = {
 	selectedDate: string;
 	yearMin: number;
 	yearMax: number;
-	profile: string;
+	profile: VakrichtingId;
 	topics: string[];
 };
 

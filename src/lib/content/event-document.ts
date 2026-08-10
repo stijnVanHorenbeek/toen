@@ -33,14 +33,32 @@ export function parseEventDocument(slug: string, document: string): Event {
 }
 
 export function serializeEventDocument(event: Event): string {
-	const frontmatter: EventFrontmatter = {
+	const validated = parseEventFrontmatter({
 		title: event.title,
 		date: event.date,
 		summary: event.summary,
 		topics: event.topics,
+		...(event.topicLabels ? { topicLabels: event.topicLabels } : {}),
 		profiles: event.profiles,
 		sources: event.sources,
-	};
+	});
+	const selectedTopicLabels = Object.fromEntries(
+		validated.topics.flatMap((topic) => {
+			const label = validated.topicLabels?.[topic];
+			return label ? [[topic, label]] : [];
+		}),
+	);
+	const frontmatter = parseEventFrontmatter({
+		title: validated.title,
+		date: validated.date,
+		summary: validated.summary,
+		topics: validated.topics,
+		...(Object.keys(selectedTopicLabels).length > 0
+			? { topicLabels: selectedTopicLabels }
+			: {}),
+		profiles: validated.profiles,
+		sources: validated.sources,
+	});
 	const yaml = stringify(frontmatter, { lineWidth: 0 }).trimEnd();
 
 	return `---\n${yaml}\n---\n\n${event.body.trim()}\n`;
