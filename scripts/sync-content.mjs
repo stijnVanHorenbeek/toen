@@ -38,6 +38,23 @@ export function parseRemoteRevision(output) {
 	return matches[0][0];
 }
 
+export async function resolveApplicationRevision({
+	appRoot,
+	environmentRevision,
+	runGit = defaultRunGit,
+}) {
+	const supplied = environmentRevision?.trim();
+	if (supplied && immutableRevisionPattern.test(supplied)) return supplied;
+
+	const revision = (
+		await runGit(["rev-parse", "HEAD"], { cwd: appRoot })
+	).trim();
+	if (!immutableRevisionPattern.test(revision)) {
+		throw new Error("Application revision must be a 40-character Git SHA");
+	}
+	return revision;
+}
+
 export async function resolveContentRevision({
 	repository,
 	override,
@@ -114,6 +131,7 @@ export async function publishContentRevision(
 export async function synchronizeContent({
 	repository = defaultRepository,
 	appRoot = process.cwd(),
+	appRevision = null,
 	override,
 	runGit = defaultRunGit,
 	verifyCheckout = verifyContentCheckout,
@@ -154,7 +172,7 @@ export async function synchronizeContent({
 	console.log(
 		JSON.stringify({
 			event: "content-synchronized",
-			appSha: process.env.WORKERS_CI_COMMIT_SHA ?? null,
+			appSha: appRevision,
 			contentSha: revision,
 		}),
 	);
@@ -165,5 +183,14 @@ if (
 	process.argv[1] &&
 	fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 ) {
-	await synchronizeContent({ override: process.env.TOEN_CONTENT_SHA });
+	const appRoot = process.cwd();
+	const appRevision = await resolveApplicationRevision({
+		appRoot,
+		environmentRevision: process.env.WORKERS_CI_COMMIT_SHA,
+	});
+	await synchronizeContent({
+		appRoot,
+		appRevision,
+		override: process.env.TOEN_CONTENT_SHA,
+	});
 }
