@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-pnpm test:e2e
+TOEN_E2E_VERIFY_APP=1 bash scripts/test-e2e.sh

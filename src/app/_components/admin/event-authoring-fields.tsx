@@ -421,12 +421,16 @@ function SourcesFields() {
 			</p>
 			<div className="mt-5 space-y-5">
 				{state.draft.sources.map((source, index) => (
-					<div
+					<section
 						key={source.id ?? index}
+						aria-labelledby={`source-${index + 1}-heading`}
 						className="rounded-md border border-ink/25 bg-white p-5"
 					>
 						<div className="flex items-center justify-between gap-4">
-							<h3 className="font-serif text-xl font-semibold">
+							<h3
+								id={`source-${index + 1}-heading`}
+								className="font-serif text-xl font-semibold"
+							>
 								{formatSourceHeading(index + 1)}
 							</h3>
 							<div className="flex gap-1">
@@ -479,7 +483,7 @@ function SourcesFields() {
 								type="url"
 							/>
 						</div>
-					</div>
+					</section>
 				))}
 			</div>
 			<button

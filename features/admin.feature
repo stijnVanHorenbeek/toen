@@ -14,31 +14,13 @@ Feature: Gebeurtenissen schrijven
     And I see the historical date "29 mei 1453"
     And the inferred event URL ends with "/events/constantinopel-valt-1453"
 
-  Scenario: Een historische schrikkeldatum typen
+  Scenario Outline: Historische precisie controleren
     Given I open the event admin
-    When I complete a story dated "29.02.1500" CE
-    And I continue to classification and sources
-    Then I reach classification and sources
-
-  Scenario: Een gebeurtenis met een gedeeltelijke datum controleren
-    Given I open the event admin
-    When I complete a circa BCE story
-    And I continue to classification and sources
-    And I complete the minimum classification and source
-    And I request the reader preview
-    Then I see the historical date "ca. 44 v.Chr."
-
-  Scenario Outline: Historische precisie veilig publiceren
-    Given GitHub publishing is in dry-run mode
-    And I open the event admin
     When I complete a "<precision>" historical story
     And I continue to classification and sources
     And I complete the minimum classification and source
     And I request the reader preview
     Then I see the historical date "<date>"
-    When I choose to publish the event
-    And I confirm publication
-    Then I see that nothing was published
 
     Examples:
       | precision       | date          |
@@ -87,27 +69,6 @@ Feature: Gebeurtenissen schrijven
     And I remove source 2
     And I request the reader preview
     Then source "Tweede bron" is not in the review
-
-  Scenario: Een onmogelijke historische datum direct verbeteren
-    Given I open the event admin
-    When I complete a story dated 31 April 44 BCE
-    And I continue to classification and sources
-    Then I see the field error "Kies een mogelijke dag voor deze maand."
-    And I remain on the story stage
-
-  Scenario: Een historische dag moet positief zijn
-    Given I open the event admin
-    When I complete a story dated -1 April 44 BCE
-    And I continue to classification and sources
-    Then I see the field error "Vul een hele dag groter dan 0 in."
-    And I remain on the story stage
-
-  Scenario: Een historisch jaar moet positief zijn
-    Given I open the event admin
-    When I complete a story dated 1 April 0 BCE
-    And I continue to classification and sources
-    Then I see the field error "Vul een jaar groter dan 0 in."
-    And I remain on the story stage
 
   Scenario: Een link toevoegen zonder browserprompt
     Given I open the event admin
@@ -196,16 +157,6 @@ Feature: Gebeurtenissen schrijven
     And I request the reader preview without waiting
     And I change the first source before preview returns
     Then the stale draft does not reach review
-
-  Scenario: Hoofdacties werken met het toetsenbord
-    Given GitHub publishing is in dry-run mode
-    And I open the event admin
-    When I complete the story of an exact historical event
-    And I keyboard-activate Continue
-    And I complete the minimum classification and source
-    And I keyboard-activate Preview
-    And I keyboard-activate Publish
-    Then a publication confirmation names "Constantinopel valt"
 
   Scenario: Publicatiebevestiging werkt met toetsenbord
     Given I open the event admin

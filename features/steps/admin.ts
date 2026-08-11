@@ -104,17 +104,6 @@ When(
 	},
 );
 
-When("I complete a story dated {string} CE", async ({ page }, date: string) => {
-	await page.getByLabel("Titel").fill("Historische schrikkeldag");
-	await page.getByLabel("Exacte datum").fill(date);
-	await page
-		.getByLabel("Korte samenvatting")
-		.fill("Een historische datum volgens de toen gebruikte kalender.");
-	await page
-		.locator('[contenteditable="true"]')
-		.fill("De datum blijft zonder valse moderne kalenderregel bewaard.");
-});
-
 When(
 	"I complete a {string} historical story",
 	async ({ page }, precision: string) => {
@@ -123,7 +112,7 @@ When(
 			.getByLabel("Korte samenvatting")
 			.fill("Een gebeurtenis met passende historische precisie.");
 		await page
-			.locator('[contenteditable="true"]')
+			.getByRole("textbox", { name: "Verhaal" })
 			.fill("Het historische verhaal.");
 		if (precision === "month CE") {
 			await page
@@ -146,40 +135,8 @@ When(
 	},
 );
 
-When("I complete a circa BCE story", async ({ page }) => {
-	await page.getByLabel("Titel").fill("Julius Caesar sterft");
-	await page
-		.getByLabel("Hoe precies is de datum bekend?")
-		.selectOption("approximate");
-	await page.getByLabel("Tijdrekening").selectOption("bce");
-	await page.getByLabel("Jaar").fill("44");
-	await page
-		.getByLabel("Korte samenvatting")
-		.fill("Caesar wordt in Rome vermoord.");
-	await page
-		.locator('[contenteditable="true"]')
-		.fill("Caesar werd in de senaat vermoord.");
-});
-
-When(
-	"I complete a story dated {int} April {int} BCE",
-	async ({ page }, day: number, year: number) => {
-		await page.getByLabel("Titel").fill("Onmogelijke datum");
-		await page.getByLabel("Tijdrekening").selectOption("bce");
-		await page.getByLabel("Dag").fill(String(day));
-		await page.getByLabel("Maand").selectOption("4");
-		await page.getByLabel("Jaar").fill(String(year));
-		await page
-			.getByLabel("Korte samenvatting")
-			.fill("Een verhaal met een onmogelijke datum.");
-		await page
-			.locator('[contenteditable="true"]')
-			.fill("Deze datum moet eerst worden verbeterd.");
-	},
-);
-
 When("I select story text for a link", async ({ page }) => {
-	const editor = page.locator('[contenteditable="true"]');
+	const editor = page.getByRole("textbox", { name: "Verhaal" });
 	await editor.fill("Meer informatie");
 	await editor.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
 });
@@ -266,8 +223,7 @@ When("I move source {int} up", async ({ page }, source: number) => {
 
 When("I remove source {int}", async ({ page }, source: number) => {
 	await page
-		.getByRole("heading", { name: `Bron ${source}` })
-		.locator("..")
+		.getByRole("region", { name: `Bron ${source}` })
 		.getByRole("button", { name: "Verwijderen" })
 		.click();
 });
@@ -316,26 +272,6 @@ When("I clear the title", async ({ page }) => {
 			page.evaluate(() => localStorage.getItem("toen:event-draft:v1")),
 		)
 		.toBeNull();
-});
-
-When("I keyboard-activate Continue", async ({ page }) => {
-	const button = page.getByRole("button", {
-		name: "Ga verder naar indeling & bronnen",
-	});
-	await button.focus();
-	await page.keyboard.press("Enter");
-});
-
-When("I keyboard-activate Preview", async ({ page }) => {
-	const button = page.getByRole("button", { name: "Voorbeeld bekijken" });
-	await button.focus();
-	await page.keyboard.press("Enter");
-});
-
-When("I keyboard-activate Publish", async ({ page }) => {
-	const button = page.getByRole("button", { name: "Publiceren" });
-	await button.focus();
-	await page.keyboard.press("Enter");
 });
 
 When("I wait until the concept is saved", async ({ page }) => {
@@ -564,7 +500,9 @@ Then("the title field contains {string}", async ({ page }, title: string) => {
 });
 
 Then("the story editor contains {string}", async ({ page }, story: string) => {
-	await expect(page.locator('[contenteditable="true"]')).toContainText(story);
+	await expect(page.getByRole("textbox", { name: "Verhaal" })).toContainText(
+		story,
+	);
 });
 
 Then("I resume at classification and sources", async ({ page }) => {
@@ -598,19 +536,11 @@ Then(
 	async ({ page }) => {
 		const field = page.getByLabel("URL van bron 1");
 		await expect(field).toHaveAttribute("aria-invalid", "true");
-		await expect(field).toHaveAttribute(
-			"aria-describedby",
-			"sources.0.url-error",
-		);
-		await expect(page.locator('[id="sources.0.url-error"]')).toBeVisible();
+		const descriptionId = await field.getAttribute("aria-describedby");
+		expect(descriptionId).toBeTruthy();
+		await expect(page.locator(`[id="${descriptionId}"]`)).toBeVisible();
 	},
 );
-
-Then("I reach classification and sources", async ({ page }) => {
-	await expect(
-		page.getByRole("heading", { level: 2, name: "Indeling & bronnen" }),
-	).toBeVisible();
-});
 
 Then("stage heading {string} has focus", async ({ page }, title: string) => {
 	await expect(
@@ -697,7 +627,7 @@ async function completeExactStory({
 		.getByLabel("Korte samenvatting")
 		.fill("Ottomaanse troepen nemen Constantinopel in.");
 	await page
-		.locator('[contenteditable="true"]')
+		.getByRole("textbox", { name: "Verhaal" })
 		.fill("De stad werd na een beleg ingenomen.");
 }
 

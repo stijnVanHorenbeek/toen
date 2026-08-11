@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseEventFrontmatter } from "../src/lib/content/event";
+import {
+	formatHistoricalDate,
+	parseEventFrontmatter,
+} from "../src/lib/content/event";
 
 const validFrontmatter = {
 	title: "D-Day: de geallieerde landing in Normandië",
@@ -22,7 +25,13 @@ const validFrontmatter = {
 	],
 };
 
-describe("parseEventFrontmatter", () => {
+describe("historical events", () => {
+	it("formats approximate BCE dates without false precision", () => {
+		expect(
+			formatHistoricalDate({ year: 44, era: "bce", precision: "approximate" }),
+		).toBe("ca. 44 v.Chr.");
+	});
+
 	it("accepts valid event frontmatter", () => {
 		expect(parseEventFrontmatter(validFrontmatter)).toEqual(validFrontmatter);
 	});

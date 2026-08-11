@@ -16,7 +16,6 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 	const SourceHeading = page ? "h2" : "h3";
 	return (
 		<article
-			data-event-article={variant}
 			className={
 				page
 					? ""

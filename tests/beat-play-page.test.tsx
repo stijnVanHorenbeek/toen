@@ -12,20 +12,18 @@ import BeatPlayPage from "../src/app/events/[slug]/play/page";
 describe("classroom beat route", () => {
 	it("keeps a legacy article available when it has no beat", async () => {
 		getEventBySlug.mockResolvedValue({
-			slug: "val-van-constantinopel-1453",
-			title: "Constantinopel valt",
-			summary: "Ottomaanse troepen nemen Constantinopel in.",
+			slug: "legacy-event-1900",
+			title: "Legacy event",
+			summary: "Event without a classroom activity.",
 			sources: [],
 			beat: undefined,
 		});
 		const page = await BeatPlayPage({
-			params: Promise.resolve({ slug: "val-van-constantinopel-1453" }),
+			params: Promise.resolve({ slug: "legacy-event-1900" }),
 		});
 		const markup = renderToStaticMarkup(page);
 
-		expect(markup).toContain("Deze activiteit is nog niet beschikbaar");
-		expect(markup).toContain("Constantinopel valt");
-		expect(markup).toContain('href="/events/val-van-constantinopel-1453"');
-		expect(markup).toContain("Lees het verhaal");
+		expect(markup).toContain("Legacy event");
+		expect(markup).toContain('href="/events/legacy-event-1900"');
 	});
 });

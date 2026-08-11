@@ -21,7 +21,10 @@ export function RecommendationResults() {
 
 function PeriodFallback() {
 	return (
-		<p className="mt-6 border-accent border-l-2 py-1 pl-4 text-sm text-ink/65">
+		<p
+			role="status"
+			className="mt-6 border-accent border-l-2 py-1 pl-4 text-sm text-ink/65"
+		>
 			<strong className="text-ink">{messages.home.noPeriodEvent}</strong>{" "}
 			{messages.home.periodFallback}
 		</p>

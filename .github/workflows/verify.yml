@@ -34,8 +34,5 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Verify application
-        run: pnpm verify
-
-      - name: Build Worker and run browser journeys
+      - name: Verify application and run browser journeys
         run: pnpm test:e2e:ci

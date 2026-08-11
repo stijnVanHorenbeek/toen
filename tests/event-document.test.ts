@@ -82,11 +82,10 @@ describe("event documents", () => {
 		).toThrow();
 	});
 
-	it("loads canonical events by slug", async () => {
-		const events = await getAllEvents();
-		const event = await getEventBySlug(slug);
+	it("loads a catalog event by its slug", async () => {
+		const [event] = await getAllEvents();
+		if (!event) throw new Error("Expected at least one synchronized event");
 
-		expect(events.map(({ slug: eventSlug }) => eventSlug)).toContain(slug);
-		expect(event?.title).toBe("D-Day: de geallieerde landing in Normandië");
+		await expect(getEventBySlug(event.slug)).resolves.toEqual(event);
 	});
 });

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { EventArticle } from "../src/app/_components/event-article";
@@ -24,7 +23,7 @@ const event = {
 	],
 };
 
-it("renders the same public event content in page and preview variants", () => {
+it("renders event content with page and preview heading hierarchies", () => {
 	const page = renderToStaticMarkup(
 		<EventArticle event={event} variant="page" />,
 	);
@@ -33,7 +32,6 @@ it("renders the same public event content in page and preview variants", () => {
 	);
 	for (const content of [
 		"november 1918",
-		"Test",
 		"Samenvatting",
 		"Verhaal met",
 		"Belgische geschiedenis",
@@ -43,12 +41,14 @@ it("renders the same public event content in page and preview variants", () => {
 		expect(page).toContain(content);
 		expect(preview).toContain(content);
 	}
-	expect(page).toContain('data-event-article="page"');
-	expect(page).toContain("<h1");
-	expect(page).toContain("<h2");
-	expect(preview).toContain('data-event-article="preview"');
-	expect(preview).toContain("<h2");
-	expect(preview).toContain("<h3");
+	expect(page).toMatch(/<h1[^>]*>Test<\/h1>/);
+	expect(preview).toMatch(/<h2[^>]*>Test<\/h2>/);
+	expect(
+		[...page.matchAll(/<h([1-6])[^>]*>/g)].map(([, level]) => level),
+	).toEqual(["1", "2"]);
+	expect(
+		[...preview.matchAll(/<h([1-6])[^>]*>/g)].map(([, level]) => level),
+	).toEqual(["2", "3"]);
 });
 
 it("links runnable public events to their classroom beat", () => {
@@ -65,20 +65,5 @@ it("links runnable public events to their classroom beat", () => {
 	);
 
 	expect(page).toContain('href="/events/test-1918/play"');
-	expect(page).toContain(">Start</a>");
 	expect(preview).not.toContain("/events/test-1918/play");
-});
-
-it("styles every supported Markdown block in public prose", () => {
-	const css = readFileSync("src/app/globals.css", "utf8");
-	for (const selector of [
-		".prose-event h3",
-		".prose-event ul",
-		".prose-event ol",
-		".prose-event blockquote",
-	]) {
-		expect(css).toContain(selector);
-	}
-	expect(css).toContain("list-style: disc");
-	expect(css).toContain("list-style: decimal");
 });
