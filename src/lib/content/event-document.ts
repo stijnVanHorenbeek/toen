@@ -41,6 +41,7 @@ export function serializeEventDocument(event: Event): string {
 		...(event.topicLabels ? { topicLabels: event.topicLabels } : {}),
 		profiles: event.profiles,
 		sources: event.sources,
+		...(event.beat ? { beat: event.beat } : {}),
 	});
 	const selectedTopicLabels = Object.fromEntries(
 		validated.topics.flatMap((topic) => {
@@ -58,6 +59,7 @@ export function serializeEventDocument(event: Event): string {
 			: {}),
 		profiles: validated.profiles,
 		sources: validated.sources,
+		...(validated.beat ? { beat: validated.beat } : {}),
 	});
 	const yaml = stringify(frontmatter, { lineWidth: 0 }).trimEnd();
 

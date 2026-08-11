@@ -156,6 +156,60 @@ No autoplay or countdown. Suggested time is teacher guidance, not deadline. Relo
 - Generated historical images cannot be evidence. V1 starts with attributed text, quotations, numbers, and locally reviewed source descriptions; image support requires separate provenance/offline asset design.
 - Application and `toen-content` keep matching strict validation. Shared-package extraction is deferred until duplication causes more cost than it removes.
 
+### Canonical V1 beat contract
+
+Application repository owns beat contract in `src/lib/content/event.ts`. Content repository mirrors same strict schema in `src/catalog.ts`; matching fixtures cover both until shared-package extraction becomes cheaper than duplication. Every event may omit `beat`, so existing article-only Markdown needs no migration. Any present beat must use version `1`.
+
+Common beat fields:
+
+```ts
+type BeatV1 = {
+  version: 1;
+  mechanic: "vote-revote" | "source-duel" | "context-decision";
+  question: string;
+  choices: Array<{ id: string; label: string }>;
+  stages: BeatStage[];
+  routes: [
+    { durationMinutes: 5; stageIds: string[] },
+    { durationMinutes: 8; stageIds: string[] },
+    { durationMinutes: 12; stageIds: string[] },
+  ];
+  sensitivityNotes?: string[];
+};
+```
+
+`source-duel` also requires exactly two source cards with `id`, `label`, `excerpt`, and exact `sourceUrl`. Cards must reference two distinct event sources. `context-decision` also requires a `perspective`. `vote-revote` adds no mechanic-specific field.
+
+Every stage has canonical kebab-case `id`, `suggestedSeconds`, `teacherPrompt`, and `expectedStudentAction`. Phase-specific fields are fixed:
+
+- `opening`: `stimulus`;
+- `commitment`: `prompt`;
+- `evidence`: `title`, `evidence`, exact `sourceUrl`, `earliestDurationMinutes`, and optional `optional: true`;
+- `discussion`: `prompt`, optional `sentenceStarter`, and optional `optional: true`;
+- `revision`: `prompt`;
+- `reasoning`: `prompt` and optional `optional: true`;
+- `resolution`: `title`, `feedback`, optional `misconception`, and one to four exact `sourceUrls`;
+- `lesson-bridge`: `bridge`.
+
+Structural bounds:
+
+- IDs: 1–64 characters;
+- choices: 2–4; labels: at most 80 characters;
+- stages: 7–16;
+- teacher prompts: at most 240 characters;
+- expected student actions: at most 160 characters;
+- projected questions and prompts: at most 240 characters;
+- source excerpts, stimuli, evidence, feedback, perspectives, and lesson bridges: at most 400 characters;
+- sensitivity notes: at most five entries of 300 characters;
+- opening and commitment: 1–30 suggested seconds;
+- every other stage: 30–90 suggested seconds.
+
+Semantic validation requires unique choice, stage, and source-card IDs; exact event-source ownership; exactly one opening, commitment, revision, resolution, and lesson bridge; route references that exist and preserve master stage order; no duplicate route stages; use of every declared stage; and evidence checkpoints matching first route use. Five-minute stages form an ordered subsequence of eight-minute stages, which form an ordered subsequence of twelve-minute stages. Every route starts with opening and commitment, contains evidence, discussion, and revision, and ends with resolution and lesson bridge.
+
+Suggested times are guidance, not autoplay. Route totals may not exceed their named budget. Eight-minute route must exceed five minutes of planned content; twelve-minute route must exceed eight minutes. Exact totals are not required because teacher-led discussion owns pace.
+
+Unknown versions, mechanics, fields, unsafe URLs, unsupported optional phases, and invalid bounds fail. Deterministic serialization includes `beat` after event sources and omits it for legacy documents.
+
 ## Runtime decisions
 
 - Public classroom route: `/events/[slug]/play`.

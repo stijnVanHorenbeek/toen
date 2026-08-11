@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
 	createEventDraftPreview,
 	inferEventSlug,
+	parseEventDraft,
 } from "../src/lib/content/event-draft";
+import { beatSources, voteRevoteBeat } from "./fixtures/interactive-beat";
 
 const validDraft = {
 	title: "Constantinopel valt",
@@ -73,6 +75,36 @@ describe("createEventDraftPreview", () => {
 			createEventDraftPreview({
 				...validDraft,
 				topicLabels: { economie: "Economie" },
+			}),
+		).toThrow();
+	});
+
+	it("preserves a valid beat in the publication preview", () => {
+		const preview = createEventDraftPreview({
+			...validDraft,
+			sources: beatSources,
+			beat: voteRevoteBeat,
+		});
+
+		expect(preview.event.beat).toEqual(voteRevoteBeat);
+		expect(preview.markdown).toContain("\nbeat:\n");
+	});
+
+	it("rejects beat sources that do not belong to the draft event", () => {
+		const invalidBeat = {
+			...voteRevoteBeat,
+			stages: voteRevoteBeat.stages.map((stage) =>
+				stage.id === "route-evidence"
+					? { ...stage, sourceUrl: "https://example.org/invented" }
+					: stage,
+			),
+		};
+
+		expect(() =>
+			parseEventDraft({
+				...validDraft,
+				sources: beatSources,
+				beat: invalidBeat,
 			}),
 		).toThrow();
 	});

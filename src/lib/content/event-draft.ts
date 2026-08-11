@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { messages } from "../i18n/messages.nl-BE";
 import { isSupportedEditorMarkdown } from "./editor-markdown";
-import { eventFrontmatterSchema, validateSelectedTopicLabels } from "./event";
+import {
+	eventFrontmatterSchema,
+	validateInteractiveBeatIdentityAndSources,
+	validateSelectedTopicLabels,
+} from "./event";
 import {
 	type Event,
 	isEventSlug,
@@ -17,7 +21,10 @@ const eventDraftSchema = z
 			.min(1)
 			.refine(isSupportedEditorMarkdown, messages.errors.bodyFormat),
 	})
-	.superRefine(validateSelectedTopicLabels)
+	.superRefine((value, context) => {
+		validateSelectedTopicLabels(value, context);
+		validateInteractiveBeatIdentityAndSources(value, context);
+	})
 	.transform((draft) => ({
 		...draft,
 		slug: inferEventSlug(draft.title, draft.date),
