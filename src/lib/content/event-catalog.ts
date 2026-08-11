@@ -1,9 +1,19 @@
+import type { InteractiveBeat } from "./event";
 import type { Event } from "./event-document";
+
+export type EventCatalogActivity = Pick<
+	InteractiveBeat,
+	"mechanic" | "question"
+> & {
+	durations: Array<5 | 8 | 12>;
+};
 
 export type EventCatalogEntry = Pick<
 	Event,
-	"slug" | "title" | "date" | "summary" | "topics" | "topicLabels" | "profiles"
->;
+	"slug" | "title" | "date" | "summary" | "topics" | "topicLabels"
+> & {
+	activity?: EventCatalogActivity;
+};
 
 export function collectTopicLabels(
 	events: Array<Pick<Event, "topics" | "topicLabels">>,
@@ -26,6 +36,16 @@ export function toEventCatalogEntry(event: Event): EventCatalogEntry {
 		summary: event.summary,
 		topics: event.topics,
 		...(event.topicLabels ? { topicLabels: event.topicLabels } : {}),
-		profiles: event.profiles,
+		...(event.beat
+			? {
+					activity: {
+						mechanic: event.beat.mechanic,
+						question: event.beat.question,
+						durations: event.beat.routes.map(
+							({ durationMinutes }) => durationMinutes,
+						),
+					},
+				}
+			: {}),
 	};
 }

@@ -4,7 +4,12 @@ import { createBdd, test } from "playwright-bdd";
 const { Then, When } = createBdd(test);
 
 When("I choose the week {string}", async ({ page }, date: string) => {
-	await page.getByLabel("Week").fill(date);
+	const dateFilters = page.locator("summary", {
+		hasText: "Datum en periode",
+	});
+	if (!(await page.getByLabel("Lesweek").isVisible()))
+		await dateFilters.click();
+	await page.getByLabel("Lesweek").fill(date);
 });
 
 When(
@@ -19,7 +24,7 @@ When("I open the first recommended event", async ({ page }) => {
 	await page
 		.locator("[data-recommended-event]")
 		.first()
-		.getByRole("link")
+		.getByRole("link", { name: "Lees achtergrond" })
 		.click();
 	await expect(page).toHaveURL(/\/events\/[^/]+$/);
 });

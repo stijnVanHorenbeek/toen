@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { interactiveBeatSchema } from "../src/lib/content/event";
 import {
 	collectTopicLabels,
 	toEventCatalogEntry,
 } from "../src/lib/content/event-catalog";
 import type { Event } from "../src/lib/content/event-document";
+import { beatSources, voteRevoteBeat } from "./fixtures/interactive-beat";
 
 const event: Event = {
 	slug: "cafe-cultuur-1900",
@@ -28,8 +30,26 @@ describe("compact event catalog", () => {
 			summary: event.summary,
 			topics: event.topics,
 			topicLabels: event.topicLabels,
-			profiles: event.profiles,
 		});
+	});
+
+	it("exposes compact activity metadata without classroom payload", () => {
+		const runnableEvent: Event = {
+			...event,
+			sources: beatSources.map((source) => ({ ...source })),
+			beat: interactiveBeatSchema.parse(voteRevoteBeat),
+		};
+
+		expect(toEventCatalogEntry(runnableEvent)).toMatchObject({
+			activity: {
+				mechanic: "vote-revote",
+				question: voteRevoteBeat.question,
+				durations: [5, 8, 12],
+			},
+		});
+		expect(toEventCatalogEntry(runnableEvent)).not.toHaveProperty(
+			"activity.stages",
+		);
 	});
 
 	it("resolves duplicate topic labels deterministically from first event", () => {

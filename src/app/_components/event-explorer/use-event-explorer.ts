@@ -10,7 +10,6 @@ import {
 	type RecommendationResult,
 	recommendEvents,
 } from "@/lib/content/recommend-events";
-import type { VakrichtingId } from "@/lib/content/taxonomy";
 import { compareLocalized } from "@/lib/i18n/locale";
 
 export type EventExplorerValue = {
@@ -23,7 +22,7 @@ export type EventExplorerValue = {
 		toggleTopic: (topic: string) => void;
 	};
 	meta: {
-		profileOptions: VakrichtingId[];
+		catalogSize: number;
 		topicLabels: Record<string, string>;
 		topicOptions: string[];
 		recommendations: RecommendationResult;
@@ -39,8 +38,8 @@ export function useEventExplorerValue(
 			selectedDate: "",
 			yearMin: yearRange.min,
 			yearMax: yearRange.max,
-			profile: "algemeen",
 			topics: [],
+			query: "",
 		};
 	});
 
@@ -51,10 +50,6 @@ export function useEventExplorerValue(
 		}));
 	}, []);
 
-	const profileOptions = useMemo(
-		() => collectTags(events.flatMap((event) => event.profiles)),
-		[events],
-	);
 	const topicOptions = useMemo(
 		() => collectTags(events.flatMap((event) => event.topics)),
 		[events],
@@ -88,11 +83,18 @@ export function useEventExplorerValue(
 	return {
 		state,
 		actions: { update, toggleTopic },
-		meta: { profileOptions, topicLabels, topicOptions, recommendations },
+		meta: {
+			catalogSize: events.length,
+			topicLabels,
+			topicOptions,
+			recommendations,
+		},
 	};
 }
 
 function getYearRange(events: EventCatalogEntry[]) {
+	if (events.length === 0) return { min: -3000, max: 2100 };
+
 	const years = events.map(({ date }) =>
 		date.era === "bce" ? -date.year : date.year,
 	);

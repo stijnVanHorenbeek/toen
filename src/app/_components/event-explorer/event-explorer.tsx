@@ -8,8 +8,7 @@ import { RecommendationResults } from "./recommendation-results";
 export function EventExplorer({ events }: { events: EventCatalogEntry[] }) {
 	return (
 		<EventExplorerProvider events={events}>
-			<EventFilters />
-			<RecommendationResults />
+			<RecommendationResults filters={<EventFilters />} />
 		</EventExplorerProvider>
 	);
 }

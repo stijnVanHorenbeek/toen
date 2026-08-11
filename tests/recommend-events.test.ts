@@ -12,7 +12,6 @@ function event(
 		date: { year: 1900, era: "ce", precision: "day", month: 6, day: 1 },
 		summary: "Test event",
 		topics: [],
-		profiles: ["algemeen"],
 		...overrides,
 	};
 }
@@ -21,8 +20,8 @@ const basePreferences = {
 	selectedDate: "2026-06-01",
 	yearMin: -3000,
 	yearMax: 3000,
-	profile: "algemeen" as const,
 	topics: [] as string[],
+	query: "",
 };
 
 describe("recommendEvents", () => {
@@ -41,18 +40,6 @@ describe("recommendEvents", () => {
 			"distant",
 		]);
 		expect(result.events[0]?.distanceDays).toBe(0);
-	});
-
-	it("treats a selected profile as an independent ranking signal", () => {
-		const matching = event("z-matching", { profiles: ["elektriciteit"] });
-		const other = event("a-other", { profiles: ["algemeen"] });
-
-		const result = recommendEvents([other, matching], {
-			...basePreferences,
-			profile: "elektriciteit",
-		});
-
-		expect(result.events[0]?.event.slug).toBe("z-matching");
 	});
 
 	it("treats selected topics as an independent ranking signal", () => {
@@ -104,6 +91,73 @@ describe("recommendEvents", () => {
 		expect(result.events[0]?.distanceDays).toBe(0);
 	});
 
+	it("prioritizes runnable classroom activities", () => {
+		const article = event("a-article");
+		const activity = event("z-activity", {
+			activity: {
+				mechanic: "vote-revote",
+				question: "Welke keuze maak je?",
+				durations: [5, 8, 12],
+			},
+		});
+
+		const result = recommendEvents([article, activity], basePreferences);
+
+		expect(result.events[0]?.event.slug).toBe("z-activity");
+	});
+
+	it("searches titles, topic labels, and activity questions", () => {
+		const moon = event("z-moon", {
+			title: "Maanlanding",
+			topics: ["wetenschap"],
+			topicLabels: { wetenschap: "Ruimtevaart" },
+			activity: {
+				mechanic: "vote-revote",
+				question: "Moet Armstrong bijsturen?",
+				durations: [5, 8, 12],
+			},
+		});
+		const politics = event("a-politics", { title: "Een grondwet" });
+
+		for (const query of ["maan", "ruimtevaart", "armstrong"]) {
+			const result = recommendEvents([politics, moon], {
+				...basePreferences,
+				query,
+			});
+			expect(result.events.map(({ event }) => event.slug)).toEqual(["z-moon"]);
+			expect(result.totalCount).toBe(1);
+		}
+	});
+
+	it("matches common punctuation variants in search", () => {
+		const dDay = event("d-day", {
+			title: "D-Day",
+			activity: {
+				mechanic: "context-decision",
+				question: "Doorgaan of uitstellen?",
+				durations: [5, 8, 12],
+			},
+		});
+
+		const result = recommendEvents([event("other"), dDay], {
+			...basePreferences,
+			query: "D Day",
+		});
+
+		expect(result.events.map(({ event }) => event.slug)).toEqual(["d-day"]);
+	});
+
+	it("bounds initial recommendations without stranding later matches", () => {
+		const result = recommendEvents(
+			Array.from({ length: 6 }, (_, index) => event(`event-${index}`)),
+			basePreferences,
+		);
+
+		expect(result.events).toHaveLength(4);
+		expect(result.additionalEvents).toHaveLength(2);
+		expect(result.totalCount).toBe(6);
+	});
+
 	it("uses slugs as a deterministic tie-breaker", () => {
 		const result = recommendEvents(
 			[event("zulu"), event("alpha"), event("mike")],
@@ -135,7 +189,9 @@ describe("recommendEvents", () => {
 	it("returns an empty non-fallback result for an empty catalog", () => {
 		expect(recommendEvents([], basePreferences)).toEqual({
 			events: [],
+			additionalEvents: [],
 			periodFallback: false,
+			totalCount: 0,
 		});
 	});
 });
