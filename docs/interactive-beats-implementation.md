@@ -253,6 +253,22 @@ Unknown versions, mechanics, fields, unsafe URLs, unsupported optional phases, a
 - Valid model output can fill a new draft only in first V1. Merge/selective-import complexity is deferred.
 - Teacher must explicitly confirm required sources were opened and reviewed before publication.
 
+### Manual ChatGPT handoff contract
+
+Prompt format version 1 is browser-only and uses no model API. Teacher provides only topic, optional lesson context, preferred duration, mechanic, physical response method, and profile. Prompt generation must not read the current authoring draft, identity, URL, canonical path, credentials, environment, preview, or publication state.
+
+Each generated prompt receives a random UUID request ID. Builder output is deterministic for a fixed request ID and fixed allowlisted input. Teacher input is serialized as JSON between collision-free request-bound markers and explicitly treated as untrusted data, never instructions. Only active `{ formatVersion, requestId }` metadata is kept in session storage for later stale-response validation; prompt text is not stored and is never added to the ChatGPT URL.
+
+A successful response is one raw JSON object with:
+
+- `formatVersion: 1`, exact `requestId`, and `status: "complete"`;
+- `draft` matching the canonical event input and strict Beat V2 contract rather than browser-shaped authoring fields;
+- `claims` linking each substantive historical claim to exact URLs from `draft.sources`, with explicit uncertainty where needed.
+
+When reliable source URLs cannot be checked, response uses `status: "cannot-complete"` and concrete Dutch reasons instead of inventing citations. No response is trusted because its request ID matches. Bounded parsing, duplicate-key rejection, strict validation, authoring-draft mapping, repair, and preview invalidation belong to the import milestone. Human source review remains required because URL syntax and reachability do not prove a claim.
+
+Clipboard success keeps protocol text out of normal teacher flow. Clipboard rejection reveals same instructions in a focused read-only field for manual copying. UI discloses that pasted content goes to OpenAI, forbids student personal data and secrets, opens plain `https://chatgpt.com/` in a new tab, and never opens it automatically.
+
 ## Serial delivery plan
 
 ### Milestone 1 — domain parity

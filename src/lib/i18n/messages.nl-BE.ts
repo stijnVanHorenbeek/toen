@@ -120,6 +120,34 @@ export const messages = {
 			"Klasactiviteit verwijderen? De ingevulde activiteit gaat verloren.",
 		reviewIntro:
 			"Controleer het verhaal en probeer de klasactiviteit precies zoals je ze straks gebruikt.",
+		chatGpt: {
+			title: "Begin met hulp van ChatGPT",
+			intro:
+				"Geef alleen onderwerp en lesvoorkeuren. Je maakt zelf instructies voor een eerste voorstel; niets wordt automatisch verstuurd of gepubliceerd.",
+			topic: "Onderwerp of gebeurtenis",
+			topicError: "Vul een onderwerp of gebeurtenis in.",
+			context: "Extra lescontext (optioneel)",
+			duration: "Voorkeursduur",
+			profile: "Vakrichting",
+			mechanic: "Werkvorm voor de activiteit",
+			chooseMechanic: "Laat ChatGPT een passende werkvorm kiezen",
+			responseMethod: "Antwoordvorm",
+			chooseResponseMethod: "Laat ChatGPT een antwoordvorm kiezen",
+			privacy:
+				"Je plakt deze opdracht zelf in ChatGPT. De inhoud wordt dan naar OpenAI gestuurd. Voeg geen namen of andere persoonsgegevens van leerlingen, wachtwoorden of vertrouwelijke informatie toe.",
+			privacyLink: "Lees het privacybeleid van OpenAI in een nieuw tabblad",
+			make: "Instructies maken",
+			remake: "Instructies opnieuw maken",
+			ready: "De instructies zijn klaar om te kopiëren.",
+			copy: "Instructies kopiëren",
+			copied:
+				"Instructies gekopieerd. Open ChatGPT en plak ze in een nieuw gesprek.",
+			manual:
+				"Automatisch kopiëren lukte niet. De tekst hieronder is geselecteerd; kopieer hem handmatig.",
+			manualLabel: "Instructies om zelf te kopiëren",
+			selectAll: "Alles selecteren",
+			openChatGpt: "Open ChatGPT in een nieuw tabblad",
+		},
 		fields: {
 			title: "Titel",
 			titleHint: "Schrijf een korte, herkenbare titel.",
