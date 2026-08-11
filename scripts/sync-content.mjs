@@ -80,10 +80,15 @@ export async function verifyContentCheckout(checkoutDirectory) {
 	await run("pnpm", ["verify"], { cwd: checkoutDirectory });
 }
 
+export async function verifyLocalContentDirectory(checkoutDirectory) {
+	await run("pnpm", ["verify"], { cwd: checkoutDirectory });
+}
+
 export async function publishContentRevision(
 	sourceEvents,
 	targetContent,
 	revision,
+	dirty = false,
 ) {
 	const parent = path.dirname(targetContent);
 	const staged = path.join(parent, `.content-${crypto.randomUUID()}`);
@@ -94,9 +99,12 @@ export async function publishContentRevision(
 	try {
 		await mkdir(staged);
 		await cp(sourceEvents, path.join(staged, "events"), { recursive: true });
+		const revisionMetadata = dirty
+			? { sha: revision, dirty: true }
+			: { sha: revision };
 		await writeFile(
 			path.join(staged, "revision.json"),
-			`${JSON.stringify({ sha: revision }, null, "\t")}\n`,
+			`${JSON.stringify(revisionMetadata, null, "\t")}\n`,
 		);
 
 		try {
@@ -132,10 +140,53 @@ export async function synchronizeContent({
 	repository = defaultRepository,
 	appRoot = process.cwd(),
 	appRevision = null,
-	override,
+	override = /** @type {string | undefined} */ (undefined),
+	localDirectory = /** @type {string | undefined} */ (undefined),
 	runGit = defaultRunGit,
 	verifyCheckout = verifyContentCheckout,
+	verifyLocalDirectory = verifyLocalContentDirectory,
 }) {
+	const configuredLocalDirectory = localDirectory?.trim();
+	if (configuredLocalDirectory) {
+		if (override !== undefined) {
+			throw new Error(
+				"TOEN_CONTENT_DIR and TOEN_CONTENT_SHA cannot be used together",
+			);
+		}
+		const checkoutDirectory = path.resolve(appRoot, configuredLocalDirectory);
+		const revision = (
+			await runGit(["rev-parse", "HEAD"], { cwd: checkoutDirectory })
+		).trim();
+		if (!immutableRevisionPattern.test(revision)) {
+			throw new Error("Local content revision must be a 40-character Git SHA");
+		}
+		const dirty = Boolean(
+			(
+				await runGit(["status", "--porcelain"], {
+					cwd: checkoutDirectory,
+				})
+			).trim(),
+		);
+
+		await verifyLocalDirectory(checkoutDirectory);
+		await publishContentRevision(
+			path.join(checkoutDirectory, "content/events"),
+			path.join(appRoot, "content"),
+			revision,
+			dirty,
+		);
+		console.log(
+			JSON.stringify({
+				event: "content-synchronized",
+				appSha: appRevision,
+				contentSha: revision,
+				contentDirty: dirty,
+				contentSource: "local",
+			}),
+		);
+		return revision;
+	}
+
 	const revision = await resolveContentRevision({
 		repository,
 		override,
@@ -192,5 +243,6 @@ if (
 		appRoot,
 		appRevision,
 		override: process.env.TOEN_CONTENT_SHA,
+		localDirectory: process.env.TOEN_CONTENT_DIR,
 	});
 }

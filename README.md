@@ -21,11 +21,19 @@ Read OpenNext Cloudflare documentation at https://opennext.js.org/cloudflare.
 
 ## Develop
 
-Run the Next.js development server:
+Run the Next.js development server with published content:
 
 ```bash
 pnpm dev
 ```
+
+When `toen-content` is checked out beside this repository, use its current files—including uncommitted edits—without fetching or installing another checkout:
+
+```bash
+pnpm dev:local
+```
+
+`TOEN_CONTENT_DIR` is resolved from the application root. Local content is verified before it is copied into the generated content directory. CI and production leave this variable unset and continue to fetch and verify an immutable Git revision.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
@@ -48,7 +56,7 @@ pnpm test
 pnpm test:e2e
 ```
 
-Browser journeys build current OpenNext Worker first. They default to immutable content revision `f6c5ad91b9aaf4c91cd5fef2bdf23736386f054d`, which contains first Apollo classroom beat; set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. Playwright reuses a local server on `http://localhost:8787` when available; GitHub Actions starts and stops its own local Wrangler server. Feature tests never use Cloudflare Access login or production routes.
+Browser journeys build current OpenNext Worker first. They default to immutable content revision `f6c5ad91b9aaf4c91cd5fef2bdf23736386f054d`, which contains first Apollo classroom beat; set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead. Playwright reuses a local server on `http://localhost:8787` when available; GitHub Actions starts and stops its own local Wrangler server. Feature tests never use Cloudflare Access login or production routes.
 
 ## Deploy
 

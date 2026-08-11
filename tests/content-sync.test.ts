@@ -132,4 +132,61 @@ describe("content synchronization", () => {
 		).resolves.toBe(`${JSON.stringify({ sha: firstRevision }, null, "\t")}\n`);
 		expect(verifyCheckout).toHaveBeenCalledOnce();
 	});
+
+	it("copies and validates uncommitted content from an explicit local checkout", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "toen-content-local-"));
+		const repository = path.join(root, "toen-content");
+		const appRoot = path.join(root, "app");
+		await mkdir(path.join(repository, "content/events"), { recursive: true });
+		await mkdir(appRoot);
+		await execute("git", ["init", "-b", "main"], { cwd: repository });
+		await execute("git", ["config", "user.name", "Test"], { cwd: repository });
+		await execute("git", ["config", "user.email", "test@example.com"], {
+			cwd: repository,
+		});
+		const eventPath = path.join(repository, "content/events/test-event.md");
+		await writeFile(eventPath, "committed\n");
+		await execute("git", ["add", "."], { cwd: repository });
+		await execute("git", ["commit", "-m", "first"], { cwd: repository });
+		const { stdout } = await execute("git", ["rev-parse", "HEAD"], {
+			cwd: repository,
+		});
+		const revision = stdout.trim();
+		await writeFile(eventPath, "uncommitted\n");
+
+		const runGit = vi.fn(async (args: string[], options = {}) => {
+			const result = await execute("git", args, options);
+			return result.stdout.toString();
+		});
+		const verifyCheckout = vi.fn().mockResolvedValue(undefined);
+		const verifyLocalDirectory = vi.fn().mockResolvedValue(undefined);
+		const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+		try {
+			await synchronizeContent({
+				repository,
+				appRoot,
+				localDirectory: "../toen-content",
+				runGit,
+				verifyCheckout,
+				verifyLocalDirectory,
+			});
+		} finally {
+			log.mockRestore();
+		}
+
+		await expect(
+			readFile(path.join(appRoot, "content/events/test-event.md"), "utf8"),
+		).resolves.toBe("uncommitted\n");
+		await expect(
+			readFile(path.join(appRoot, "content/revision.json"), "utf8"),
+		).resolves.toBe(
+			`${JSON.stringify({ sha: revision, dirty: true }, null, "\t")}\n`,
+		);
+		expect(verifyLocalDirectory).toHaveBeenCalledWith(repository);
+		expect(verifyCheckout).not.toHaveBeenCalled();
+		expect(runGit.mock.calls.map(([args]) => args[0])).not.toContain("fetch");
+		expect(runGit.mock.calls.map(([args]) => args[0])).not.toContain(
+			"ls-remote",
+		);
+	});
 });
