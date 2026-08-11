@@ -48,7 +48,7 @@ pnpm test
 pnpm test:e2e
 ```
 
-Browser journeys build current OpenNext Worker first. Playwright reuses a local server on `http://localhost:8787` when available; GitHub Actions starts and stops its own local Wrangler server. Feature tests never use Cloudflare Access login or production routes.
+Browser journeys build current OpenNext Worker first. They default to immutable content revision `88e141b364b1330c07f6481525fc46afdce901d1`, which contains first Apollo classroom beat; set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. Playwright reuses a local server on `http://localhost:8787` when available; GitHub Actions starts and stops its own local Wrangler server. Feature tests never use Cloudflare Access login or production routes.
 
 ## Deploy
 

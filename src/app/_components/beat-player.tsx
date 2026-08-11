@@ -1,0 +1,447 @@
+"use client";
+
+import Link from "next/link";
+import { type Dispatch, useEffect, useReducer } from "react";
+import { getBeatKeyboardAction } from "@/lib/beats/keyboard";
+import {
+	type BeatDurationMinutes,
+	type BeatRuntimeAction,
+	type BeatRuntimeState,
+	createBeatRuntimeStages,
+	createBeatRuntimeState,
+	reduceBeatRuntime,
+} from "@/lib/beats/runtime";
+import type { InteractiveBeat } from "@/lib/content/event";
+import type { Event } from "@/lib/content/event-document";
+import { messages } from "@/lib/i18n/messages.nl-BE";
+
+type BeatPlayerEvent = Pick<Event, "slug" | "title" | "sources"> & {
+	beat: InteractiveBeat;
+};
+
+type BeatPlayerProps = {
+	event: BeatPlayerEvent;
+};
+
+type BeatStagePanelProps = {
+	beat: InteractiveBeat;
+	stage: InteractiveBeat["stages"][number];
+	sources: Event["sources"];
+};
+
+const durations: BeatDurationMinutes[] = [5, 8, 12];
+
+export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
+	if (stage.phase === "opening") {
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases.opening}
+				</p>
+				<h2 className="mt-3 text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{beat.question}
+				</h2>
+				<p className="mx-auto mt-6 max-w-4xl text-balance text-[clamp(1.3rem,2.4vw,2.4rem)] leading-tight">
+					{stage.stimulus}
+				</p>
+				<BeatChoices beat={beat} />
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	if (stage.phase === "commitment" || stage.phase === "revision") {
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases[stage.phase]}
+				</p>
+				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{stage.prompt}
+				</h2>
+				<BeatChoices beat={beat} />
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	if (stage.phase === "discussion" || stage.phase === "reasoning") {
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases[stage.phase]}
+				</p>
+				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{stage.prompt}
+				</h2>
+				{stage.phase === "discussion" && stage.sentenceStarter ? (
+					<p className="mx-auto mt-8 max-w-4xl rounded-md border border-ink/20 bg-white px-6 py-5 font-bold text-[clamp(1.2rem,2.2vw,2rem)]">
+						{stage.sentenceStarter}
+					</p>
+				) : null}
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	if (stage.phase === "resolution") {
+		const resolutionSources = sources.filter(({ url }) =>
+			stage.sourceUrls.includes(url),
+		);
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases.resolution}
+				</p>
+				<h2 className="mt-3 text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{stage.title}
+				</h2>
+				<p className="mx-auto mt-7 max-w-5xl text-balance text-[clamp(1.3rem,2.6vw,2.6rem)] leading-tight">
+					{stage.feedback}
+				</p>
+				{stage.misconception ? (
+					<p className="mx-auto mt-5 max-w-4xl rounded-md border border-ink/20 bg-white px-5 py-4 text-[clamp(1rem,1.6vw,1.4rem)]">
+						{stage.misconception}
+					</p>
+				) : null}
+				<p className="mt-5 font-bold text-ink/60 text-sm uppercase tracking-[0.12em]">
+					{resolutionSources
+						.map(({ title, publisher }) => `${title} · ${publisher}`)
+						.join(" | ")}
+				</p>
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	if (stage.phase === "lesson-bridge") {
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases.lessonBridge}
+				</p>
+				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{stage.bridge}
+				</h2>
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	if (stage.phase === "evidence") {
+		const source = sources.find(({ url }) => url === stage.sourceUrl);
+		return (
+			<article data-beat-stage={stage.id} className="classroom-stage">
+				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+					{messages.beat.phases.evidence}
+				</p>
+				<h2 className="mt-3 text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
+					{stage.title}
+				</h2>
+				<p className="mx-auto mt-8 max-w-5xl text-balance text-[clamp(1.4rem,3vw,3rem)] leading-tight">
+					{stage.evidence}
+				</p>
+				{source ? (
+					<p className="mt-6 font-bold text-ink/60 text-sm uppercase tracking-[0.12em]">
+						{source.title} · {source.publisher}
+					</p>
+				) : null}
+				<ClassroomPrompt stage={stage} />
+			</article>
+		);
+	}
+
+	return null;
+}
+
+function BeatChoices({ beat }: { beat: InteractiveBeat }) {
+	return (
+		<ul
+			className={
+				beat.choices.length === 4
+					? "mx-auto mt-8 grid max-w-5xl grid-cols-2 gap-4 lg:grid-cols-4"
+					: "mx-auto mt-8 grid max-w-5xl grid-cols-3 gap-4"
+			}
+		>
+			{beat.choices.map((choice) => (
+				<li
+					key={choice.id}
+					className="rounded-md border border-ink/30 bg-white px-5 py-4 text-center font-bold text-[clamp(1rem,1.8vw,1.5rem)]"
+				>
+					{choice.label}
+				</li>
+			))}
+		</ul>
+	);
+}
+
+function ClassroomPrompt({
+	stage,
+}: {
+	stage: InteractiveBeat["stages"][number];
+}) {
+	return (
+		<aside
+			className="classroom-prompt mx-auto mt-6 grid max-w-5xl gap-1 rounded-md bg-ink/5 px-4 py-3 text-left text-[clamp(0.8rem,1.2vw,1rem)] leading-tight sm:grid-cols-2 sm:gap-6"
+			aria-label={messages.beat.teacherCue}
+		>
+			<p>
+				<strong>{messages.beat.teacherCue}:</strong> {stage.teacherPrompt}
+			</p>
+			<p>
+				<strong>{messages.beat.studentAction}:</strong>{" "}
+				{stage.expectedStudentAction}
+			</p>
+		</aside>
+	);
+}
+
+type BeatClassroomScreenProps = {
+	event: BeatPlayerEvent;
+	state: BeatRuntimeState;
+	dispatch: Dispatch<BeatRuntimeAction>;
+};
+
+export function BeatClassroomScreen({
+	event,
+	state,
+	dispatch,
+}: BeatClassroomScreenProps) {
+	if (state.status === "preparation") {
+		return (
+			<main className="classroom-shell flex min-h-screen items-center justify-center px-6 py-8">
+				<section className="w-full max-w-4xl rounded-md border border-ink/20 bg-paper p-8 shadow-[0_24px_90px_rgb(33_31_26_/_12%)] sm:p-12">
+					<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+						{messages.beat.preparation}
+					</p>
+					<h1
+						data-beat-preparation
+						tabIndex={-1}
+						className="mt-4 text-balance font-serif text-4xl font-medium leading-none sm:text-6xl"
+					>
+						{event.title}
+					</h1>
+					<fieldset className="mt-10">
+						<legend className="font-bold text-lg">
+							{messages.beat.duration}
+						</legend>
+						<div className="mt-4 grid grid-cols-3 gap-3">
+							{durations.map((durationMinutes) => (
+								<label
+									key={durationMinutes}
+									className="flex min-h-14 cursor-pointer items-center justify-center rounded-md border border-ink/30 bg-white px-4 font-bold has-checked:border-accent has-checked:bg-accent has-checked:text-white"
+								>
+									<input
+										type="radio"
+										name="duration"
+										value={durationMinutes}
+										checked={state.durationMinutes === durationMinutes}
+										onChange={() =>
+											dispatch({
+												type: "select-duration",
+												durationMinutes,
+											})
+										}
+										className="sr-only"
+									/>
+									{messages.beat.durations[durationMinutes]}
+								</label>
+							))}
+						</div>
+					</fieldset>
+					<div className="mt-8 flex flex-wrap items-center gap-5">
+						<button
+							type="button"
+							className="primary-button"
+							onClick={() =>
+								dispatch({
+									type: "start",
+									routeStages: createBeatRuntimeStages(
+										event.beat,
+										state.durationMinutes,
+									),
+								})
+							}
+						>
+							{messages.beat.start}
+						</button>
+						<Link href={`/events/${event.slug}`} className="text-button">
+							{messages.beat.article}
+						</Link>
+					</div>
+					<p className="mt-6 text-ink/60 text-sm">
+						{messages.beat.reloadNotice}
+					</p>
+				</section>
+			</main>
+		);
+	}
+
+	if (state.status === "finished") {
+		return (
+			<main className="classroom-shell flex min-h-screen items-center justify-center px-6 py-8 text-center">
+				<section className="w-full max-w-3xl rounded-md border border-ink/20 bg-paper p-8 shadow-[0_24px_90px_rgb(33_31_26_/_12%)] sm:p-12">
+					<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
+						{event.title}
+					</p>
+					<h1
+						data-beat-completed
+						tabIndex={-1}
+						className="mt-4 text-balance font-serif text-5xl font-medium leading-none sm:text-7xl"
+					>
+						{messages.beat.completed}
+					</h1>
+					<p className="mt-5 text-ink/65 text-lg">
+						{messages.beat.completedNote}
+					</p>
+					<div className="mt-9 flex flex-wrap items-center justify-center gap-5">
+						<button
+							type="button"
+							className="primary-button"
+							onClick={() => dispatch({ type: "reset" })}
+						>
+							{messages.beat.restart}
+						</button>
+						<Link href={`/events/${event.slug}`} className="text-button">
+							{messages.beat.returnToArticle}
+						</Link>
+						<Link href="/" className="text-button">
+							{messages.beat.home}
+						</Link>
+					</div>
+				</section>
+			</main>
+		);
+	}
+	const routeStage = state.routeStages[state.currentStageIndex];
+	const stage = event.beat.stages.find(({ id }) => id === routeStage.id);
+	if (!stage) return null;
+	const nextRouteStage = state.routeStages
+		.slice(state.currentStageIndex + 1)
+		.find(({ id }) => !state.skippedStageIds.includes(id));
+	const nextLabel =
+		nextRouteStage?.phase === "evidence"
+			? messages.beat.controls.reveal
+			: messages.beat.controls.next;
+
+	return (
+		<main className="classroom-runtime flex h-dvh flex-col overflow-hidden">
+			<header className="flex shrink-0 items-center justify-between border-ink/15 border-b px-6 py-3">
+				<p className="truncate font-bold">{event.title}</p>
+				<p className="shrink-0 text-ink/60 text-sm">
+					Stap {state.currentStageIndex + 1} van {state.routeStages.length}
+				</p>
+			</header>
+			<div
+				data-classroom-stage-region
+				tabIndex={-1}
+				aria-live="polite"
+				className="flex min-h-0 flex-1 items-center justify-center px-6 py-4 text-center"
+			>
+				<BeatStagePanel
+					beat={event.beat}
+					stage={stage}
+					sources={event.sources}
+				/>
+			</div>
+			<footer className="flex shrink-0 items-center gap-3 border-ink/15 border-t bg-paper px-5 py-3">
+				<button
+					type="button"
+					className="secondary-button"
+					disabled={state.currentStageIndex === 0}
+					onClick={() => dispatch({ type: "back" })}
+				>
+					{messages.beat.controls.back}
+				</button>
+				{routeStage.optional ? (
+					<button
+						type="button"
+						className="secondary-button"
+						onClick={() => dispatch({ type: "skip" })}
+					>
+						{messages.beat.controls.skip}
+					</button>
+				) : null}
+				<div className="flex-1" />
+				<button
+					type="button"
+					className="text-button px-3"
+					onClick={() => {
+						if (window.confirm(messages.beat.resetConfirm)) {
+							dispatch({ type: "reset" });
+						}
+					}}
+				>
+					{messages.beat.controls.reset}
+				</button>
+				{stage.phase === "lesson-bridge" ? (
+					<button
+						type="button"
+						className="primary-button"
+						onClick={() => dispatch({ type: "finish" })}
+					>
+						{messages.beat.controls.finish}
+					</button>
+				) : (
+					<button
+						type="button"
+						className="primary-button"
+						onClick={(event) => {
+							if (event.detail > 1) return;
+							dispatch({ type: "advance" });
+						}}
+					>
+						{nextLabel}
+					</button>
+				)}
+			</footer>
+		</main>
+	);
+}
+
+export function BeatPlayer({ event }: BeatPlayerProps) {
+	const [state, dispatch] = useReducer(
+		reduceBeatRuntime,
+		undefined,
+		createBeatRuntimeState,
+	);
+	const activeStageIndex =
+		state.status === "running" ? state.currentStageIndex : null;
+
+	useEffect(() => {
+		const selector =
+			activeStageIndex !== null
+				? "[data-classroom-stage-region]"
+				: state.status === "finished"
+					? "[data-beat-completed]"
+					: "[data-beat-preparation]";
+		document
+			.querySelector<HTMLElement>(selector)
+			?.focus({ preventScroll: true });
+	}, [state.status, activeStageIndex]);
+
+	useEffect(() => {
+		if (state.status !== "running") return;
+		function handleKeyDown(event: KeyboardEvent) {
+			const target = event.target instanceof Element ? event.target : null;
+			const action = getBeatKeyboardAction({
+				key: event.key,
+				repeat: event.repeat,
+				interactiveTarget: Boolean(
+					target?.closest(
+						"button, a, input, select, textarea, [contenteditable=true]",
+					),
+				),
+			});
+			if (!action) return;
+			event.preventDefault();
+			dispatch(action);
+		}
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [state.status]);
+
+	return (
+		<BeatClassroomScreen event={event} state={state} dispatch={dispatch} />
+	);
+}

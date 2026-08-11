@@ -249,11 +249,11 @@ TDD optional beat schema, deterministic serialization, semantic timing/order/sou
 
 ### Milestone 2 — first runtime slice
 
-TDD pure reducer and Apollo vote/revote route. Add keyboard, pointer, touch, reduced-motion, reset/back/skip/finish, and projector geometry coverage.
+TDD pure reducer and Apollo vote/revote route. Add the canonical sourced Apollo beat in `toen-content` so local OpenNext Worker journeys exercise real synchronized content. Add keyboard, pointer, touch, reduced-motion, reset/back/skip/finish, and projector geometry coverage.
 
-### Milestone 3 — three curated beats
+### Milestone 3 — complete the three-beat starter set
 
-Add sourced Apollo 11, Belgian independence, and D-Day beats in `toen-content`; validate/sync exact revision. Constantinople remains article-only fallback.
+Add sourced Belgian independence and D-Day beats in `toen-content`; retain and review the Apollo 11 slice from milestone 2, then validate/sync the exact revision. Constantinople remains article-only fallback.
 
 ### Milestone 4 — homepage
 
