@@ -20,7 +20,7 @@ describe("Playwright Worker server", () => {
 		expect(packageJson.scripts["dev:local"]).toBe(
 			"TOEN_CONTENT_DIR=../toen-content pnpm dev",
 		);
-		expect(script).toContain("30c92b52fd76d438194c1ed155e8aa6c1f1297af");
+		expect(script).toContain("18c3b191531bf92e196ca5be7aa2f1bea37cdac1");
 		expect(script).toContain("TOEN_CONTENT_DIR");
 		expect(script).toContain("TOEN_CONTENT_SHA");
 		expect(script).toContain("pnpm build:worker");
