@@ -6,6 +6,7 @@
 	"scripts": {
 		"content:sync": "node scripts/sync-content.mjs",
 		"dev": "pnpm content:sync && next dev",
+		"dev:local": "TOEN_CONTENT_DIR=../toen-content pnpm dev",
 		"build": "pnpm content:sync && next build",
 		"start": "next start",
 		"check": "biome check .",
