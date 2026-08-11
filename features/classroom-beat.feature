@@ -2,24 +2,25 @@ Feature: Classroom history beat
 
   Scenario: Run the five-minute Apollo vote and revote route
     Given I open the Apollo 11 classroom beat
-    Then the 8 minute beat route is selected
+    Then the preparation heading has not stolen keyboard focus
+    And the 8 minute beat route is selected
     When I choose the 5 minute beat route
     And I start the classroom beat
     Then beat stage "opening" shows "Eagle zit in de laatste fase van de afdaling"
     And the classroom stage has keyboard focus
     When I use the classroom control "Volgende"
-    Then beat stage "commitment" shows "Nog onzeker is een geldige keuze"
-    When I use the classroom control "Onthul bewijs"
+    Then beat stage "commitment" shows "Je mag straks nog veranderen"
+    When I use the classroom control "Toon meer"
     Then beat stage "crater-evidence" shows "deels handmatig door Armstrong bestuurd"
     When I use the classroom control "Volgende"
     Then beat stage "first-discussion" shows "Welk risico weegt hier het zwaarst"
     When I use the classroom control "Volgende"
-    Then beat stage "revision" shows "Veranderen na nieuw bewijs is sterk redeneren"
+    Then beat stage "revision" shows "Blijf je bij je antwoord of verander je"
     When I use the classroom control "Volgende"
     Then beat stage "resolution" shows "Veilig bijsturen"
     When I use the classroom control "Volgende"
-    Then beat stage "lesson-bridge" shows "Wanneer moet een technisch team"
-    When I use the classroom control "Afronden"
+    Then beat stage "lesson-bridge" shows "Wanneer volg je een plan precies"
+    When I use the classroom control "Klaar"
     Then I see that the classroom beat is complete
     And the completion heading has keyboard focus
 
@@ -27,16 +28,16 @@ Feature: Classroom history beat
     Given I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I use the classroom control "Volgende"
-    And I use the classroom control "Onthul bewijs"
+    And I use the classroom control "Toon meer"
     And I use the classroom control "Volgende"
-    And I use the classroom control "Onthul bewijs"
+    And I use the classroom control "Toon meer"
     Then beat stage "downrange-evidence" shows "vier mijl voorbij het voorspelde punt"
     When I use the classroom control "Overslaan"
-    Then beat stage "second-discussion" shows "Wanneer wordt afwijken van een plan verantwoord"
+    Then beat stage "second-discussion" shows "Wanneer mag je van een plan afwijken"
     When I use the classroom control "Terug"
     Then beat stage "first-discussion" shows "Welk risico weegt hier het zwaarst"
     When I use the classroom control "Volgende"
-    Then beat stage "second-discussion" shows "Wanneer wordt afwijken van een plan verantwoord"
+    Then beat stage "second-discussion" shows "Wanneer mag je van een plan afwijken"
     When I use the classroom control "Overslaan"
     Then beat stage "revision" shows "Kies opnieuw"
     When I reset and confirm the classroom beat
@@ -56,7 +57,7 @@ Feature: Classroom history beat
     And I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I press the classroom key "ArrowRight"
-    Then beat stage "commitment" shows "Nog onzeker is een geldige keuze"
+    Then beat stage "commitment" shows "Je mag straks nog veranderen"
     And the classroom stage has keyboard focus
     When I press the classroom key "Space"
     Then beat stage "crater-evidence" shows "deels handmatig door Armstrong bestuurd"
@@ -66,7 +67,7 @@ Feature: Classroom history beat
     Given I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I rapidly activate the classroom control "Volgende" twice
-    Then beat stage "commitment" shows "Nog onzeker is een geldige keuze"
+    Then beat stage "commitment" shows "Je mag straks nog veranderen"
 
   Scenario Outline: Classroom state fits supported projector sizes
     Given the classroom viewport is <width> by <height>

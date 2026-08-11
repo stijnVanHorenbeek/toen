@@ -29,18 +29,45 @@ describe("BeatPlayer", () => {
 		);
 
 		for (const text of [
-			"Klasbeat voorbereiden",
+			"Kies de duur",
 			"Apollo 11 landt op de maan",
+			"Hoeveel tijd heb je?",
 			"5 minuten",
 			"8 minuten",
 			"12 minuten",
-			"Start klasbeat",
-			"Herladen start deze klasbeat opnieuw",
-			"Lees het achtergrondverhaal",
+			"Start",
+			"Na herladen begin je opnieuw",
+			"Lees het verhaal",
 		]) {
 			expect(markup).toContain(text);
 		}
 		expect(markup).toMatch(/<input[^>]*checked=""[^>]*value="8"/);
+	});
+
+	it("keeps internal beat and authoring-role language off the projector", () => {
+		const preparation = renderToStaticMarkup(
+			<BeatPlayer
+				event={{
+					slug: "apollo-11-1969",
+					title: "Apollo 11 landt op de maan",
+					sources: beatSources.map((source) => ({ ...source })),
+					beat,
+				}}
+			/>,
+		);
+		const opening = beat.stages.find((stage) => stage.phase === "opening");
+		if (!opening) throw new Error("Missing opening fixture");
+		const projectedStage = renderToStaticMarkup(
+			<BeatStagePanel
+				beat={beat}
+				stage={opening}
+				sources={beatSources.map((source) => ({ ...source }))}
+			/>,
+		);
+
+		expect(preparation).not.toMatch(/klasbeat/i);
+		expect(projectedStage).not.toContain("Leerkracht:");
+		expect(projectedStage).not.toContain("Leerlingen:");
 	});
 
 	it("renders current progress and controls while running", () => {
@@ -99,7 +126,7 @@ describe("BeatPlayer", () => {
 			/>,
 		);
 		expect(optionalMarkup).toContain("Overslaan");
-		expect(optionalMarkup).not.toContain("Afronden");
+		expect(optionalMarkup).not.toContain(">Klaar</button>");
 
 		for (let index = 5; index < routeStages.length; index += 1) {
 			state = reduceBeatRuntime(state, { type: "advance" });
@@ -116,7 +143,7 @@ describe("BeatPlayer", () => {
 				dispatch={() => undefined}
 			/>,
 		);
-		expect(closureMarkup).toContain("Afronden");
+		expect(closureMarkup).toContain(">Klaar</button>");
 		expect(closureMarkup).not.toContain(">Volgende</button>");
 	});
 
@@ -145,7 +172,7 @@ describe("BeatPlayer", () => {
 		);
 
 		expect(markup).toContain(">Volgende</button>");
-		expect(markup).not.toContain("Onthul bewijs");
+		expect(markup).not.toContain("Toon meer");
 	});
 
 	it("renders a bounded completion screen with clean exits", () => {
@@ -172,10 +199,10 @@ describe("BeatPlayer", () => {
 		);
 
 		for (const text of [
-			"Klasbeat afgerond",
-			"Terug naar het achtergrondverhaal",
-			"Naar startpagina",
-			"Opnieuw starten",
+			"Klaar",
+			"Lees het verhaal",
+			"Terug naar start",
+			"Nog een keer",
 		]) {
 			expect(markup).toContain(text);
 		}
@@ -196,10 +223,10 @@ describe("BeatPlayer", () => {
 			beat.question,
 			opening.stimulus,
 			...beat.choices.map(({ label }) => label),
-			opening.teacherPrompt,
 		]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(opening.teacherPrompt);
 		expect(markup).not.toContain("Wat gebeurde er?");
 	});
 
@@ -219,10 +246,10 @@ describe("BeatPlayer", () => {
 		for (const text of [
 			commitment.prompt,
 			...beat.choices.map(({ label }) => label),
-			commitment.teacherPrompt,
 		]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(commitment.teacherPrompt);
 	});
 
 	it("renders peer discussion with its sentence starter", () => {
@@ -240,13 +267,10 @@ describe("BeatPlayer", () => {
 			/>,
 		);
 
-		for (const text of [
-			discussion.prompt,
-			discussion.sentenceStarter,
-			discussion.teacherPrompt,
-		]) {
+		for (const text of [discussion.prompt, discussion.sentenceStarter]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(discussion.teacherPrompt);
 	});
 
 	it("renders the revision prompt with the same choices", () => {
@@ -263,10 +287,10 @@ describe("BeatPlayer", () => {
 		for (const text of [
 			revision.prompt,
 			...beat.choices.map(({ label }) => label),
-			revision.teacherPrompt,
 		]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(revision.teacherPrompt);
 	});
 
 	it("renders the evidence-linked reasoning prompt", () => {
@@ -281,7 +305,7 @@ describe("BeatPlayer", () => {
 		);
 
 		expect(markup).toContain(reasoning.prompt);
-		expect(markup).toContain(reasoning.teacherPrompt);
+		expect(markup).not.toContain(reasoning.teacherPrompt);
 		expect(markup).not.toContain("klassentotaal");
 	});
 
@@ -303,10 +327,10 @@ describe("BeatPlayer", () => {
 			resolution.feedback,
 			resolution.misconception,
 			...beatSources.map(({ title }) => title),
-			resolution.teacherPrompt,
 		]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(resolution.teacherPrompt);
 	});
 
 	it("renders the final lesson bridge", () => {
@@ -323,7 +347,7 @@ describe("BeatPlayer", () => {
 		);
 
 		expect(markup).toContain(lessonBridge.bridge);
-		expect(markup).toContain(lessonBridge.teacherPrompt);
+		expect(markup).not.toContain(lessonBridge.teacherPrompt);
 	});
 
 	it("renders evidence with compact source identity", () => {
@@ -342,10 +366,10 @@ describe("BeatPlayer", () => {
 			evidence.evidence,
 			beatSources[0].title,
 			beatSources[0].publisher,
-			evidence.teacherPrompt,
 		]) {
 			expect(markup).toContain(text);
 		}
+		expect(markup).not.toContain(evidence.teacherPrompt);
 		expect(markup).not.toContain("Bron verwijderen");
 	});
 });

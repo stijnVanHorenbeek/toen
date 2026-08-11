@@ -65,8 +65,8 @@ it("links runnable public events to their classroom beat", () => {
 	);
 
 	expect(page).toContain('href="/events/test-1918/play"');
-	expect(page).toContain("Start klasbeat");
-	expect(preview).not.toContain("Start klasbeat");
+	expect(page).toContain(">Start</a>");
+	expect(preview).not.toContain("/events/test-1918/play");
 });
 
 it("styles every supported Markdown block in public prose", () => {
