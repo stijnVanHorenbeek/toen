@@ -1,5 +1,7 @@
 # Event authoring redesign
 
+> This document defines current event-authoring foundation. [Interactive history beats: v1 product contract](interactive-beats-v1.md) defines next classroom and AI-assisted direction. Beat work must extend current provider, preview, validation, and publication safety rather than restore deleted legacy components.
+
 ## Goal
 
 Replace the schema-shaped admin form with a clear authoring flow for a trusted Flemish teacher.

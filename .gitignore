@@ -46,6 +46,7 @@ yarn-error.log*
 next-env.d.ts
 
 # local agent artifacts
+/.pi/
 .pi-subagents/
 
 # OpenNext
