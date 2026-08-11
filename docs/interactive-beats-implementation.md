@@ -7,7 +7,7 @@ Status: approved direction on 2026-08-11
 Build full creator V1 in serial milestones:
 
 1. versioned beat domain;
-2. classroom runtime and three curated beats;
+2. classroom runtime and four curated activities covering three mechanics;
 3. homepage launch path;
 4. current admin extended for beat editing and exact classroom preview;
 5. manual consumer-ChatGPT prompt/copy/paste workflow;
@@ -224,7 +224,7 @@ Unknown versions, mechanics, fields, unsafe URLs, unsupported optional phases, a
 ## Homepage decisions
 
 - Catalog exposes beat availability, mechanic, and durations without article body or full evidence payload.
-- Runnable event card primary action: `Start klasbeat`.
+- Runnable event card primary action: `Start`.
 - Article/background action remains secondary.
 - Default path requires at most two decisions: select beat, then Start.
 - Full weekly-event discovery remains available but no longer dominates first viewport.
@@ -251,9 +251,9 @@ TDD optional beat schema, deterministic serialization, semantic timing/order/sou
 
 TDD pure reducer and Apollo vote/revote route. Add the canonical sourced Apollo beat in `toen-content` so local OpenNext Worker journeys exercise real synchronized content. Add keyboard, pointer, touch, reduced-motion, reset/back/skip/finish, and projector geometry coverage.
 
-### Milestone 3 — complete the three-beat starter set
+### Milestone 3 — complete the four-activity starter set
 
-Add sourced Belgian independence and D-Day beats in `toen-content`; retain and review the Apollo 11 slice from milestone 2, then validate/sync the exact revision. Constantinople remains article-only fallback.
+Add sourced Belgian independence, D-Day, and Constantinople activities in `toen-content`; revise the Apollo 11 slice from milestone 2, then validate and sync the exact revision. Keep article-only events valid through schema and route-level fixture coverage.
 
 ### Milestone 4 — homepage
 

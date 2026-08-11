@@ -11,7 +11,7 @@ describe("Playwright Worker server", () => {
 		expect(playwrightConfig.use?.baseURL).toBe("http://localhost:8787");
 	});
 
-	it("builds the Worker from the pinned Apollo content revision", () => {
+	it("builds the Worker from the pinned reviewed content revision", () => {
 		const scriptUrl = new URL("../scripts/test-e2e.sh", import.meta.url);
 		expect(existsSync(scriptUrl)).toBe(true);
 		const script = existsSync(scriptUrl) ? readFileSync(scriptUrl, "utf8") : "";
@@ -20,7 +20,7 @@ describe("Playwright Worker server", () => {
 		expect(packageJson.scripts["dev:local"]).toBe(
 			"TOEN_CONTENT_DIR=../toen-content pnpm dev",
 		);
-		expect(script).toContain("f6c5ad91b9aaf4c91cd5fef2bdf23736386f054d");
+		expect(script).toContain("30c92b52fd76d438194c1ed155e8aa6c1f1297af");
 		expect(script).toContain("TOEN_CONTENT_DIR");
 		expect(script).toContain("TOEN_CONTENT_SHA");
 		expect(script).toContain("pnpm build:worker");

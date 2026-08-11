@@ -11,7 +11,12 @@ import {
 	reduceBeatRuntime,
 } from "../src/lib/beats/runtime";
 import { interactiveBeatSchema } from "../src/lib/content/event";
-import { beatSources, voteRevoteBeat } from "./fixtures/interactive-beat";
+import {
+	beatSources,
+	contextDecisionBeat,
+	sourceDuelBeat,
+	voteRevoteBeat,
+} from "./fixtures/interactive-beat";
 
 const beat = interactiveBeatSchema.parse(voteRevoteBeat);
 
@@ -228,6 +233,50 @@ describe("BeatPlayer", () => {
 		}
 		expect(markup).not.toContain(opening.teacherPrompt);
 		expect(markup).not.toContain("Wat gebeurde er?");
+	});
+
+	it("renders both attributed source cards in a source duel opening", () => {
+		const sourceDuel = interactiveBeatSchema.parse(sourceDuelBeat);
+		const opening = sourceDuel.stages.find(
+			(stage) => stage.phase === "opening",
+		);
+		if (!opening || sourceDuel.mechanic !== "source-duel") {
+			throw new Error("Missing source duel opening fixture");
+		}
+		const markup = renderToStaticMarkup(
+			<BeatStagePanel
+				beat={sourceDuel}
+				stage={opening}
+				sources={beatSources.map((source) => ({ ...source }))}
+			/>,
+		);
+
+		for (const card of sourceDuel.sourceCards) {
+			const source = beatSources.find(({ url }) => url === card.sourceUrl);
+			expect(markup).toContain(card.label);
+			expect(markup).toContain(card.excerpt);
+			expect(markup).toContain(source?.title);
+			expect(markup).toContain(source?.publisher);
+		}
+	});
+
+	it("renders the bounded perspective in a context decision opening", () => {
+		const contextDecision = interactiveBeatSchema.parse(contextDecisionBeat);
+		const opening = contextDecision.stages.find(
+			(stage) => stage.phase === "opening",
+		);
+		if (!opening || contextDecision.mechanic !== "context-decision") {
+			throw new Error("Missing context decision opening fixture");
+		}
+		const markup = renderToStaticMarkup(
+			<BeatStagePanel
+				beat={contextDecision}
+				stage={opening}
+				sources={beatSources.map((source) => ({ ...source }))}
+			/>,
+		);
+
+		expect(markup).toContain(contextDecision.perspective);
 	});
 
 	it("renders the private commitment prompt and choices", () => {

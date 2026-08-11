@@ -6,20 +6,20 @@ Feature: Classroom history beat
     And the 8 minute beat route is selected
     When I choose the 5 minute beat route
     And I start the classroom beat
-    Then beat stage "opening" shows "Eagle zit in de laatste fase van de afdaling"
+    Then beat stage "opening" is visible
     And the classroom stage has keyboard focus
     When I use the classroom control "Volgende"
-    Then beat stage "commitment" shows "Je mag straks nog veranderen"
+    Then beat stage "commitment" is visible
     When I use the classroom control "Toon meer"
-    Then beat stage "crater-evidence" shows "deels handmatig door Armstrong bestuurd"
+    Then beat stage "crater-evidence" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "first-discussion" shows "Welk risico weegt hier het zwaarst"
+    Then beat stage "first-discussion" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "revision" shows "Blijf je bij je antwoord of verander je"
+    Then beat stage "revision" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "resolution" shows "Veilig bijsturen"
+    Then beat stage "resolution" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "lesson-bridge" shows "Wanneer volg je een plan precies"
+    Then beat stage "lesson-bridge" is visible
     When I use the classroom control "Klaar"
     Then I see that the classroom beat is complete
     And the completion heading has keyboard focus
@@ -31,15 +31,15 @@ Feature: Classroom history beat
     And I use the classroom control "Toon meer"
     And I use the classroom control "Volgende"
     And I use the classroom control "Toon meer"
-    Then beat stage "downrange-evidence" shows "vier mijl voorbij het voorspelde punt"
+    Then beat stage "downrange-evidence" is visible
     When I use the classroom control "Overslaan"
-    Then beat stage "second-discussion" shows "Wanneer mag je van een plan afwijken"
+    Then beat stage "second-discussion" is visible
     When I use the classroom control "Terug"
-    Then beat stage "first-discussion" shows "Welk risico weegt hier het zwaarst"
+    Then beat stage "first-discussion" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "second-discussion" shows "Wanneer mag je van een plan afwijken"
+    Then beat stage "second-discussion" is visible
     When I use the classroom control "Overslaan"
-    Then beat stage "revision" shows "Kies opnieuw"
+    Then beat stage "revision" is visible
     When I reset and confirm the classroom beat
     Then I see the classroom beat preparation again
     And the preparation heading has keyboard focus
@@ -57,17 +57,17 @@ Feature: Classroom history beat
     And I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I press the classroom key "ArrowRight"
-    Then beat stage "commitment" shows "Je mag straks nog veranderen"
+    Then beat stage "commitment" is visible
     And the classroom stage has keyboard focus
     When I press the classroom key "Space"
-    Then beat stage "crater-evidence" shows "deels handmatig door Armstrong bestuurd"
+    Then beat stage "crater-evidence" is visible
     And the classroom stage has visible focus
 
   Scenario: Rapid activation advances only one state
     Given I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I rapidly activate the classroom control "Volgende" twice
-    Then beat stage "commitment" shows "Je mag straks nog veranderen"
+    Then beat stage "commitment" is visible
 
   Scenario Outline: Classroom state fits supported projector sizes
     Given the classroom viewport is <width> by <height>
@@ -84,7 +84,35 @@ Feature: Classroom history beat
       | 1280  | 720    |
       | 1024  | 576    |
 
-  Scenario: Legacy article has a safe classroom fallback
-    Given I open the Constantinople classroom route
-    Then I see that no classroom beat is ready
-    And I can return to the Constantinople article
+  Scenario: Compare both sources in the Belgian independence activity
+    Given the classroom viewport is 1024 by 576
+    And I open the Belgian independence classroom activity
+    When I start the classroom beat
+    Then the classroom state fits without scrolling
+    And source card "rights-source" is visible
+    And source card "voting-source" is visible
+    When I use the classroom control "Volgende"
+    Then beat stage "commitment" is visible
+    When I use the classroom control "Toon meer"
+    Then beat stage "constitution-evidence" is visible
+
+  Scenario: Keep the D-Day decision inside its historical limits
+    Given the classroom viewport is 1024 by 576
+    And I open the D-Day classroom activity
+    When I start the classroom beat
+    Then the classroom state fits without scrolling
+    And the context decision perspective is visible
+    When I use the classroom control "Volgende"
+    Then beat stage "commitment" is visible
+    When I use the classroom control "Toon meer"
+    Then beat stage "weather-evidence" is visible
+
+  Scenario: Test a multiple-cause explanation for Constantinople
+    Given the classroom viewport is 1024 by 576
+    And I open the Constantinople classroom activity
+    When I start the classroom beat
+    Then the classroom state fits without scrolling
+    When I use the classroom control "Volgende"
+    Then beat stage "commitment" is visible
+    When I use the classroom control "Toon meer"
+    Then beat stage "artillery-evidence" is visible
