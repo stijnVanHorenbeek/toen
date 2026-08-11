@@ -196,6 +196,19 @@ Then("the classroom state fits without scrolling", async ({ page }) => {
 	expect(geometry.stageBottom).toBeLessThanOrEqual(geometry.regionBottom + 1);
 });
 
+Then("classroom controls fit without horizontal clipping", async ({ page }) => {
+	const geometry = await page.locator("footer").evaluate((footer) => ({
+		clientWidth: footer.clientWidth,
+		scrollWidth: footer.scrollWidth,
+		documentClientWidth: document.documentElement.clientWidth,
+		documentScrollWidth: document.documentElement.scrollWidth,
+	}));
+	expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+	expect(geometry.documentScrollWidth).toBeLessThanOrEqual(
+		geometry.documentClientWidth + 1,
+	);
+});
+
 Then("classroom controls have touch-sized targets", async ({ page }) => {
 	const targets = await page
 		.locator("footer")

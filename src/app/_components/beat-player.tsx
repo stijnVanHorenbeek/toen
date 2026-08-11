@@ -149,6 +149,11 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
 					{stage.bridge}
 				</h2>
+				{beat.version === 2 && beat.vocationalConnection ? (
+					<p className="mx-auto mt-6 max-w-4xl rounded-md border border-ink/20 bg-white px-5 py-4 text-[clamp(1rem,1.6vw,1.4rem)]">
+						{beat.vocationalConnection}
+					</p>
+				) : null}
 			</article>
 		);
 	}
@@ -224,6 +229,12 @@ export function BeatClassroomScreen({
 					>
 						{event.title}
 					</h1>
+					{event.beat.version === 2 ? (
+						<p className="mt-5 text-ink/70">
+							<strong>{messages.beat.responseMethod}:</strong>{" "}
+							{messages.beat.responseMethods[event.beat.responseMethod]}
+						</p>
+					) : null}
 					<fieldset className="mt-10">
 						<legend className="font-bold text-lg">
 							{messages.beat.duration}
@@ -347,7 +358,7 @@ export function BeatClassroomScreen({
 					sources={event.sources}
 				/>
 			</div>
-			<footer className="flex shrink-0 items-center gap-3 border-ink/15 border-t bg-paper px-5 py-3">
+			<footer className="flex shrink-0 flex-wrap items-center gap-2 border-ink/15 border-t bg-paper px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-3">
 				<button
 					type="button"
 					className="secondary-button"
@@ -365,7 +376,7 @@ export function BeatClassroomScreen({
 						{messages.beat.controls.skip}
 					</button>
 				) : null}
-				<div className="flex-1" />
+				<div className="hidden flex-1 sm:block" />
 				<button
 					type="button"
 					className="text-button px-3"

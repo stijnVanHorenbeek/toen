@@ -143,7 +143,8 @@ No autoplay or countdown. Suggested time is teacher guidance, not deadline. Relo
 ## Domain decisions
 
 - Each event has zero or one optional `beat` in V1. Article-only events remain valid.
-- `beat.version` is `1`; unknown versions and fields fail.
+- Published Beat V1 remains valid. New admin-authored activities use Beat V2; unknown versions and fields fail.
+- Beat V2 adds one constrained physical `responseMethod` and an optional bounded `vocationalConnection`; detailed instructions remain stage-specific.
 - `beat.mechanic` is a discriminated union: `vote-revote`, `source-duel`, or `context-decision`.
 - Domain stores fixed cognitive-phase content, not arbitrary slides or layout controls.
 - Runtime derives projected states from mechanic and chosen 5/8/12-minute route.
@@ -156,15 +157,14 @@ No autoplay or countdown. Suggested time is teacher guidance, not deadline. Relo
 - Generated historical images cannot be evidence. V1 starts with attributed text, quotations, numbers, and locally reviewed source descriptions; image support requires separate provenance/offline asset design.
 - Application and `toen-content` keep matching strict validation. Shared-package extraction is deferred until duplication causes more cost than it removes.
 
-### Canonical V1 beat contract
+### Canonical beat contract
 
-Application repository owns beat contract in `src/lib/content/event.ts`. Content repository mirrors same strict schema in `src/catalog.ts`; matching fixtures cover both until shared-package extraction becomes cheaper than duplication. Every event may omit `beat`, so existing article-only Markdown needs no migration. Any present beat must use version `1`.
+Application repository owns beat contract in `src/lib/content/event.ts`. Content repository mirrors same strict schema in `src/catalog.ts`; matching fixtures cover both until shared-package extraction becomes cheaper than duplication. Every event may omit `beat`, so existing article-only Markdown needs no migration. Existing version `1` activities remain valid; new admin output uses version `2`.
 
-Common beat fields:
+Beat versions are strict discriminated variants over common content:
 
 ```ts
-type BeatV1 = {
-  version: 1;
+type BeatBase = {
   mechanic: "vote-revote" | "source-duel" | "context-decision";
   question: string;
   choices: Array<{ id: string; label: string }>;
@@ -176,9 +176,21 @@ type BeatV1 = {
   ];
   sensitivityNotes?: string[];
 };
+
+type BeatV1 = BeatBase & {
+  version: 1;
+};
+
+type BeatV2 = BeatBase & {
+  version: 2;
+  responseMethod: "hand-signals" | "response-cards" | "mini-whiteboards" | "room-position" | "pair-talk" | "individual-writing";
+  vocationalConnection?: string;
+};
+
+type Beat = BeatV1 | BeatV2;
 ```
 
-`source-duel` also requires exactly two source cards with `id`, `label`, `excerpt`, and exact `sourceUrl`. Cards must reference two distinct event sources. `context-decision` also requires a `perspective`. `vote-revote` adds no mechanic-specific field.
+Version `2` requires `responseMethod`; `vocationalConnection` is optional and limited to 240 characters. Strict Version `1` rejects both Version `2` fields. `source-duel` also requires exactly two source cards with `id`, `label`, `excerpt`, and exact `sourceUrl`. Cards must reference two distinct event sources. `context-decision` also requires a `perspective`. `vote-revote` adds no mechanic-specific field.
 
 Every stage has canonical kebab-case `id`, `suggestedSeconds`, `teacherPrompt`, and `expectedStudentAction`. Phase-specific fields are fixed:
 

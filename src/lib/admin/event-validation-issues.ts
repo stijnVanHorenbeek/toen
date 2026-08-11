@@ -19,5 +19,41 @@ function eventValidationMessage(field: string): string {
 	if (field === "topics") return messages.errors.topics;
 	if (field.endsWith(".url")) return messages.errors.sourceUrl;
 	if (field.startsWith("sources")) return messages.errors.source;
+	if (field === "beat.question") return messages.errors.beatQuestion;
+	if (/^beat\.choices\.\d+\.label$/.test(field)) {
+		return messages.errors.beatChoice;
+	}
+	if (field === "beat.responseMethod") {
+		return messages.errors.beatResponseMethod;
+	}
+	if (field.endsWith(".teacherPrompt")) {
+		return messages.errors.beatTeacherPrompt;
+	}
+	if (field.endsWith(".expectedStudentAction")) {
+		return messages.errors.beatStudentAction;
+	}
+	if (
+		field.endsWith(".suggestedSeconds") ||
+		field.endsWith(".earliestDurationMinutes")
+	) {
+		return messages.errors.beatTiming;
+	}
+	if (field.startsWith("beat.routes")) return messages.errors.beatRoute;
+	if (
+		field.startsWith("beat") &&
+		(field.endsWith("sourceUrl") || field.includes("sourceUrls"))
+	) {
+		return messages.errors.beatSource;
+	}
+	if (
+		field === "beat.perspective" ||
+		field === "beat.vocationalConnection" ||
+		/^beat\.stages\.\d+\.(stimulus|prompt|title|evidence|feedback|bridge)$/.test(
+			field,
+		)
+	) {
+		return messages.errors.beatProjectedContent;
+	}
+	if (field.startsWith("beat")) return messages.errors.beatField;
 	return messages.errors.field;
 }

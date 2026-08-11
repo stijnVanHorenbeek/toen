@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+	cloneElement,
+	isValidElement,
+	type ReactElement,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { parseExactHistoricalDate } from "@/lib/admin/authoring-draft";
 import { vakrichtingIds } from "@/lib/content/taxonomy";
 import {
@@ -16,7 +23,7 @@ import { messages } from "@/lib/i18n/messages.nl-BE";
 import { useEventAuthoring } from "./event-authoring-context";
 import { EventStoryEditor } from "./event-story-editor";
 
-const inputClass =
+export const inputClass =
 	"min-h-12 w-full rounded-md border border-ink/55 bg-white px-4 text-base text-ink focus:border-accent";
 
 export function StoryStage() {
@@ -25,7 +32,7 @@ export function StoryStage() {
 	return (
 		<section aria-labelledby="story-stage-title" className="authoring-panel">
 			<StageHeader
-				step={formatStep(1, 3)}
+				step={formatStep(1, 4)}
 				title={messages.admin.steps[0]}
 				id="story-stage-title"
 			>
@@ -278,7 +285,7 @@ export function ClassificationStage() {
 			className="authoring-panel"
 		>
 			<StageHeader
-				step={formatStep(2, 3)}
+				step={formatStep(2, 4)}
 				title={messages.admin.steps[1]}
 				id="classification-stage-title"
 			>
@@ -396,13 +403,10 @@ export function ClassificationStage() {
 				</button>
 				<button
 					type="button"
-					disabled={state.isPreviewing}
-					onClick={() => void actions.requestPreview()}
+					onClick={() => actions.goToStep(3)}
 					className="primary-button"
 				>
-					{state.isPreviewing
-						? messages.admin.actions.previewing
-						: messages.admin.actions.preview}
+					{messages.admin.actions.continueActivity}
 				</button>
 			</StageActions>
 		</section>
@@ -545,7 +549,7 @@ function RequiredFieldsNotice() {
 	);
 }
 
-function ErrorSummary({ errors }: { errors: Record<string, string> }) {
+export function ErrorSummary({ errors }: { errors: Record<string, string> }) {
 	const ref = useRef<HTMLDivElement>(null);
 	const entries = Object.entries(errors);
 	useEffect(() => {
@@ -578,7 +582,7 @@ function ErrorSummary({ errors }: { errors: Record<string, string> }) {
 	);
 }
 
-function Field({
+export function Field({
 	children,
 	error,
 	hint,
@@ -591,6 +595,24 @@ function Field({
 	label: string;
 	name: string;
 }) {
+	const describedBy = [
+		hint ? `${name}-hint` : null,
+		error ? `${name}-error` : null,
+	]
+		.filter(Boolean)
+		.join(" ");
+	const describedChildren = isValidElement(children)
+		? cloneElement(
+				children as ReactElement<{
+					"aria-describedby"?: string;
+					"aria-invalid"?: "true";
+				}>,
+				{
+					...(describedBy ? { "aria-describedby": describedBy } : {}),
+					...(error ? { "aria-invalid": "true" as const } : {}),
+				},
+			)
+		: children;
 	return (
 		<div className="min-w-0 flex-1">
 			<label htmlFor={name} className="mb-2 block font-semibold text-base">
@@ -601,13 +623,13 @@ function Field({
 					{hint}
 				</p>
 			) : null}
-			{children}
+			{describedChildren}
 			<FieldError id={name} error={error} />
 		</div>
 	);
 }
 
-function FieldError({ error, id }: { error?: string; id: string }) {
+export function FieldError({ error, id }: { error?: string; id: string }) {
 	return error ? (
 		<p id={`${id}-error`} className="mt-2 font-semibold text-accent text-sm">
 			<span className="sr-only">{messages.admin.errorPrefix} </span>

@@ -143,8 +143,15 @@ const beatChoiceSchema = z.strictObject({
 	id: beatIdSchema,
 	label: beatTextSchema(80),
 });
+export const beatResponseMethods = [
+	"hand-signals",
+	"response-cards",
+	"mini-whiteboards",
+	"room-position",
+	"pair-talk",
+	"individual-writing",
+] as const;
 const beatCommonSchema = {
-	version: z.literal(1),
 	question: beatTextSchema(240),
 	choices: z.array(beatChoiceSchema).min(2).max(4),
 	stages: z.array(beatStageSchema).min(7).max(16),
@@ -155,6 +162,16 @@ const beatCommonSchema = {
 	]),
 	sensitivityNotes: z.array(beatTextSchema(300)).min(1).max(5).optional(),
 };
+const beatV1Schema = {
+	...beatCommonSchema,
+	version: z.literal(1),
+};
+const beatV2Schema = {
+	...beatCommonSchema,
+	version: z.literal(2),
+	responseMethod: z.enum(beatResponseMethods),
+	vocationalConnection: beatTextSchema(240).optional(),
+};
 const sourceCardSchema = z.strictObject({
 	id: beatIdSchema,
 	label: beatTextSchema(80),
@@ -162,21 +179,30 @@ const sourceCardSchema = z.strictObject({
 	sourceUrl: httpUrlSchema,
 });
 
-const interactiveBeatUnionSchema = z.discriminatedUnion("mechanic", [
-	z.strictObject({
-		...beatCommonSchema,
-		mechanic: z.literal("vote-revote"),
-	}),
-	z.strictObject({
-		...beatCommonSchema,
-		mechanic: z.literal("source-duel"),
-		sourceCards: z.tuple([sourceCardSchema, sourceCardSchema]),
-	}),
-	z.strictObject({
-		...beatCommonSchema,
-		mechanic: z.literal("context-decision"),
-		perspective: beatTextSchema(400),
-	}),
+function createInteractiveBeatMechanicSchema<
+	CommonSchema extends z.ZodRawShape,
+>(commonSchema: CommonSchema) {
+	return z.discriminatedUnion("mechanic", [
+		z.strictObject({
+			...commonSchema,
+			mechanic: z.literal("vote-revote"),
+		}),
+		z.strictObject({
+			...commonSchema,
+			mechanic: z.literal("source-duel"),
+			sourceCards: z.tuple([sourceCardSchema, sourceCardSchema]),
+		}),
+		z.strictObject({
+			...commonSchema,
+			mechanic: z.literal("context-decision"),
+			perspective: beatTextSchema(400),
+		}),
+	]);
+}
+
+const interactiveBeatUnionSchema = z.union([
+	createInteractiveBeatMechanicSchema(beatV1Schema),
+	createInteractiveBeatMechanicSchema(beatV2Schema),
 ]);
 type InteractiveBeatInput = z.infer<typeof interactiveBeatUnionSchema>;
 
