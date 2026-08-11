@@ -9,11 +9,9 @@ describe("classroom beat route", () => {
 		});
 		const markup = renderToStaticMarkup(page);
 
-		expect(markup).toContain(
-			"Voor deze gebeurtenis is nog geen klasbeat klaar",
-		);
+		expect(markup).toContain("Deze activiteit is nog niet beschikbaar");
 		expect(markup).toContain("Constantinopel valt");
 		expect(markup).toContain('href="/events/val-van-constantinopel-1453"');
-		expect(markup).toContain("Lees het achtergrondverhaal");
+		expect(markup).toContain("Lees het verhaal");
 	});
 });

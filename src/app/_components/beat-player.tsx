@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type Dispatch, useEffect, useReducer } from "react";
+import { type Dispatch, useEffect, useReducer, useRef } from "react";
 import { getBeatKeyboardAction } from "@/lib/beats/keyboard";
 import {
 	type BeatDurationMinutes,
@@ -45,7 +45,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 					{stage.stimulus}
 				</p>
 				<BeatChoices beat={beat} />
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -60,7 +59,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 					{stage.prompt}
 				</h2>
 				<BeatChoices beat={beat} />
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -79,7 +77,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 						{stage.sentenceStarter}
 					</p>
 				) : null}
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -109,7 +106,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 						.map(({ title, publisher }) => `${title} · ${publisher}`)
 						.join(" | ")}
 				</p>
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -123,7 +119,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
 					{stage.bridge}
 				</h2>
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -146,7 +141,6 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 						{source.title} · {source.publisher}
 					</p>
 				) : null}
-				<ClassroomPrompt stage={stage} />
 			</article>
 		);
 	}
@@ -172,27 +166,6 @@ function BeatChoices({ beat }: { beat: InteractiveBeat }) {
 				</li>
 			))}
 		</ul>
-	);
-}
-
-function ClassroomPrompt({
-	stage,
-}: {
-	stage: InteractiveBeat["stages"][number];
-}) {
-	return (
-		<aside
-			className="classroom-prompt mx-auto mt-6 grid max-w-5xl gap-1 rounded-md bg-ink/5 px-4 py-3 text-left text-[clamp(0.8rem,1.2vw,1rem)] leading-tight sm:grid-cols-2 sm:gap-6"
-			aria-label={messages.beat.teacherCue}
-		>
-			<p>
-				<strong>{messages.beat.teacherCue}:</strong> {stage.teacherPrompt}
-			</p>
-			<p>
-				<strong>{messages.beat.studentAction}:</strong>{" "}
-				{stage.expectedStudentAction}
-			</p>
-		</aside>
 	);
 }
 
@@ -407,8 +380,13 @@ export function BeatPlayer({ event }: BeatPlayerProps) {
 	);
 	const activeStageIndex =
 		state.status === "running" ? state.currentStageIndex : null;
+	const focusKey =
+		activeStageIndex === null ? state.status : `running:${activeStageIndex}`;
+	const previousFocusKey = useRef(focusKey);
 
 	useEffect(() => {
+		if (previousFocusKey.current === focusKey) return;
+		previousFocusKey.current = focusKey;
 		const selector =
 			activeStageIndex !== null
 				? "[data-classroom-stage-region]"
@@ -418,7 +396,7 @@ export function BeatPlayer({ event }: BeatPlayerProps) {
 		document
 			.querySelector<HTMLElement>(selector)
 			?.focus({ preventScroll: true });
-	}, [state.status, activeStageIndex]);
+	}, [focusKey, state.status, activeStageIndex]);
 
 	useEffect(() => {
 		if (state.status !== "running") return;

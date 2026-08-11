@@ -32,7 +32,7 @@ When("I choose the 5 minute beat route", async ({ page }) => {
 });
 
 When("I start the classroom beat", async ({ page }) => {
-	await page.getByRole("button", { name: "Start klasbeat" }).click();
+	await page.getByRole("button", { name: "Start", exact: true }).click();
 	await expect(page.locator('[data-beat-stage="opening"]')).toBeVisible({
 		timeout: 5_000,
 	});
@@ -70,7 +70,7 @@ When(
 		const target = page.locator(`[data-beat-stage="${stageId}"]`);
 		for (let step = 0; step < 16 && !(await target.isVisible()); step += 1) {
 			await page
-				.getByRole("button", { name: /^(Volgende|Onthul bewijs)$/ })
+				.getByRole("button", { name: /^(Volgende|Toon meer)$/ })
 				.click();
 		}
 		await expect(target).toBeVisible();
@@ -106,21 +106,26 @@ Then("the classroom stage has visible focus", async ({ page }) => {
 
 Then("I see that the classroom beat is complete", async ({ page }) => {
 	await expect(
-		page.getByRole("heading", { name: "Klasbeat afgerond" }),
+		page.getByRole("heading", { name: "Klaar", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("link", { name: "Terug naar het achtergrondverhaal" }),
+		page.getByRole("link", { name: "Lees het verhaal" }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("link", { name: "Naar startpagina" }),
+		page.getByRole("link", { name: "Terug naar start" }),
 	).toBeVisible();
 });
 
 Then("I see the classroom beat preparation again", async ({ page }) => {
-	await expect(
-		page.getByText("Klasbeat voorbereiden", { exact: true }),
-	).toBeVisible();
+	await expect(page.getByText("Kies de duur", { exact: true })).toBeVisible();
 });
+
+Then(
+	"the preparation heading has not stolen keyboard focus",
+	async ({ page }) => {
+		await expect(page.locator("[data-beat-preparation]")).not.toBeFocused();
+	},
+);
 
 Then("the preparation heading has keyboard focus", async ({ page }) => {
 	await expect(page.locator("[data-beat-preparation]")).toBeFocused();
@@ -131,9 +136,7 @@ Then("the completion heading has keyboard focus", async ({ page }) => {
 });
 
 Then("I see the reload reset explanation", async ({ page }) => {
-	await expect(
-		page.getByText("Herladen start deze klasbeat opnieuw."),
-	).toBeVisible();
+	await expect(page.getByText("Na herladen begin je opnieuw.")).toBeVisible();
 });
 
 Then("the classroom state fits without scrolling", async ({ page }) => {
@@ -186,12 +189,12 @@ Then("classroom controls have touch-sized targets", async ({ page }) => {
 
 Then("I see that no classroom beat is ready", async ({ page }) => {
 	await expect(
-		page.getByText("Voor deze gebeurtenis is nog geen klasbeat klaar."),
+		page.getByText("Deze activiteit is nog niet beschikbaar."),
 	).toBeVisible();
 });
 
 Then("I can return to the Constantinople article", async ({ page }) => {
 	await expect(
-		page.getByRole("link", { name: "Lees het achtergrondverhaal" }),
+		page.getByRole("link", { name: "Lees het verhaal" }),
 	).toHaveAttribute("href", "/events/val-van-constantinopel-1453");
 });

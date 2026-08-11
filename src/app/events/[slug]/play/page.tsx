@@ -18,7 +18,7 @@ export async function generateMetadata({
 	const { slug } = await params;
 	const event = await getEventBySlug(slug);
 	return event
-		? { title: `${event.title} — klasbeat`, description: event.summary }
+		? { title: event.title, description: event.summary }
 		: { title: messages.event.notFound };
 }
 

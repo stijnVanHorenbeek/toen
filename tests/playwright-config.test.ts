@@ -17,7 +17,7 @@ describe("Playwright Worker server", () => {
 		const script = existsSync(scriptUrl) ? readFileSync(scriptUrl, "utf8") : "";
 
 		expect(packageJson.scripts["test:e2e"]).toBe("bash scripts/test-e2e.sh");
-		expect(script).toContain("88e141b364b1330c07f6481525fc46afdce901d1");
+		expect(script).toContain("f6c5ad91b9aaf4c91cd5fef2bdf23736386f054d");
 		expect(script).toContain("TOEN_CONTENT_SHA");
 		expect(script).toContain("pnpm build:worker");
 		expect(script).toContain("pnpm exec playwright test");
