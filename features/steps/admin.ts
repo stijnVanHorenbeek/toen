@@ -179,6 +179,162 @@ When("I complete the minimum classification and source", async ({ page }) => {
 	await completeMinimumClassification(page);
 });
 
+When("I create a vote activity with response cards", async ({ page }) => {
+	await continueToActivity(page);
+	await page.getByLabel("Een verhaal met klasactiviteit").check();
+	await page
+		.getByLabel("Hoe antwoorden leerlingen?")
+		.selectOption("response-cards");
+	await page.locator('[id="beat.question"]').fill("Welke keuze maak je?");
+	await page.locator('[id="beat.choices.0.label"]').fill("Doorgaan");
+	await page.locator('[id="beat.choices.1.label"]').fill("Stoppen");
+	await page
+		.locator('[id="beat.vocationalConnection"]')
+		.fill("Vergelijk dit met veilig beslissen op de werkvloer.");
+	for (const [index, stage] of [
+		[0, { stimulus: "De situatie verandert onverwacht." }],
+		[
+			2,
+			{
+				title: "Eerste aanwijzing",
+				evidence: "De eerste bron toont een risico.",
+			},
+		],
+		[3, { prompt: "Welk detail weegt het zwaarst?" }],
+		[
+			4,
+			{
+				title: "Nieuwe aanwijzing",
+				evidence: "De tweede bron toont een voordeel.",
+			},
+		],
+		[5, { prompt: "Wat verandert er aan je keuze?" }],
+		[
+			6,
+			{
+				title: "Laatste aanwijzing",
+				evidence: "Een extra detail maakt de afweging moeilijker.",
+			},
+		],
+		[7, { prompt: "Welke onzekerheid blijft over?" }],
+		[
+			10,
+			{
+				title: "Wat gebeurde er?",
+				feedback: "De historische keuze werd na afweging gemaakt.",
+			},
+		],
+		[11, { bridge: "Welke afweging herken je in de rest van de les?" }],
+	] as const) {
+		for (const [field, value] of Object.entries(stage)) {
+			await page.locator(`[id="beat.stages.${index}.${field}"]`).fill(value);
+		}
+	}
+});
+
+When("I choose article-only but cancel activity removal", async ({ page }) => {
+	page.once("dialog", async (dialog) => {
+		expect(dialog.message()).toBe(
+			"Klasactiviteit verwijderen? De ingevulde activiteit gaat verloren.",
+		);
+		await dialog.dismiss();
+	});
+	await page.getByLabel("Alleen een achtergrondverhaal").click();
+});
+
+Then("the activity and central question remain", async ({ page }) => {
+	await expect(page.getByLabel("Een verhaal met klasactiviteit")).toBeChecked();
+	await expect(page.locator('[id="beat.question"]')).toHaveValue(
+		"Welke keuze maak je?",
+	);
+});
+
+When("I clear the central activity question", async ({ page }) => {
+	await page.locator('[id="beat.question"]').fill("");
+});
+
+Then(
+	"the activity question remains invalid and described in Dutch",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("heading", { name: "Klasactiviteit", level: 2 }),
+		).toBeVisible();
+		const question = page.locator('[id="beat.question"]');
+		await expect(question).toHaveValue("");
+		await expect(question).toHaveAttribute("aria-invalid", "true");
+		const descriptionId = await question.getAttribute("aria-describedby");
+		expect(descriptionId).toBe("beat.question-error");
+		await expect(page.locator('[id="beat.question-error"]')).toHaveText(
+			/Fout: Vul de centrale vraag in\./,
+		);
+	},
+);
+
+When("I change the activity after preview", async ({ page }) => {
+	await page.getByRole("button", { name: "Klasactiviteit wijzigen" }).click();
+	await page.locator('[id="beat.question"]').fill("Een gewijzigde vraag?");
+});
+
+Then(
+	"the activity needs a fresh preview before publication",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("heading", { name: "Controleren & publiceren" }),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("button", { name: "Voorbeeld bekijken" }),
+		).toBeEnabled();
+		await expect(page.getByRole("button", { name: "Publiceren" })).toHaveCount(
+			0,
+		);
+	},
+);
+
+Then("authored teacher cues are available in review", async ({ page }) => {
+	await page
+		.getByText("Aanwijzingen voor de leerkracht", { exact: true })
+		.click();
+	await expect(
+		page.getByText("Toon de situatie zonder het antwoord te verklappen.", {
+			exact: true,
+		}),
+	).toBeVisible();
+	await expect(
+		page.getByText("Lees en denk eerst zelfstandig na.", { exact: true }),
+	).toBeVisible();
+	await expect(
+		page.getByText("20 seconden", { exact: true }).first(),
+	).toBeVisible();
+});
+
+Then("I can open the exact classroom preview", async ({ page }) => {
+	await page.getByRole("button", { name: "Klasvoorbeeld openen" }).click();
+	await expect(
+		page.getByRole("dialog", { name: "Klasactiviteit" }),
+	).toBeVisible();
+});
+
+Then("the classroom preview shows response cards", async ({ page }) => {
+	await expect(
+		page.getByRole("dialog", { name: "Klasactiviteit" }),
+	).toContainText("Antwoordkaarten");
+});
+
+Then(
+	"the vocational connection appears in the lesson bridge",
+	async ({ page }) => {
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		await dialog.getByText("5 minuten", { exact: true }).click();
+		await dialog.getByRole("button", { name: "Start", exact: true }).click();
+		for (let step = 0; step < 6; step += 1) {
+			await dialog.getByRole("button", { name: /Volgende|Toon meer/ }).click();
+		}
+		await expect(dialog).toContainText(
+			"Vergelijk dit met veilig beslissen op de werkvloer.",
+		);
+	},
+);
+
 When("I add the new topic {string}", async ({ page }, topic: string) => {
 	await page.getByLabel("Nieuw onderwerp").fill(topic);
 	await page.getByRole("button", { name: "Onderwerp toevoegen" }).click();
@@ -201,10 +357,12 @@ When(
 );
 
 When("I request the reader preview", async ({ page }) => {
+	await continueToActivity(page);
 	await page.getByRole("button", { name: "Voorbeeld bekijken" }).click();
 });
 
 When("I request the reader preview without waiting", async ({ page }) => {
+	await continueToActivity(page);
 	pendingPreviewResponse = page.waitForResponse((response) =>
 		response.url().includes("/api/admin/events/preview"),
 	);
@@ -212,6 +370,9 @@ When("I request the reader preview without waiting", async ({ page }) => {
 });
 
 When("I change the first source before preview returns", async ({ page }) => {
+	await page
+		.getByRole("button", { name: "Terug naar indeling & bronnen" })
+		.click();
 	await page.getByLabel("Titel van bron 1").fill("Gewijzigde bron");
 });
 
@@ -234,6 +395,7 @@ When("I complete a valid event draft through review", async ({ page }) => {
 		.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
 		.click();
 	await completeMinimumClassification(page);
+	await continueToActivity(page);
 	await page.getByRole("button", { name: "Voorbeeld bekijken" }).click();
 });
 
@@ -269,7 +431,7 @@ When("I clear the title", async ({ page }) => {
 	await page.getByLabel("Titel").fill("");
 	await expect
 		.poll(() =>
-			page.evaluate(() => localStorage.getItem("toen:event-draft:v1")),
+			page.evaluate(() => localStorage.getItem("toen:event-draft:v2")),
 		)
 		.toBeNull();
 });
@@ -462,7 +624,7 @@ Then("the stale draft does not reach review", async ({ page }) => {
 		page.getByRole("heading", { name: "Controleren & publiceren" }),
 	).toHaveCount(0);
 	await expect(
-		page.getByRole("button", { name: "Voorbeeld bekijken" }),
+		page.getByRole("button", { name: "Ga verder naar klasactiviteit" }),
 	).toBeEnabled();
 });
 
@@ -629,6 +791,13 @@ async function completeExactStory({
 	await page
 		.getByRole("textbox", { name: "Verhaal" })
 		.fill("De stad werd na een beleg ingenomen.");
+}
+
+async function continueToActivity(page: import("@playwright/test").Page) {
+	const continueButton = page.getByRole("button", {
+		name: "Ga verder naar klasactiviteit",
+	});
+	if (await continueButton.isVisible()) await continueButton.click();
 }
 
 async function completeMinimumClassification(

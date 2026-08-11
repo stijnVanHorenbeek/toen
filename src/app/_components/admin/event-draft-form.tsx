@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef } from "react";
 import { messages } from "@/lib/i18n/messages.nl-BE";
+import { ActivityStage } from "./event-authoring-beat";
 import {
 	EventAuthoringProvider,
 	useEventAuthoring,
@@ -49,6 +50,7 @@ function EventAuthoringWorkspace() {
 				[
 					"story-stage-title",
 					"classification-stage-title",
+					"activity-stage-title",
 					"review-stage-title",
 				][state.step - 1],
 			);
@@ -83,7 +85,8 @@ function EventAuthoringWorkspace() {
 			</div>
 			{state.step === 1 ? <StoryStage /> : null}
 			{state.step === 2 ? <ClassificationStage /> : null}
-			{state.step === 3 ? <ReviewStage /> : null}
+			{state.step === 3 ? <ActivityStage /> : null}
+			{state.step === 4 ? <ReviewStage /> : null}
 		</div>
 	);
 }

@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { clearAuthoringBeatSourceReferences } from "../src/lib/admin/authoring-beat";
 import {
 	addExistingTopicToAuthoringDraft,
 	addTopicToAuthoringDraft,
+	createInitialAuthoringBeatDraft,
 	createInitialAuthoringDraft,
 	isInitialAuthoringDraft,
 	normalizeTopic,
 	parseStoredAuthoringDraft,
+	selectStoredAuthoringDraft,
 	toEventDraftInput,
 	validateAuthoringStory,
 } from "../src/lib/admin/authoring-draft";
+import { parseEventDraft } from "../src/lib/content/event-draft";
 
 describe("authoring draft conversion", () => {
 	it("converts an exact CE date field to canonical date parts", () => {
@@ -143,6 +147,171 @@ describe("authoring draft conversion", () => {
 		expect(draft.topicLabels).toEqual({});
 	});
 
+	it("converts a constrained beat draft to canonical version 2 routes and sources", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.sources = [
+			{
+				id: "source-a",
+				title: "Bron A",
+				publisher: "Archief",
+				url: "https://example.org/a",
+			},
+			{
+				id: "source-b",
+				title: "Bron B",
+				publisher: "Archief",
+				url: "https://example.org/b",
+			},
+		];
+		draft.beat = createInitialAuthoringBeatDraft(draft.sources);
+		completeBeat(draft.beat);
+
+		const input = toEventDraftInput(draft);
+
+		expect(input.beat).toMatchObject({
+			version: 2,
+			mechanic: "vote-revote",
+			responseMethod: "hand-signals",
+			vocationalConnection: "Link met veilig werken.",
+			routes: [
+				{ durationMinutes: 5 },
+				{ durationMinutes: 8 },
+				{ durationMinutes: 12 },
+			],
+		});
+		expect(input.beat?.stages[2]).toMatchObject({
+			phase: "evidence",
+			sourceUrl: "https://example.org/a",
+			earliestDurationMinutes: 5,
+		});
+		expect(input.beat?.routes.map(({ stageIds }) => stageIds.length)).toEqual([
+			7, 10, 12,
+		]);
+
+		for (const stage of [draft.beat.stages[4], draft.beat.stages[5]]) {
+			if (stage.phase === "evidence" || stage.phase === "discussion") {
+				stage.earliestDurationMinutes = 12;
+			}
+		}
+		expect(
+			toEventDraftInput(draft).beat?.routes.map(
+				({ stageIds }) => stageIds.length,
+			),
+		).toEqual([7, 8, 12]);
+	});
+
+	it("converts all three constrained mechanics", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.sources = [
+			{
+				id: "source-a",
+				title: "A",
+				publisher: "P",
+				url: "https://example.org/a",
+			},
+			{
+				id: "source-b",
+				title: "B",
+				publisher: "P",
+				url: "https://example.org/b",
+			},
+		];
+		draft.title = "Testactiviteit";
+		draft.precision = "year";
+		draft.year = "1969";
+		draft.summary = "Een samenvatting.";
+		draft.body = "Een verhaal.";
+		draft.profiles = ["algemeen"];
+		draft.topics = ["wetenschap"];
+		draft.beat = createInitialAuthoringBeatDraft(draft.sources);
+		completeBeat(draft.beat);
+		draft.beat.mechanic = "source-duel";
+		draft.beat.sourceCards[0].excerpt = "Fragment A";
+		draft.beat.sourceCards[1].excerpt = "Fragment B";
+		const sourceDuelInput = toEventDraftInput(draft);
+		expect(sourceDuelInput.beat).toMatchObject({
+			mechanic: "source-duel",
+			sourceCards: [
+				{ sourceUrl: "https://example.org/a" },
+				{ sourceUrl: "https://example.org/b" },
+			],
+		});
+		expect(parseEventDraft(sourceDuelInput).beat?.mechanic).toBe("source-duel");
+
+		draft.beat.mechanic = "context-decision";
+		draft.beat.perspective = "Adviseer met wat toen bekend was.";
+		const contextDecisionInput = toEventDraftInput(draft);
+		expect(contextDecisionInput.beat).toMatchObject({
+			mechanic: "context-decision",
+			perspective: "Adviseer met wat toen bekend was.",
+		});
+		expect(parseEventDraft(contextDecisionInput).beat?.mechanic).toBe(
+			"context-decision",
+		);
+	});
+
+	it("migrates version 1 browser drafts and restores version 2 beat edits", () => {
+		const legacy = createInitialAuthoringDraft();
+		const { beat: _beat, topicLabels: _topicLabels, ...oldDraft } = legacy;
+		const migrated = parseStoredAuthoringDraft(
+			JSON.stringify({ version: 1, step: 3, draft: oldDraft }),
+		);
+		expect(migrated).toMatchObject({ step: 2, draft: { beat: null } });
+
+		const current = createInitialAuthoringDraft();
+		current.beat = createInitialAuthoringBeatDraft(current.sources);
+		current.beat.question = "Bewaarde vraag";
+		const restored = parseStoredAuthoringDraft(
+			JSON.stringify({ version: 2, step: 4, draft: current }),
+		);
+		expect(restored).toMatchObject({
+			step: 3,
+			draft: { beat: { question: "Bewaarde vraag" } },
+		});
+		expect(isInitialAuthoringDraft(current)).toBe(false);
+	});
+
+	it("falls back to a valid legacy draft when current storage is malformed", () => {
+		const legacy = createInitialAuthoringDraft();
+		const { beat: _beat, topicLabels: _topicLabels, ...oldDraft } = legacy;
+		oldDraft.title = "Legacy blijft bewaard";
+
+		expect(
+			selectStoredAuthoringDraft(
+				JSON.stringify({ version: 2, step: 3, draft: { broken: true } }),
+				JSON.stringify({ version: 1, step: 1, draft: oldDraft }),
+			),
+		).toMatchObject({
+			step: 1,
+			draft: { title: "Legacy blijft bewaard", beat: null },
+		});
+	});
+
+	it("clears removed source references without retargeting evidence", () => {
+		const sources = [
+			{ id: "source-a", url: "https://example.org/a" },
+			{ id: "source-b", url: "https://example.org/b" },
+		];
+		const beat = createInitialAuthoringBeatDraft(sources);
+		const cleared = clearAuthoringBeatSourceReferences(beat, "source-a");
+
+		expect(
+			cleared.stages
+				.filter((stage) => stage.phase === "evidence")
+				.map((stage) => stage.sourceId),
+		).toEqual(["", "source-b", ""]);
+		expect(cleared.sourceCards.map(({ sourceId }) => sourceId)).toEqual([
+			"",
+			"source-b",
+		]);
+		const resolution = cleared.stages.find(
+			(stage) => stage.phase === "resolution",
+		);
+		expect(resolution?.phase === "resolution" && resolution.sourceIds).toEqual(
+			[],
+		);
+	});
+
 	it("restores old drafts without topic labels", () => {
 		const draft = createInitialAuthoringDraft();
 		const { topicLabels: _topicLabels, ...oldDraft } = draft;
@@ -212,3 +381,37 @@ describe("authoring draft conversion", () => {
 		).toBeNull();
 	});
 });
+
+function completeBeat(
+	beat: ReturnType<typeof createInitialAuthoringBeatDraft>,
+) {
+	beat.question = "Welke keuze maak je?";
+	beat.vocationalConnection = "Link met veilig werken.";
+	beat.choices.forEach((choice, index) => {
+		choice.label = `Keuze ${index + 1}`;
+	});
+	for (const stage of beat.stages) {
+		switch (stage.phase) {
+			case "opening":
+				stage.stimulus = "Een historische situatie.";
+				break;
+			case "commitment":
+			case "discussion":
+			case "revision":
+			case "reasoning":
+				stage.prompt = "Bespreek je keuze.";
+				break;
+			case "evidence":
+				stage.title = "Nieuwe bron";
+				stage.evidence = "De bron voegt historische informatie toe.";
+				break;
+			case "resolution":
+				stage.title = "Wat gebeurde er?";
+				stage.feedback = "De historische uitkomst en verklaring.";
+				break;
+			case "lesson-bridge":
+				stage.bridge = "Wat neem je mee naar de les?";
+				break;
+		}
+	}
+}

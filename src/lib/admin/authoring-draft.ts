@@ -1,8 +1,18 @@
 import { z } from "zod";
-import { type HistoricalDate, topicIdPattern } from "../content/event";
+import {
+	type HistoricalDate,
+	type InteractiveBeat,
+	topicIdPattern,
+} from "../content/event";
 import { type VakrichtingId, vakrichtingIds } from "../content/taxonomy";
 import { formatEventTag } from "../i18n/locale";
 import { messages } from "../i18n/messages.nl-BE";
+import {
+	type AuthoringBeatDraft,
+	authoringBeatDraftSchema,
+	createInitialAuthoringBeatDraft,
+	toCanonicalInteractiveBeat,
+} from "./authoring-beat";
 
 export type DatePrecision = HistoricalDate["precision"];
 
@@ -12,6 +22,9 @@ export type AuthoringSource = {
 	publisher: string;
 	url: string;
 };
+
+export { createInitialAuthoringBeatDraft };
+export type AuthoringStep = 1 | 2 | 3 | 4;
 
 export type AuthoringDraft = {
 	title: string;
@@ -27,6 +40,7 @@ export type AuthoringDraft = {
 	topics: string[];
 	topicLabels: Record<string, string>;
 	sources: AuthoringSource[];
+	beat: AuthoringBeatDraft | null;
 };
 
 export type EventDraftInput = {
@@ -38,46 +52,81 @@ export type EventDraftInput = {
 	topics: string[];
 	topicLabels?: Record<string, string>;
 	sources: Array<{ title: string; publisher: string; url: string }>;
+	beat?: InteractiveBeat;
 };
 
-const storedAuthoringDraftSchema = z.object({
-	version: z.literal(1),
-	step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-	draft: z.object({
-		title: z.string(),
-		precision: z.enum(["day", "month", "year", "approximate"]),
-		era: z.enum(["ce", "bce"]),
-		exactDate: z.string(),
-		year: z.string(),
-		month: z.string(),
-		day: z.string(),
-		summary: z.string(),
-		body: z.string(),
-		profiles: z.array(z.enum(vakrichtingIds)),
-		topics: z.array(z.string()),
-		topicLabels: z.record(z.string(), z.string()).default({}),
-		sources: z
-			.array(
-				z.object({
-					id: z.string().optional(),
-					title: z.string(),
-					publisher: z.string(),
-					url: z.string(),
-				}),
-			)
-			.min(1),
+const storedDraftFields = {
+	title: z.string(),
+	precision: z.enum(["day", "month", "year", "approximate"]),
+	era: z.enum(["ce", "bce"]),
+	exactDate: z.string(),
+	year: z.string(),
+	month: z.string(),
+	day: z.string(),
+	summary: z.string(),
+	body: z.string(),
+	profiles: z.array(z.enum(vakrichtingIds)),
+	topics: z.array(z.string()),
+	topicLabels: z.record(z.string(), z.string()).default({}),
+	sources: z
+		.array(
+			z.strictObject({
+				id: z.string().optional(),
+				title: z.string(),
+				publisher: z.string(),
+				url: z.string(),
+			}),
+		)
+		.min(1),
+};
+
+const storedAuthoringDraftSchema = z.union([
+	z.strictObject({
+		version: z.literal(1),
+		step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+		draft: z.object(storedDraftFields),
 	}),
-});
+	z.strictObject({
+		version: z.literal(2),
+		step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+		draft: z.strictObject({
+			...storedDraftFields,
+			beat: authoringBeatDraftSchema.nullable(),
+		}),
+	}),
+]);
 
 export function parseStoredAuthoringDraft(
 	value: string,
-): { draft: AuthoringDraft; step: 1 | 2 | 3 } | null {
+): { draft: AuthoringDraft; step: AuthoringStep } | null {
 	try {
 		const result = storedAuthoringDraftSchema.safeParse(JSON.parse(value));
-		return result.success ? result.data : null;
+		if (!result.success) return null;
+		if (result.data.version === 1) {
+			return {
+				draft: { ...result.data.draft, beat: null },
+				step: result.data.step === 3 ? 2 : result.data.step,
+			};
+		}
+		return {
+			draft: result.data.draft,
+			step: result.data.step === 4 ? 3 : result.data.step,
+		};
 	} catch {
 		return null;
 	}
+}
+
+export function selectStoredAuthoringDraft(
+	currentValue: string | null,
+	legacyValue: string | null,
+): { draft: AuthoringDraft; step: AuthoringStep } | null {
+	for (const value of [currentValue, legacyValue]) {
+		if (!value) continue;
+		const parsed = parseStoredAuthoringDraft(value);
+		if (parsed) return parsed;
+	}
+	return null;
 }
 
 export function createInitialAuthoringDraft(): AuthoringDraft {
@@ -95,6 +144,7 @@ export function createInitialAuthoringDraft(): AuthoringDraft {
 		topics: [],
 		topicLabels: {},
 		sources: [{ id: "source-1", title: "", publisher: "", url: "" }],
+		beat: null,
 	};
 }
 
@@ -120,6 +170,9 @@ export function toEventDraftInput(draft: AuthoringDraft): EventDraftInput {
 			publisher: publisher.trim(),
 			url: url.trim(),
 		})),
+		...(draft.beat
+			? { beat: toCanonicalInteractiveBeat(draft.beat, draft.sources) }
+			: {}),
 	};
 }
 
@@ -183,7 +236,8 @@ export function isInitialAuthoringDraft(draft: AuthoringDraft): boolean {
 		draft.sources.length === 1 &&
 		draft.sources[0].title === "" &&
 		draft.sources[0].publisher === "" &&
-		draft.sources[0].url === ""
+		draft.sources[0].url === "" &&
+		draft.beat === null
 	);
 }
 

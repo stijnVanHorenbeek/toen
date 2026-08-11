@@ -14,6 +14,14 @@ import {
 	voteRevoteBeat,
 } from "./fixtures/interactive-beat";
 
+const voteRevoteBeatV2 = {
+	...voteRevoteBeat,
+	version: 2,
+	responseMethod: "response-cards",
+	vocationalConnection:
+		"Vergelijk de beslissing met hedendaagse veiligheidsprocedures.",
+} as const;
+
 const baseFrontmatter = {
 	title: "Testgebeurtenis",
 	date: { year: 1969, era: "ce", precision: "year" },
@@ -28,6 +36,25 @@ describe("interactive beat frontmatter", () => {
 		expect(
 			parseEventFrontmatter({ ...baseFrontmatter, beat: voteRevoteBeat }),
 		).toMatchObject({ beat: voteRevoteBeat });
+	});
+
+	it("accepts and serializes a version 2 beat while retaining version 1", () => {
+		const event = {
+			...parseEventFrontmatter({
+				...baseFrontmatter,
+				beat: voteRevoteBeatV2,
+			}),
+			slug: "testgebeurtenis-1969",
+			body: "Testverhaal.",
+		};
+		const document = serializeEventDocument(event);
+
+		expect(parseEventDocument(event.slug, document).beat).toEqual(
+			voteRevoteBeatV2,
+		);
+		expect(
+			parseEventFrontmatter({ ...baseFrontmatter, beat: voteRevoteBeat }).beat,
+		).toEqual(voteRevoteBeat);
 	});
 
 	it.each([
@@ -61,6 +88,34 @@ describe("interactive beat frontmatter", () => {
 	});
 
 	it.each(invalidBeatStructuralCases)("rejects %s", (_name, beat) => {
+		expect(() => parseEventFrontmatter({ ...baseFrontmatter, beat })).toThrow();
+	});
+
+	it("keeps version fields strict across both beat versions", () => {
+		const { responseMethod: _responseMethod, ...missingResponseMethod } =
+			voteRevoteBeatV2;
+		expect(() =>
+			parseEventFrontmatter({
+				...baseFrontmatter,
+				beat: missingResponseMethod,
+			}),
+		).toThrow();
+		expect(() =>
+			parseEventFrontmatter({
+				...baseFrontmatter,
+				beat: { ...voteRevoteBeat, responseMethod: "response-cards" },
+			}),
+		).toThrow();
+	});
+
+	it.each([
+		["unknown response method", { ...voteRevoteBeatV2, responseMethod: "app" }],
+		[
+			"long vocational connection",
+			{ ...voteRevoteBeatV2, vocationalConnection: "x".repeat(241) },
+		],
+		["unknown version 2 field", { ...voteRevoteBeatV2, autoplay: true }],
+	])("rejects version 2 with %s", (_name, beat) => {
 		expect(() => parseEventFrontmatter({ ...baseFrontmatter, beat })).toThrow();
 	});
 

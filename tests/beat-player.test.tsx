@@ -209,6 +209,38 @@ describe("BeatStagePanel", () => {
 		expect(markup).not.toContain(lessonBridge.teacherPrompt);
 	});
 
+	it("shows version 2 response setup and vocational lesson connection", () => {
+		const version2 = interactiveBeatSchema.parse({
+			...voteRevoteBeat,
+			version: 2,
+			responseMethod: "response-cards",
+			vocationalConnection: "Koppel dit aan veilige werkprocedures.",
+		});
+		const event = {
+			slug: "test-event",
+			title: "Test event",
+			sources,
+			beat: version2,
+		};
+		const preparation = renderToStaticMarkup(
+			<BeatClassroomScreen
+				event={event}
+				state={createBeatRuntimeState()}
+				dispatch={() => undefined}
+			/>,
+		);
+		const lessonBridge = version2.stages.find(
+			(stage) => stage.phase === "lesson-bridge",
+		);
+		if (!lessonBridge) throw new Error("Missing lesson bridge fixture");
+		const bridge = renderToStaticMarkup(
+			<BeatStagePanel beat={version2} stage={lessonBridge} sources={sources} />,
+		);
+
+		expect(preparation).toContain("Antwoordkaarten");
+		expect(bridge).toContain("Koppel dit aan veilige werkprocedures.");
+	});
+
 	it("renders evidence with compact source identity", () => {
 		const evidence = beat.stages.find((stage) => stage.phase === "evidence");
 		if (!evidence) throw new Error("Missing evidence fixture");

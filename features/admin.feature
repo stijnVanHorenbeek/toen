@@ -14,6 +14,47 @@ Feature: Gebeurtenissen schrijven
     And I see the historical date "29 mei 1453"
     And the inferred event URL ends with "/events/constantinopel-valt-1453"
 
+  Scenario: Een klasactiviteit maken en exact controleren
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I request the reader preview
+    Then authored teacher cues are available in review
+    And I can open the exact classroom preview
+    And the classroom preview shows response cards
+    And the vocational connection appears in the lesson bridge
+
+  Scenario: Een wijziging aan de klasactiviteit maakt het oude voorbeeld ongeldig
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I request the reader preview
+    And I change the activity after preview
+    Then the activity needs a fresh preview before publication
+
+  Scenario: Een klasactiviteit blijft bewaard wanneer verwijderen wordt geannuleerd
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I choose article-only but cancel activity removal
+    Then the activity and central question remain
+
+  Scenario: Ongeldige activiteit blijft zichtbaar met een bruikbare veldfout
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I clear the central activity question
+    And I request the reader preview
+    Then the activity question remains invalid and described in Dutch
+
   Scenario Outline: Historische precisie controleren
     Given I open the event admin
     When I complete a "<precision>" historical story

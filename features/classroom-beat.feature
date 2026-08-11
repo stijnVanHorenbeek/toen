@@ -86,6 +86,12 @@ Feature: Classroom history beat
       | 1280  | 720    |
       | 1024  | 576    |
 
+  Scenario: Classroom controls reflow on a narrow teacher screen
+    Given the classroom viewport is 320 by 568
+    And I open the Apollo 11 classroom beat
+    When I start the classroom beat
+    Then classroom controls fit without horizontal clipping
+
   Scenario: Compare both sources in the Belgian independence activity
     Given the classroom viewport is 1024 by 576
     And I open the Belgian independence classroom activity

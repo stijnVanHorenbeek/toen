@@ -8,17 +8,20 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { clearAuthoringBeatSourceReferences } from "@/lib/admin/authoring-beat";
 import type {
 	AuthoringDraft,
 	AuthoringSource,
+	AuthoringStep,
 	EventDraftInput,
 } from "@/lib/admin/authoring-draft";
 import {
 	addExistingTopicToAuthoringDraft,
 	addTopicToAuthoringDraft,
+	createInitialAuthoringBeatDraft,
 	createInitialAuthoringDraft,
 	isInitialAuthoringDraft,
-	parseStoredAuthoringDraft,
+	selectStoredAuthoringDraft,
 	toEventDraftInput,
 	validateAuthoringStory,
 } from "@/lib/admin/authoring-draft";
@@ -26,9 +29,10 @@ import type { EventDraftPreview } from "@/lib/content/event-draft";
 import type { VakrichtingId } from "@/lib/content/taxonomy";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 
-const storageKey = "toen:event-draft:v1";
+const storageKey = "toen:event-draft:v2";
+const legacyStorageKey = "toen:event-draft:v1";
 
-type Step = 1 | 2 | 3;
+type Step = AuthoringStep;
 type SaveStatus = "idle" | "saving" | "saved" | "failed";
 type FieldErrors = Record<string, string>;
 
@@ -78,6 +82,9 @@ type AuthoringContextValue = {
 		) => void;
 		removeSource: (index: number) => void;
 		moveSource: (index: number, direction: -1 | 1) => void;
+		enableBeat: () => void;
+		disableBeat: () => void;
+		updateBeat: (beat: NonNullable<AuthoringDraft["beat"]>) => void;
 		openConfirmation: () => void;
 		closeConfirmation: () => void;
 		publish: () => Promise<void>;
@@ -125,11 +132,14 @@ export function EventAuthoringProvider({
 
 	useEffect(() => {
 		try {
-			const value = localStorage.getItem(storageKey);
-			if (value) {
-				const parsed = parseStoredAuthoringDraft(value);
-				if (parsed) setRestoredDraft(parsed);
-				else localStorage.removeItem(storageKey);
+			const currentValue = localStorage.getItem(storageKey);
+			const legacyValue = localStorage.getItem(legacyStorageKey);
+			const parsed = selectStoredAuthoringDraft(currentValue, legacyValue);
+			if (parsed) {
+				setRestoredDraft(parsed);
+			} else {
+				if (currentValue !== null) localStorage.removeItem(storageKey);
+				if (legacyValue !== null) localStorage.removeItem(legacyStorageKey);
 			}
 		} catch {
 			// Browser storage can be unavailable. Authoring still works for this session.
@@ -150,8 +160,13 @@ export function EventAuthoringProvider({
 			try {
 				localStorage.setItem(
 					storageKey,
-					JSON.stringify({ version: 1, draft, step }),
+					JSON.stringify({ version: 2, draft, step }),
 				);
+				try {
+					localStorage.removeItem(legacyStorageKey);
+				} catch {
+					// Current version is saved; stale legacy cleanup can fail independently.
+				}
 				setSaveStatus("saved");
 			} catch {
 				setSaveStatus("failed");
@@ -213,7 +228,8 @@ export function EventAuthoringProvider({
 			if (!response.ok || !isEventDraftPreview(response.body)) {
 				const issues = apiIssues(response.body);
 				setErrors(issues);
-				if (Object.keys(issues).some(isStoryField)) setStep(1);
+				const issueStep = validationIssueStep(Object.keys(issues));
+				if (issueStep) setStep(issueStep);
 				if (Object.keys(issues).length === 0) {
 					setPreviewError(messages.errors.previewFailed);
 				}
@@ -221,7 +237,7 @@ export function EventAuthoringProvider({
 			}
 			setValidatedInput(input);
 			setPreview(response.body);
-			setStep(3);
+			setStep(4);
 		} catch {
 			if (generation === previewGeneration.current) {
 				setPreviewError(messages.errors.previewFailed);
@@ -288,10 +304,17 @@ export function EventAuthoringProvider({
 
 	function removeSource(index: number) {
 		if (draft.sources.length === 1) return;
-		update(
-			"sources",
-			draft.sources.filter((_, sourceIndex) => sourceIndex !== index),
-		);
+		const sourceId = draft.sources[index]?.id ?? `source-${index + 1}`;
+		invalidate();
+		setDraft((current) => ({
+			...current,
+			sources: current.sources.filter(
+				(_, sourceIndex) => sourceIndex !== index,
+			),
+			beat: current.beat
+				? clearAuthoringBeatSourceReferences(current.beat, sourceId)
+				: null,
+		}));
 	}
 
 	function moveSource(index: number, direction: -1 | 1) {
@@ -303,6 +326,20 @@ export function EventAuthoringProvider({
 			sources[index],
 		];
 		update("sources", sources);
+	}
+
+	function enableBeat() {
+		if (draft.beat) return;
+		update("beat", createInitialAuthoringBeatDraft(draft.sources));
+	}
+
+	function disableBeat() {
+		if (!draft.beat) return;
+		update("beat", null);
+	}
+
+	function updateBeat(beat: NonNullable<AuthoringDraft["beat"]>) {
+		update("beat", beat);
 	}
 
 	async function publish() {
@@ -345,7 +382,7 @@ export function EventAuthoringProvider({
 	function restoreDraft() {
 		if (!restoredDraft) return;
 		setDraft(withSourceIds(restoredDraft.draft));
-		setStep(restoredDraft.step === 3 ? 2 : restoredDraft.step);
+		setStep(restoredDraft.step);
 		setRestoredDraft(null);
 		setSaveStatus("saved");
 	}
@@ -384,6 +421,9 @@ export function EventAuthoringProvider({
 			updateSource,
 			removeSource,
 			moveSource,
+			enableBeat,
+			disableBeat,
+			updateBeat,
 			openConfirmation: () => setConfirmationOpen(true),
 			closeConfirmation: () => setConfirmationOpen(false),
 			publish,
@@ -434,7 +474,33 @@ function apiIssues(value: unknown): FieldErrors {
 
 function mapIssueField(field: string): string {
 	if (field.startsWith("date.")) return field.slice("date.".length);
+	if (field.startsWith("beat.routes")) return "beat.routes";
+	if (/^beat\.stages\.\d+\.sourceUrl$/.test(field)) {
+		return field.replace(/sourceUrl$/, "sourceId");
+	}
+	if (/^beat\.stages\.\d+\.sourceUrls/.test(field)) {
+		return field.replace(/sourceUrls(?:\.\d+)?$/, "sourceIds");
+	}
+	if (/^beat\.sourceCards\.\d+\.sourceUrl$/.test(field)) {
+		return field.replace(/sourceUrl$/, "sourceId");
+	}
 	return field;
+}
+
+function validationIssueStep(fields: string[]): Step | null {
+	if (fields.some(isStoryField)) return 1;
+	if (
+		fields.some(
+			(field) =>
+				field === "profiles" ||
+				field === "topics" ||
+				field.startsWith("sources"),
+		)
+	) {
+		return 2;
+	}
+	if (fields.some((field) => field.startsWith("beat"))) return 3;
+	return null;
 }
 
 function isStoryField(field: string): boolean {
@@ -484,9 +550,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function clearStoredDraft(): void {
 	try {
 		localStorage.removeItem(storageKey);
+		localStorage.removeItem(legacyStorageKey);
 	} catch {
 		try {
 			localStorage.setItem(storageKey, "discarded");
+			localStorage.setItem(legacyStorageKey, "discarded");
 		} catch {
 			// Browser storage can reject both cleanup operations.
 		}
