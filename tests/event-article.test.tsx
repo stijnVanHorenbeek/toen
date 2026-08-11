@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { EventArticle } from "../src/app/_components/event-article";
+import { interactiveBeatSchema } from "../src/lib/content/event";
+import { beatSources, voteRevoteBeat } from "./fixtures/interactive-beat";
 
 const event = {
 	slug: "test-1918",
@@ -47,6 +49,24 @@ it("renders the same public event content in page and preview variants", () => {
 	expect(preview).toContain('data-event-article="preview"');
 	expect(preview).toContain("<h2");
 	expect(preview).toContain("<h3");
+});
+
+it("links runnable public events to their classroom beat", () => {
+	const runnableEvent = {
+		...event,
+		sources: beatSources.map((source) => ({ ...source })),
+		beat: interactiveBeatSchema.parse(voteRevoteBeat),
+	};
+	const page = renderToStaticMarkup(
+		<EventArticle event={runnableEvent} variant="page" />,
+	);
+	const preview = renderToStaticMarkup(
+		<EventArticle event={runnableEvent} variant="preview" />,
+	);
+
+	expect(page).toContain('href="/events/test-1918/play"');
+	expect(page).toContain("Start klasbeat");
+	expect(preview).not.toContain("Start klasbeat");
 });
 
 it("styles every supported Markdown block in public prose", () => {

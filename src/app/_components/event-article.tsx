@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { Event } from "@/lib/content/event-document";
@@ -63,6 +64,14 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 						</li>
 					))}
 				</ul>
+				{page && event.beat ? (
+					<Link
+						href={`/events/${event.slug}/play`}
+						className="primary-button mt-7 inline-flex items-center"
+					>
+						{messages.beat.start}
+					</Link>
+				) : null}
 			</header>
 			<div
 				className={

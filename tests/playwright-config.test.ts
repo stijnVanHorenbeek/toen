@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import playwrightConfig, { createE2eServerConfig } from "../playwright.config";
 
@@ -11,8 +11,16 @@ describe("Playwright Worker server", () => {
 		expect(playwrightConfig.use?.baseURL).toBe("http://localhost:8787");
 	});
 
-	it("builds the current Worker before browser journeys", () => {
-		expect(packageJson.scripts["test:e2e"]).toMatch(/^pnpm build:worker &&/);
+	it("builds the Worker from the pinned Apollo content revision", () => {
+		const scriptUrl = new URL("../scripts/test-e2e.sh", import.meta.url);
+		expect(existsSync(scriptUrl)).toBe(true);
+		const script = existsSync(scriptUrl) ? readFileSync(scriptUrl, "utf8") : "";
+
+		expect(packageJson.scripts["test:e2e"]).toBe("bash scripts/test-e2e.sh");
+		expect(script).toContain("88e141b364b1330c07f6481525fc46afdce901d1");
+		expect(script).toContain("TOEN_CONTENT_SHA");
+		expect(script).toContain("pnpm build:worker");
+		expect(script).toContain("pnpm exec playwright test");
 	});
 
 	it("reuses the Herdr development server outside CI", () => {

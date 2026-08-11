@@ -14,7 +14,7 @@
 		"lint": "biome lint .",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
-		"test:e2e": "pnpm build:worker && bddgen && playwright test",
+		"test:e2e": "bash scripts/test-e2e.sh",
 		"test:e2e:ci": "bash scripts/test-e2e-ci.sh",
 		"verify:synced": "pnpm test && pnpm check && pnpm typecheck",
 		"verify": "pnpm content:sync && pnpm verify:synced",
