@@ -20,6 +20,7 @@ import {
 	historicalDateMessages,
 } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
+import { ChatGptPromptHandoff } from "./chatgpt-prompt-handoff";
 import { useEventAuthoring } from "./event-authoring-context";
 import { EventStoryEditor } from "./event-story-editor";
 
@@ -38,6 +39,7 @@ export function StoryStage() {
 			>
 				{messages.admin.storyIntro}
 			</StageHeader>
+			<ChatGptPromptHandoff />
 			<RequiredFieldsNotice />
 			<ErrorSummary errors={errors} />
 			<div className="space-y-8">

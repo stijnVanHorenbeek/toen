@@ -4,6 +4,34 @@ import { createBdd, test } from "playwright-bdd";
 const { Given, Then, When } = createBdd(test);
 let pendingPreviewResponse: Promise<unknown> | null = null;
 
+type ClipboardTestWindow = Window & { copiedChatGptInstructions?: string };
+
+Given("the browser clipboard accepts copied instructions", async ({ page }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {
+				writeText: async (value: string) => {
+					(window as ClipboardTestWindow).copiedChatGptInstructions = value;
+				},
+			},
+		});
+	});
+});
+
+Given("the browser clipboard rejects copied instructions", async ({ page }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {
+				writeText: async () => {
+					throw new DOMException("Clipboard denied", "NotAllowedError");
+				},
+			},
+		});
+	});
+});
+
 Given("I open the event admin", async ({ page }) => {
 	await page.goto("/admin");
 });
@@ -92,6 +120,45 @@ Given("a local event draft exists", async ({ page }) => {
 
 Given("a local review-stage event draft exists", async ({ page }) => {
 	await installStoredDraft(page, 3);
+});
+
+When("I choose help from ChatGPT", async ({ page }) => {
+	await page
+		.locator("summary")
+		.filter({ hasText: "Begin met hulp van ChatGPT" })
+		.click();
+});
+
+When("I prepare ChatGPT help for {string}", async ({ page }, topic: string) => {
+	await page.getByLabel("Onderwerp of gebeurtenis").fill(topic);
+	await page
+		.getByLabel("Extra lescontext (optioneel)")
+		.fill("Laat leerlingen bewijs afwegen zonder persoonlijke gegevens.");
+	await page.getByLabel("Voorkeursduur").selectOption("12");
+	await page
+		.getByLabel("Werkvorm voor de activiteit")
+		.selectOption("source-duel");
+	await page.getByLabel("Antwoordvorm").selectOption("response-cards");
+	await page.getByLabel("Titel").fill("Bestaand privéconcept");
+});
+
+When("I enter only spaces as the ChatGPT topic", async ({ page }) => {
+	await page.getByLabel("Onderwerp of gebeurtenis").fill("   ");
+});
+
+When(
+	"I change the ChatGPT topic to {string}",
+	async ({ page }, topic: string) => {
+		await page.getByLabel("Onderwerp of gebeurtenis").fill(topic);
+	},
+);
+
+When("I make the ChatGPT instructions", async ({ page }) => {
+	await page.getByRole("button", { name: "Instructies maken" }).click();
+});
+
+When("I copy the ChatGPT instructions", async ({ page }) => {
+	await page.getByRole("button", { name: "Instructies kopiëren" }).click();
 });
 
 When("I complete the story of an exact historical event", completeExactStory);
@@ -602,6 +669,126 @@ Then("review navigation is disabled while publishing", async ({ page }) => {
 		page.getByRole("button", { name: "Indeling & bronnen wijzigen" }),
 	).toBeDisabled();
 });
+
+Then("the copy action has focus", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Instructies kopiëren" }),
+	).toBeFocused();
+});
+
+Then(
+	"I see that copied content goes to OpenAI and must not contain student data",
+	async ({ page }) => {
+		await expect(
+			page.getByText(/naar OpenAI gestuurd.*geen namen.*leerlingen/i),
+		).toBeVisible();
+	},
+);
+
+Then(
+	"the clipboard contains a source-aware request for {string}",
+	async ({ page }, topic: string) => {
+		const copied = await page.evaluate(
+			() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
+		);
+		expect(copied).toContain(topic);
+		expect(copied).toContain('"formatVersion": 1');
+		expect(copied).toContain('"status": "complete"');
+		expect(copied).toContain('"claims"');
+		const requestId =
+			/"requestId": "([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"/.exec(
+				copied,
+			)?.[1];
+		expect(requestId).toBeTruthy();
+		expect(
+			await page.evaluate(() =>
+				sessionStorage.getItem("toen:chatgpt-request:v1"),
+			),
+		).toBe(JSON.stringify({ formatVersion: 1, requestId }));
+	},
+);
+
+Then("unrelated story fields were not copied", async ({ page }) => {
+	const copied = await page.evaluate(
+		() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
+	);
+	expect(copied).not.toContain("Bestaand privéconcept");
+	expect(copied).not.toContain("/events/");
+});
+
+Then(
+	"I can open ChatGPT without putting the instructions in the address",
+	async ({ page }) => {
+		const link = page.getByRole("link", {
+			name: "Open ChatGPT in een nieuw tabblad",
+		});
+		await expect(link).toHaveAttribute("href", "https://chatgpt.com/");
+		await expect(link).toHaveAttribute("target", "_blank");
+		await expect(link).toHaveAttribute("rel", "noreferrer");
+	},
+);
+
+Then(
+	"the normal handoff does not show technical protocol terms",
+	async ({ page }) => {
+		await expect(
+			page.getByText(/requestId|formatVersion|JSON|protocol/i),
+		).toHaveCount(0);
+	},
+);
+
+Then("the ChatGPT instructions must be made again", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Instructies maken" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Instructies kopiëren" }),
+	).toHaveCount(0);
+	expect(
+		await page.evaluate(() =>
+			sessionStorage.getItem("toen:chatgpt-request:v1"),
+		),
+	).toBeNull();
+});
+
+Then(
+	"the ChatGPT topic is invalid, described in Dutch, and focused",
+	async ({ page }) => {
+		const topic = page.getByLabel("Onderwerp of gebeurtenis");
+		await expect(topic).toBeFocused();
+		await expect(topic).toHaveAttribute("aria-invalid", "true");
+		const descriptionId = await topic.getAttribute("aria-describedby");
+		expect(descriptionId).toBeTruthy();
+		await expect(page.locator(`[id="${descriptionId}"]`)).toHaveText(
+			"Vul een onderwerp of gebeurtenis in.",
+		);
+	},
+);
+
+Then(
+	"ChatGPT preference fields are hidden until requested",
+	async ({ page }) => {
+		await expect(page.getByLabel("Onderwerp of gebeurtenis")).toBeHidden();
+		await expect(page.getByLabel("Titel")).toBeVisible();
+	},
+);
+
+Then("selectable manual instructions are focused", async ({ page }) => {
+	const instructions = page.getByLabel("Instructies om zelf te kopiëren");
+	await expect(instructions).toBeVisible();
+	await expect(instructions).toBeFocused();
+	await expect(instructions).toHaveAttribute("readonly", "");
+});
+
+Then(
+	"the manual instructions contain {string}",
+	async ({ page }, topic: string) => {
+		const instructions = await page
+			.getByLabel("Instructies om zelf te kopiëren")
+			.inputValue();
+		expect(instructions).toContain(topic);
+	},
+);
 
 Then("I see that nothing was published", async ({ page }) => {
 	await expect(page.getByText("Niet gepubliceerd")).toBeVisible();

@@ -1,9 +1,49 @@
 Feature: Gebeurtenissen schrijven
 
+  Scenario: Veilig instructies voor ChatGPT kopiëren
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    Then I see that copied content goes to OpenAI and must not contain student data
+    When I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    Then the copy action has focus
+    When I copy the ChatGPT instructions
+    Then the clipboard contains a source-aware request for "De val van Constantinopel"
+    And unrelated story fields were not copied
+    And I can open ChatGPT without putting the instructions in the address
+    And the normal handoff does not show technical protocol terms
+
+  Scenario: Instructies handmatig kopiëren wanneer het klembord wordt geweigerd
+    Given the browser clipboard rejects copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De Belgische onafhankelijkheid"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    Then selectable manual instructions are focused
+    And the manual instructions contain "De Belgische onafhankelijkheid"
+
+  Scenario: Een leeg onderwerp voor ChatGPT krijgt bruikbare uitleg
+    Given I open the event admin
+    When I choose help from ChatGPT
+    And I enter only spaces as the ChatGPT topic
+    And I make the ChatGPT instructions
+    Then the ChatGPT topic is invalid, described in Dutch, and focused
+
+  Scenario: Gewijzigde voorkeuren maken oude ChatGPT-instructies ongeldig
+    Given I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De Belgische onafhankelijkheid"
+    And I make the ChatGPT instructions
+    And I change the ChatGPT topic to "De maanlanding"
+    Then the ChatGPT instructions must be made again
+
   Scenario: Een gebeurtenis controleren zonder technische velden
     Given I open the event admin
     Then the heading "Nieuwe gebeurtenis" is visible
     And no slug field is shown
+    And ChatGPT preference fields are hidden until requested
     When I complete the story of an exact historical event
     And I continue to classification and sources
     And I complete classification and two sources
