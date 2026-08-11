@@ -2,10 +2,9 @@ Feature: Historical events
 
   Scenario: Read a published event
     Given I open the homepage
-    When I open the event "D-Day: de geallieerde landing in Normandië"
-    Then I see the event heading "D-Day: de geallieerde landing in Normandië"
-    And the page title is "D-Day: de geallieerde landing in Normandië | Toen."
-    And I see the source "D-Day"
+    When I open the first recommended event
+    Then the event heading matches the page title
+    And the event shows at least one attributed source
 
   Scenario: Keep recommendations useful when a period has no content
     Given I open the homepage

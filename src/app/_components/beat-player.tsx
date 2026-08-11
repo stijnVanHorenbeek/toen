@@ -34,7 +34,7 @@ const durations: BeatDurationMinutes[] = [5, 8, 12];
 export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 	if (stage.phase === "opening") {
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases.opening}
 				</p>
@@ -51,7 +51,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 							return (
 								<li
 									key={card.id}
-									data-source-card={card.id}
+									data-source-card=""
 									className="rounded-md border border-ink/25 bg-white px-5 py-4"
 								>
 									<p className="font-bold text-accent text-sm uppercase tracking-[0.12em]">
@@ -62,7 +62,8 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 									</p>
 									{source ? (
 										<p className="mt-3 font-bold text-ink/55 text-xs uppercase tracking-[0.1em]">
-											{source.title} · {source.publisher}
+											<cite className="not-italic">{source.title}</cite> ·{" "}
+											{source.publisher}
 										</p>
 									) : null}
 								</li>
@@ -85,7 +86,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 
 	if (stage.phase === "commitment" || stage.phase === "revision") {
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases[stage.phase]}
 				</p>
@@ -99,18 +100,13 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 
 	if (stage.phase === "discussion" || stage.phase === "reasoning") {
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases[stage.phase]}
 				</p>
 				<h2 className="mx-auto mt-5 max-w-5xl text-balance font-serif text-[clamp(2.4rem,5vw,5.5rem)] font-medium leading-[0.95]">
 					{stage.prompt}
 				</h2>
-				{stage.phase === "discussion" && stage.sentenceStarter ? (
-					<p className="mx-auto mt-8 max-w-4xl rounded-md border border-ink/20 bg-white px-6 py-5 font-bold text-[clamp(1.2rem,2.2vw,2rem)]">
-						{stage.sentenceStarter}
-					</p>
-				) : null}
 			</article>
 		);
 	}
@@ -120,7 +116,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 			stage.sourceUrls.includes(url),
 		);
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases.resolution}
 				</p>
@@ -146,7 +142,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 
 	if (stage.phase === "lesson-bridge") {
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases.lessonBridge}
 				</p>
@@ -160,7 +156,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 	if (stage.phase === "evidence") {
 		const source = sources.find(({ url }) => url === stage.sourceUrl);
 		return (
-			<article data-beat-stage={stage.id} className="classroom-stage">
+			<article data-beat-phase={stage.phase} className="classroom-stage">
 				<p className="font-bold text-accent text-sm uppercase tracking-[0.18em]">
 					{messages.beat.phases.evidence}
 				</p>

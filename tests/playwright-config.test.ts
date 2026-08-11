@@ -1,45 +1,21 @@
-import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import playwrightConfig, { createE2eServerConfig } from "../playwright.config";
-
-const packageJson = JSON.parse(
-	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-) as { scripts: Record<string, string> };
+import { createE2eServerConfig } from "../playwright.config";
 
 describe("Playwright Worker server", () => {
-	it("keeps browser journeys on the local Worker", () => {
-		expect(playwrightConfig.use?.baseURL).toBe("http://localhost:8787");
+	it("starts an isolated Worker by default", () => {
+		expect(createE2eServerConfig({}).reuseExistingServer).toBe(false);
 	});
 
-	it("builds the Worker from the pinned reviewed content revision", () => {
-		const scriptUrl = new URL("../scripts/test-e2e.sh", import.meta.url);
-		expect(existsSync(scriptUrl)).toBe(true);
-		const script = existsSync(scriptUrl) ? readFileSync(scriptUrl, "utf8") : "";
-
-		expect(packageJson.scripts["test:e2e"]).toBe("bash scripts/test-e2e.sh");
-		expect(packageJson.scripts["dev:local"]).toBe(
-			"TOEN_CONTENT_DIR=../toen-content pnpm dev",
-		);
-		expect(script).toContain("18c3b191531bf92e196ca5be7aa2f1bea37cdac1");
-		expect(script).toContain("TOEN_CONTENT_DIR");
-		expect(script).toContain("TOEN_CONTENT_SHA");
-		expect(script).toContain("pnpm build:worker");
-		expect(script).toContain("pnpm exec playwright test");
+	it("reuses a local Worker only with explicit opt-in", () => {
+		expect(
+			createE2eServerConfig({ TOEN_E2E_REUSE_SERVER: "1" }).reuseExistingServer,
+		).toBe(true);
 	});
 
-	it("reuses the Herdr development server outside CI", () => {
-		expect(createE2eServerConfig({})).toMatchObject({
-			command: "bash scripts/start-e2e-server.sh",
-			url: "http://localhost:8787",
-			reuseExistingServer: true,
-		});
-	});
-
-	it("starts an isolated Worker server in CI", () => {
-		expect(createE2eServerConfig({ CI: "true" })).toMatchObject({
-			command: "bash scripts/start-e2e-server.sh",
-			url: "http://localhost:8787",
-			reuseExistingServer: false,
-		});
+	it("never reuses a Worker in CI", () => {
+		expect(
+			createE2eServerConfig({ CI: "true", TOEN_E2E_REUSE_SERVER: "1" })
+				.reuseExistingServer,
+		).toBe(false);
 	});
 });

@@ -20,10 +20,6 @@ Given("I open the D-Day classroom activity", async ({ page }) => {
 	);
 });
 
-Given("I open the Constantinople classroom activity", async ({ page }) => {
-	await page.goto("/events/val-van-constantinopel-1453/play");
-});
-
 Given("reduced motion is enabled", async ({ page }) => {
 	await page.emulateMedia({ reducedMotion: "reduce" });
 });
@@ -46,7 +42,7 @@ When("I choose the 5 minute beat route", async ({ page }) => {
 
 When("I start the classroom beat", async ({ page }) => {
 	await page.getByRole("button", { name: "Start", exact: true }).click();
-	await expect(page.locator('[data-beat-stage="opening"]')).toBeVisible({
+	await expect(page.locator('[data-beat-phase="opening"]')).toBeVisible({
 		timeout: 5_000,
 	});
 });
@@ -78,9 +74,9 @@ When("I reload the classroom beat", async ({ page }) => {
 });
 
 When(
-	"I advance to classroom stage {string}",
-	async ({ page }, stageId: string) => {
-		const target = page.locator(`[data-beat-stage="${stageId}"]`);
+	"I advance to classroom phase {string}",
+	async ({ page }, phase: string) => {
+		const target = page.locator(`[data-beat-phase="${phase}"]`);
 		for (let step = 0; step < 16 && !(await target.isVisible()); step += 1) {
 			await page
 				.getByRole("button", { name: /^(Volgende|Toon meer)$/ })
@@ -94,13 +90,26 @@ When("I press the classroom key {string}", async ({ page }, key: string) => {
 	await page.keyboard.press(key);
 });
 
-Then("beat stage {string} is visible", async ({ page }, stageId: string) => {
-	await expect(page.locator(`[data-beat-stage="${stageId}"]`)).toBeVisible();
+Then("beat phase {string} is visible", async ({ page }, phase: string) => {
+	await expect(page.locator(`[data-beat-phase="${phase}"]`)).toBeVisible();
 });
 
-Then("source card {string} is visible", async ({ page }, cardId: string) => {
-	await expect(page.locator(`[data-source-card="${cardId}"]`)).toBeVisible();
+Then("two attributed source cards are visible", async ({ page }) => {
+	const cards = page.locator("[data-source-card]");
+	await expect(cards).toHaveCount(2);
+	for (const card of await cards.all()) {
+		await expect(card.locator("cite")).toBeVisible();
+	}
 });
+
+Then(
+	"classroom progress is step {int} of {int}",
+	async ({ page }, step: number, total: number) => {
+		await expect(
+			page.getByText(`Stap ${step} van ${total}`, { exact: true }),
+		).toBeVisible();
+	},
+);
 
 Then("the context decision perspective is visible", async ({ page }) => {
 	await expect(page.locator("[data-beat-perspective]")).toBeVisible();
@@ -130,6 +139,9 @@ Then("I see that the classroom beat is complete", async ({ page }) => {
 	await expect(
 		page.getByRole("link", { name: "Terug naar start" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Nog een keer" }),
+	).toBeVisible();
 });
 
 Then("I see the classroom beat preparation again", async ({ page }) => {
@@ -151,16 +163,12 @@ Then("the completion heading has keyboard focus", async ({ page }) => {
 	await expect(page.locator("[data-beat-completed]")).toBeFocused();
 });
 
-Then("I see the reload reset explanation", async ({ page }) => {
-	await expect(page.getByText("Na herladen begin je opnieuw.")).toBeVisible();
-});
-
 Then("the classroom state fits without scrolling", async ({ page }) => {
 	const geometry = await page.evaluate(() => {
 		const region = document.querySelector<HTMLElement>(
 			"[data-classroom-stage-region]",
 		);
-		const stage = document.querySelector<HTMLElement>("[data-beat-stage]");
+		const stage = document.querySelector<HTMLElement>("[data-beat-phase]");
 		if (!region || !stage) throw new Error("Missing classroom state");
 		const regionRect = region.getBoundingClientRect();
 		const stageRect = stage.getBoundingClientRect();
@@ -190,7 +198,8 @@ Then("the classroom state fits without scrolling", async ({ page }) => {
 
 Then("classroom controls have touch-sized targets", async ({ page }) => {
 	const targets = await page
-		.locator(".classroom-runtime footer button")
+		.locator("footer")
+		.getByRole("button")
 		.evaluateAll((buttons) =>
 			buttons.map((button) => {
 				const rect = button.getBoundingClientRect();

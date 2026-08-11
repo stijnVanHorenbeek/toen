@@ -12,7 +12,8 @@ export function createE2eServerConfig(
 	return {
 		command: "bash scripts/start-e2e-server.sh",
 		url: "http://localhost:8787",
-		reuseExistingServer: !environment.CI,
+		reuseExistingServer:
+			!environment.CI && environment.TOEN_E2E_REUSE_SERVER === "1",
 		timeout: 30_000,
 	};
 }

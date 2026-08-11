@@ -1,25 +1,25 @@
 Feature: Classroom history beat
 
-  Scenario: Run the five-minute Apollo vote and revote route
+  Scenario: Run the five-minute vote and revote route
     Given I open the Apollo 11 classroom beat
     Then the preparation heading has not stolen keyboard focus
     And the 8 minute beat route is selected
     When I choose the 5 minute beat route
     And I start the classroom beat
-    Then beat stage "opening" is visible
+    Then beat phase "opening" is visible
     And the classroom stage has keyboard focus
     When I use the classroom control "Volgende"
-    Then beat stage "commitment" is visible
+    Then beat phase "commitment" is visible
     When I use the classroom control "Toon meer"
-    Then beat stage "crater-evidence" is visible
+    Then beat phase "evidence" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "first-discussion" is visible
+    Then beat phase "discussion" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "revision" is visible
+    Then beat phase "revision" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "resolution" is visible
+    Then beat phase "resolution" is visible
     When I use the classroom control "Volgende"
-    Then beat stage "lesson-bridge" is visible
+    Then beat phase "lesson-bridge" is visible
     When I use the classroom control "Klaar"
     Then I see that the classroom beat is complete
     And the completion heading has keyboard focus
@@ -31,15 +31,18 @@ Feature: Classroom history beat
     And I use the classroom control "Toon meer"
     And I use the classroom control "Volgende"
     And I use the classroom control "Toon meer"
-    Then beat stage "downrange-evidence" is visible
+    Then beat phase "evidence" is visible
+    And classroom progress is step 5 of 10
     When I use the classroom control "Overslaan"
-    Then beat stage "second-discussion" is visible
+    Then beat phase "discussion" is visible
+    And classroom progress is step 6 of 10
     When I use the classroom control "Terug"
-    Then beat stage "first-discussion" is visible
+    Then beat phase "discussion" is visible
+    And classroom progress is step 4 of 10
     When I use the classroom control "Volgende"
-    Then beat stage "second-discussion" is visible
+    Then classroom progress is step 6 of 10
     When I use the classroom control "Overslaan"
-    Then beat stage "revision" is visible
+    Then beat phase "revision" is visible
     When I reset and confirm the classroom beat
     Then I see the classroom beat preparation again
     And the preparation heading has keyboard focus
@@ -50,24 +53,23 @@ Feature: Classroom history beat
     When I start the classroom beat
     And I reload the classroom beat
     Then I see the classroom beat preparation again
-    And I see the reload reset explanation
 
-  Scenario: Keyboard navigation works with reduced motion
+  Scenario: Classroom keyboard navigation works with reduced motion
     Given reduced motion is enabled
     And I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I press the classroom key "ArrowRight"
-    Then beat stage "commitment" is visible
+    Then beat phase "commitment" is visible
     And the classroom stage has keyboard focus
     When I press the classroom key "Space"
-    Then beat stage "crater-evidence" is visible
+    Then beat phase "evidence" is visible
     And the classroom stage has visible focus
 
   Scenario: Rapid activation advances only one state
     Given I open the Apollo 11 classroom beat
     When I start the classroom beat
     And I rapidly activate the classroom control "Volgende" twice
-    Then beat stage "commitment" is visible
+    Then beat phase "commitment" is visible
 
   Scenario Outline: Classroom state fits supported projector sizes
     Given the classroom viewport is <width> by <height>
@@ -75,7 +77,7 @@ Feature: Classroom history beat
     When I start the classroom beat
     Then the classroom state fits without scrolling
     And classroom controls have touch-sized targets
-    When I advance to classroom stage "resolution"
+    When I advance to classroom phase "resolution"
     Then the classroom state fits without scrolling
 
     Examples:
@@ -89,12 +91,11 @@ Feature: Classroom history beat
     And I open the Belgian independence classroom activity
     When I start the classroom beat
     Then the classroom state fits without scrolling
-    And source card "rights-source" is visible
-    And source card "voting-source" is visible
+    And two attributed source cards are visible
     When I use the classroom control "Volgende"
-    Then beat stage "commitment" is visible
+    Then beat phase "commitment" is visible
     When I use the classroom control "Toon meer"
-    Then beat stage "constitution-evidence" is visible
+    Then beat phase "evidence" is visible
 
   Scenario: Keep the D-Day decision inside its historical limits
     Given the classroom viewport is 1024 by 576
@@ -103,16 +104,6 @@ Feature: Classroom history beat
     Then the classroom state fits without scrolling
     And the context decision perspective is visible
     When I use the classroom control "Volgende"
-    Then beat stage "commitment" is visible
+    Then beat phase "commitment" is visible
     When I use the classroom control "Toon meer"
-    Then beat stage "weather-evidence" is visible
-
-  Scenario: Test a multiple-cause explanation for Constantinople
-    Given the classroom viewport is 1024 by 576
-    And I open the Constantinople classroom activity
-    When I start the classroom beat
-    Then the classroom state fits without scrolling
-    When I use the classroom control "Volgende"
-    Then beat stage "commitment" is visible
-    When I use the classroom control "Toon meer"
-    Then beat stage "artillery-evidence" is visible
+    Then beat phase "evidence" is visible

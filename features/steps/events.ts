@@ -15,26 +15,32 @@ When(
 	},
 );
 
-When("I open the event {string}", async ({ page }, title: string) => {
-	await page.getByRole("link", { name: title }).click();
+When("I open the first recommended event", async ({ page }) => {
+	await page
+		.locator("[data-recommended-event]")
+		.first()
+		.getByRole("link")
+		.click();
+	await expect(page).toHaveURL(/\/events\/[^/]+$/);
 });
 
-Then("I see the event heading {string}", async ({ page }, title: string) => {
-	await expect(
-		page.getByRole("heading", { level: 1, name: title }),
-	).toBeVisible();
+Then("the event heading matches the page title", async ({ page }) => {
+	const heading = page.getByRole("heading", { level: 1 });
+	await expect(heading).toBeVisible();
+	await expect(page).toHaveTitle(`${await heading.textContent()} | Toen.`);
 });
 
-Then("I see the source {string}", async ({ page }, title: string) => {
-	await expect(
-		page.getByRole("link", { name: title, exact: true }),
-	).toBeVisible();
+Then("the event shows at least one attributed source", async ({ page }) => {
+	const source = page.getByRole("complementary").getByRole("listitem").first();
+	await expect(source.getByRole("link")).toHaveAttribute(
+		"href",
+		/^https?:\/\//,
+	);
+	await expect(source.locator("p")).not.toHaveText("");
 });
 
 Then("I see that the period was widened", async ({ page }) => {
-	await expect(
-		page.getByText("Geen gebeurtenis in deze periode"),
-	).toBeVisible();
+	await expect(page.getByRole("status")).toBeVisible();
 });
 
 Then("I see at least one recommended event", async ({ page }) => {

@@ -2,10 +2,16 @@
 set -euo pipefail
 
 if [[ -n "${TOEN_CONTENT_DIR:-}" ]]; then
-	pnpm build:worker
+	pnpm content:sync
 else
-	content_sha="${TOEN_CONTENT_SHA:-18c3b191531bf92e196ca5be7aa2f1bea37cdac1}"
-	TOEN_CONTENT_SHA="$content_sha" pnpm build:worker
+	content_sha="${TOEN_CONTENT_SHA:-5e94da774fe06659695fd41eb023c93000dca16a}"
+	TOEN_CONTENT_SHA="$content_sha" pnpm content:sync
 fi
+
+if [[ "${TOEN_E2E_VERIFY_APP:-}" == "1" ]]; then
+	pnpm verify:synced
+fi
+
+pnpm build:worker:synced
 pnpm exec bddgen
 pnpm exec playwright test

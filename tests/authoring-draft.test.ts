@@ -183,6 +183,26 @@ describe("authoring draft conversion", () => {
 		}
 	});
 
+	it("reports impossible days and non-positive years on their fields", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.era = "bce";
+		draft.year = "44";
+		draft.month = "4";
+		draft.day = "31";
+		draft.title = "Test";
+		draft.summary = "Samenvatting";
+		draft.body = "Verhaal";
+
+		expect(validateAuthoringStory(draft).day).toBe(
+			"Kies een mogelijke dag voor deze maand.",
+		);
+		draft.day = "1";
+		draft.year = "0";
+		expect(validateAuthoringStory(draft).year).toBe(
+			"Vul een jaar groter dan 0 in.",
+		);
+	});
+
 	it("ignores malformed browser drafts instead of restoring unsafe data", () => {
 		expect(parseStoredAuthoringDraft("not-json")).toBeNull();
 		expect(

@@ -56,7 +56,9 @@ pnpm test
 pnpm test:e2e
 ```
 
-Browser journeys build current OpenNext Worker first. They default to immutable content revision `18c3b191531bf92e196ca5be7aa2f1bea37cdac1`, which contains the four reviewed classroom activities; set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead. Playwright reuses a local server on `http://localhost:8787` when available; GitHub Actions starts and stops its own local Wrangler server. Feature tests never use Cloudflare Access login or production routes.
+Browser journeys build current OpenNext Worker with the immutable content revision pinned in `scripts/test-e2e.sh`. Set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead.
+
+Playwright starts an isolated local Wrangler server by default. Set `TOEN_E2E_REUSE_SERVER=1` only when you intentionally want to reuse a server on `http://localhost:8787`. CI always starts an isolated server. Feature tests never use Cloudflare Access login or production routes.
 
 ## Deploy
 
