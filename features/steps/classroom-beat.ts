@@ -7,7 +7,20 @@ Given("I open the Apollo 11 classroom beat", async ({ page }) => {
 	await page.goto("/events/apollo-11-1969/play");
 });
 
-Given("I open the Constantinople classroom route", async ({ page }) => {
+Given(
+	"I open the Belgian independence classroom activity",
+	async ({ page }) => {
+		await page.goto("/events/belgium-independence-1830/play");
+	},
+);
+
+Given("I open the D-Day classroom activity", async ({ page }) => {
+	await page.goto(
+		"/events/d-day-de-geallieerde-landing-in-normandie-1944/play",
+	);
+});
+
+Given("I open the Constantinople classroom activity", async ({ page }) => {
 	await page.goto("/events/val-van-constantinopel-1453/play");
 });
 
@@ -81,14 +94,17 @@ When("I press the classroom key {string}", async ({ page }, key: string) => {
 	await page.keyboard.press(key);
 });
 
-Then(
-	"beat stage {string} shows {string}",
-	async ({ page }, stageId: string, text: string) => {
-		const stage = page.locator(`[data-beat-stage="${stageId}"]`);
-		await expect(stage).toBeVisible();
-		await expect(stage).toContainText(text);
-	},
-);
+Then("beat stage {string} is visible", async ({ page }, stageId: string) => {
+	await expect(page.locator(`[data-beat-stage="${stageId}"]`)).toBeVisible();
+});
+
+Then("source card {string} is visible", async ({ page }, cardId: string) => {
+	await expect(page.locator(`[data-source-card="${cardId}"]`)).toBeVisible();
+});
+
+Then("the context decision perspective is visible", async ({ page }) => {
+	await expect(page.locator("[data-beat-perspective]")).toBeVisible();
+});
 
 Then("the classroom stage has keyboard focus", async ({ page }) => {
 	await expect(page.locator("[data-classroom-stage-region]")).toBeFocused();
@@ -185,16 +201,4 @@ Then("classroom controls have touch-sized targets", async ({ page }) => {
 	expect(
 		targets.every(({ width, height }) => width >= 44 && height >= 44),
 	).toBe(true);
-});
-
-Then("I see that no classroom beat is ready", async ({ page }) => {
-	await expect(
-		page.getByText("Deze activiteit is nog niet beschikbaar."),
-	).toBeVisible();
-});
-
-Then("I can return to the Constantinople article", async ({ page }) => {
-	await expect(
-		page.getByRole("link", { name: "Lees het verhaal" }),
-	).toHaveAttribute("href", "/events/val-van-constantinopel-1453");
 });

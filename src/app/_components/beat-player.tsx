@@ -44,7 +44,41 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 				<p className="mx-auto mt-6 max-w-4xl text-balance text-[clamp(1.3rem,2.4vw,2.4rem)] leading-tight">
 					{stage.stimulus}
 				</p>
-				<BeatChoices beat={beat} />
+				{beat.mechanic === "source-duel" ? (
+					<ul className="mx-auto mt-6 grid max-w-5xl grid-cols-2 gap-4 text-left">
+						{beat.sourceCards.map((card) => {
+							const source = sources.find(({ url }) => url === card.sourceUrl);
+							return (
+								<li
+									key={card.id}
+									data-source-card={card.id}
+									className="rounded-md border border-ink/25 bg-white px-5 py-4"
+								>
+									<p className="font-bold text-accent text-sm uppercase tracking-[0.12em]">
+										{card.label}
+									</p>
+									<p className="mt-2 text-[clamp(1rem,1.7vw,1.4rem)] leading-snug">
+										{card.excerpt}
+									</p>
+									{source ? (
+										<p className="mt-3 font-bold text-ink/55 text-xs uppercase tracking-[0.1em]">
+											{source.title} · {source.publisher}
+										</p>
+									) : null}
+								</li>
+							);
+						})}
+					</ul>
+				) : null}
+				{beat.mechanic === "context-decision" ? (
+					<p
+						data-beat-perspective
+						className="mx-auto mt-6 max-w-4xl rounded-md border border-ink/20 bg-white px-6 py-4 text-[clamp(1rem,1.7vw,1.4rem)] leading-snug"
+					>
+						{beat.perspective}
+					</p>
+				) : null}
+				{beat.mechanic === "vote-revote" ? <BeatChoices beat={beat} /> : null}
 			</article>
 		);
 	}
