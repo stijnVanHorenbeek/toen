@@ -1,17 +1,17 @@
 import type { HistoricalDate } from "./event";
 import type { EventCatalogEntry } from "./event-catalog";
-import type { VakrichtingId } from "./taxonomy";
 
 const dayMilliseconds = 24 * 60 * 60 * 1000;
 const referenceYear = 2000;
 const referenceYearDays = 366;
+const recommendationLimit = 4;
 
 export type RecommendationPreferences = {
 	selectedDate: string;
 	yearMin: number;
 	yearMax: number;
-	profile: VakrichtingId;
 	topics: string[];
+	query: string;
 };
 
 export type RankedEvent = {
@@ -22,19 +22,24 @@ export type RankedEvent = {
 
 export type RecommendationResult = {
 	events: RankedEvent[];
+	additionalEvents: RankedEvent[];
 	periodFallback: boolean;
+	totalCount: number;
 };
 
 export function recommendEvents(
 	events: EventCatalogEntry[],
 	preferences: RecommendationPreferences,
 ): RecommendationResult {
-	const periodEvents = events.filter(({ date }) => {
+	const searchedEvents = events.filter((event) =>
+		matchesQuery(event, preferences.query),
+	);
+	const periodEvents = searchedEvents.filter(({ date }) => {
 		const year = signedYear(date);
 		return year >= preferences.yearMin && year <= preferences.yearMax;
 	});
-	const periodFallback = periodEvents.length === 0 && events.length > 0;
-	const candidates = periodFallback ? events : periodEvents;
+	const periodFallback = periodEvents.length === 0 && searchedEvents.length > 0;
+	const candidates = periodFallback ? searchedEvents : periodEvents;
 
 	const rankedEvents = candidates
 		.map((event) => {
@@ -42,12 +47,8 @@ export function recommendEvents(
 				event.date,
 				preferences.selectedDate,
 			);
+			const activityPriority = event.activity ? 100 : 0;
 			const proximity = Math.max(0, 35 - distanceDays * 3);
-			const profileMatch =
-				preferences.profile !== "algemeen" &&
-				event.profiles.includes(preferences.profile)
-					? 12
-					: 0;
 			const topicMatches = preferences.topics.filter((topic) =>
 				event.topics.includes(topic),
 			).length;
@@ -55,7 +56,7 @@ export function recommendEvents(
 			return {
 				event,
 				distanceDays,
-				score: proximity + profileMatch + topicMatches * 4,
+				score: activityPriority + proximity + topicMatches * 4,
 			};
 		})
 		.sort((left, right) => {
@@ -66,7 +67,36 @@ export function recommendEvents(
 			return left.event.slug.localeCompare(right.event.slug);
 		});
 
-	return { events: rankedEvents, periodFallback };
+	return {
+		events: rankedEvents.slice(0, recommendationLimit),
+		additionalEvents: rankedEvents.slice(recommendationLimit),
+		periodFallback,
+		totalCount: rankedEvents.length,
+	};
+}
+
+function matchesQuery(event: EventCatalogEntry, query: string): boolean {
+	const queryTerms = normalizeSearchValue(query).split(" ").filter(Boolean);
+	if (queryTerms.length === 0) return true;
+
+	const searchableValues = [
+		event.title,
+		event.summary,
+		...event.topics,
+		...Object.values(event.topicLabels ?? {}),
+		event.activity?.question ?? "",
+	];
+	const searchableText = searchableValues.map(normalizeSearchValue).join(" ");
+	return queryTerms.every((term) => searchableText.includes(term));
+}
+
+function normalizeSearchValue(value: string): string {
+	return value
+		.normalize("NFD")
+		.replaceAll(/[\u0300-\u036f]/g, "")
+		.toLocaleLowerCase("nl-BE")
+		.replaceAll(/[^\p{L}\p{N}]+/gu, " ")
+		.trim();
 }
 
 function signedYear(date: HistoricalDate): number {
