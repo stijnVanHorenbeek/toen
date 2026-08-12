@@ -39,4 +39,33 @@ describe("beat keyboard controls", () => {
 			}),
 		).toBeNull();
 	});
+
+	it("maps Escape to a stop request even when a control has focus", () => {
+		expect(
+			getBeatKeyboardAction({
+				key: "Escape",
+				repeat: false,
+				interactiveTarget: true,
+			}),
+		).toEqual({ type: "stop" });
+	});
+
+	it("finishes instead of getting stuck when advancing from the lesson bridge", () => {
+		expect(
+			getBeatKeyboardAction({
+				key: "ArrowRight",
+				repeat: false,
+				interactiveTarget: false,
+				canFinish: true,
+			}),
+		).toEqual({ type: "finish" });
+		expect(
+			getBeatKeyboardAction({
+				key: " ",
+				repeat: false,
+				interactiveTarget: false,
+				canFinish: true,
+			}),
+		).toEqual({ type: "finish" });
+	});
 });

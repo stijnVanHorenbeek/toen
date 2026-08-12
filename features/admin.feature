@@ -269,6 +269,8 @@ Feature: Gebeurtenissen schrijven
     Then authored teacher cues are available in review
     And I can open the exact classroom preview
     And the classroom preview shows response cards
+    And the classroom preview toolbar does not cover the activity
+    And classroom preview preparation remains reachable on a narrow screen
     And the vocational connection appears in the lesson bridge
 
   Scenario: Een wijziging aan de klasactiviteit maakt het oude voorbeeld ongeldig

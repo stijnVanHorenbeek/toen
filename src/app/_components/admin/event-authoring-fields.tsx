@@ -320,7 +320,7 @@ export function ClassificationStage() {
 						{vakrichtingIds.map((profile) => (
 							<label
 								key={profile}
-								className="flex min-h-12 items-center gap-3 rounded-md border border-ink/50 bg-white px-4 text-base"
+								className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-ink/50 bg-white px-4 text-base"
 							>
 								<input
 									type="checkbox"
@@ -357,7 +357,7 @@ export function ClassificationStage() {
 												meta.topicLabels[topic] ?? formatEventTag(topic),
 											)
 								}
-								className="rounded-full border border-ink/50 px-3 py-2 text-sm aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white"
+								className="compact-button rounded-full border border-ink/50 px-3 py-2 text-sm aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white"
 							>
 								{draft.topicLabels[topic] ??
 									meta.topicLabels[topic] ??

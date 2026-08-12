@@ -31,6 +31,10 @@ describe("BeatStagePanel", () => {
 		for (let index = 0; index < 4; index += 1) {
 			state = reduceBeatRuntime(state, { type: "advance" });
 		}
+		if (state.status !== "running") throw new Error("Expected running state");
+		const optionalStageId = state.routeStages[state.currentStageIndex].id;
+		const optionalStage = beat.stages.find(({ id }) => id === optionalStageId);
+		if (!optionalStage) throw new Error("Missing optional stage fixture");
 		const optionalMarkup = renderToStaticMarkup(
 			<BeatClassroomScreen
 				event={event}
@@ -39,6 +43,8 @@ describe("BeatStagePanel", () => {
 			/>,
 		);
 		expect(optionalMarkup).toContain(">Overslaan</button>");
+		expect(optionalMarkup).toContain(">Stoppen</button>");
+		expect(optionalMarkup).toContain(optionalStage.teacherPrompt);
 		expect(optionalMarkup).not.toContain(">Klaar</button>");
 
 		for (let index = 5; index < routeStages.length; index += 1) {
@@ -52,6 +58,7 @@ describe("BeatStagePanel", () => {
 			/>,
 		);
 		expect(closureMarkup).toContain(">Klaar</button>");
+		expect(closureMarkup).toContain(">Stoppen</button>");
 		expect(closureMarkup).not.toContain(">Overslaan</button>");
 		expect(closureMarkup).not.toContain(">Volgende</button>");
 	});

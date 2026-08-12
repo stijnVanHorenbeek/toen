@@ -477,6 +477,40 @@ Then("the classroom preview shows response cards", async ({ page }) => {
 });
 
 Then(
+	"the classroom preview toolbar does not cover the activity",
+	async ({ page }) => {
+		await page.setViewportSize({ width: 320, height: 568 });
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		const toolbar = dialog.locator("[data-classroom-preview-toolbar]");
+		const player = dialog.locator("[data-classroom-preview-player]");
+		const layout = await Promise.all([
+			toolbar.boundingBox(),
+			player.boundingBox(),
+		]);
+		if (!layout[0] || !layout[1]) throw new Error("Missing preview layout");
+		expect(layout[0].y + layout[0].height).toBeLessThanOrEqual(layout[1].y);
+	},
+);
+
+Then(
+	"classroom preview preparation remains reachable on a narrow screen",
+	async ({ page }) => {
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		const player = dialog.locator("[data-classroom-preview-player]");
+		await expect(
+			dialog.getByRole("button", { name: "Start", exact: true }),
+		).toBeVisible();
+		const layout = await player.evaluate((element) => ({
+			overflowY: getComputedStyle(element).overflowY,
+			clientHeight: element.clientHeight,
+			scrollHeight: element.scrollHeight,
+		}));
+		expect(layout.overflowY).toBe("auto");
+		expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
+	},
+);
+
+Then(
 	"the vocational connection appears in the lesson bridge",
 	async ({ page }) => {
 		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });

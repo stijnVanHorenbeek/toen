@@ -217,16 +217,23 @@ function ClassroomPreview({
 						close();
 					}}
 					aria-label={messages.admin.review.classroomPreview}
-					className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-paper p-0 text-ink backdrop:bg-ink/70"
+					className="fixed inset-0 m-0 flex h-dvh w-full max-h-none max-w-none flex-col border-0 bg-paper p-0 text-ink backdrop:bg-ink/70"
 				>
-					<button
-						type="button"
-						onClick={close}
-						className="secondary-button fixed top-3 right-3 z-50 bg-paper"
-					>
-						{messages.admin.actions.closeClassroomPreview}
-					</button>
 					<div
+						data-classroom-preview-toolbar
+						className="flex shrink-0 justify-end border-ink/15 border-b bg-paper px-3 py-2"
+					>
+						<button
+							type="button"
+							onClick={close}
+							className="secondary-button bg-paper"
+						>
+							{messages.admin.actions.closeClassroomPreview}
+						</button>
+					</div>
+					<div
+						data-classroom-preview-player
+						className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
 						onClickCapture={(clickEvent) => {
 							if (!(clickEvent.target instanceof Element)) return;
 							if (!clickEvent.target.closest("a")) return;
@@ -234,7 +241,7 @@ function ClassroomPreview({
 							close();
 						}}
 					>
-						<BeatPlayer event={{ ...event, beat }} />
+						<BeatPlayer event={{ ...event, beat }} onEscape={close} />
 					</div>
 				</dialog>
 			) : null}

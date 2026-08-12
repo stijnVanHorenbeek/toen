@@ -38,6 +38,7 @@ export type BeatRuntimeAction =
 	| { type: "back" }
 	| { type: "skip" }
 	| { type: "reset" }
+	| { type: "stop" }
 	| { type: "finish" };
 
 export function createBeatRuntimeStages(
@@ -73,7 +74,7 @@ export function reduceBeatRuntime(
 	state: BeatRuntimeState,
 	action: BeatRuntimeAction,
 ): BeatRuntimeState {
-	if (action.type === "reset") {
+	if (action.type === "reset" || action.type === "stop") {
 		return {
 			status: "preparation",
 			durationMinutes: state.durationMinutes,

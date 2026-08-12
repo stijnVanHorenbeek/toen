@@ -313,7 +313,7 @@ function ToolbarButton({
 			aria-label={label}
 			aria-pressed={pressed}
 			onClick={onClick}
-			className="min-h-10 rounded-sm px-3 font-semibold text-sm hover:bg-ink/10"
+			className="compact-button min-h-10 rounded-sm px-3 font-semibold text-sm hover:bg-ink/10"
 		>
 			{children}
 		</button>

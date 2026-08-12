@@ -69,6 +69,22 @@ When("I reset and confirm the classroom beat", async ({ page }) => {
 	await page.getByRole("button", { name: "Opnieuw", exact: true }).click();
 });
 
+When("I choose to stop but cancel", async ({ page }) => {
+	page.once("dialog", async (dialog) => {
+		expect(dialog.type()).toBe("confirm");
+		await dialog.dismiss();
+	});
+	await page.getByRole("button", { name: "Stoppen", exact: true }).click();
+});
+
+When("I stop the classroom beat with Escape and confirm", async ({ page }) => {
+	page.once("dialog", async (dialog) => {
+		expect(dialog.type()).toBe("confirm");
+		await dialog.accept();
+	});
+	await page.keyboard.press("Escape");
+});
+
 When("I reload the classroom beat", async ({ page }) => {
 	await page.reload();
 });
@@ -113,6 +129,32 @@ Then(
 
 Then("the context decision perspective is visible", async ({ page }) => {
 	await expect(page.locator("[data-beat-perspective]")).toBeVisible();
+});
+
+Then("the current teacher cue is visible", async ({ page }) => {
+	await expect(page.locator("[data-teacher-cue]")).toContainText(
+		"Lees de situatie. Vertel nog niet wat Armstrong deed.",
+	);
+});
+
+Then("duration choices show visible keyboard focus", async ({ page }) => {
+	await page.getByLabel("5 minuten").focus();
+	await expect(page.getByText("5 minuten", { exact: true })).toHaveCSS(
+		"outline-style",
+		"solid",
+	);
+});
+
+Then("enabled classroom actions use the pointer cursor", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Start", exact: true }),
+	).toHaveCSS("cursor", "pointer");
+});
+
+Then("disabled classroom actions do not look interactive", async ({ page }) => {
+	const back = page.getByRole("button", { name: "Terug", exact: true });
+	await expect(back).toBeDisabled();
+	await expect(back).toHaveCSS("cursor", "not-allowed");
 });
 
 Then("the classroom stage has keyboard focus", async ({ page }) => {
