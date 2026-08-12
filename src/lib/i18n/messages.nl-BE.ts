@@ -149,13 +149,13 @@ export const messages = {
 			openChatGpt: "Open ChatGPT in een nieuw tabblad",
 			responseTitle: "Antwoord terugzetten",
 			responseIntro:
-				"Plak het volledige antwoord uit ChatGPT. We controleren het eerst; er wordt niets automatisch gepubliceerd.",
+				"Plak het volledige antwoord uit ChatGPT. We controleren alleen of de opbouw veilig en bruikbaar is; jij controleert feiten en bronnen.",
 			responseLabel: "Antwoord van ChatGPT",
 			responseHint:
 				"Bij een fout blijft het antwoord hier staan zodat je het kunt herstellen.",
 			applyResponse: "Antwoord controleren en invullen",
 			applied:
-				"Voorstel ingevuld. Controleer nu verhaal, bronnen en klasactiviteit.",
+				"Voorstel ingevuld. Controleer nu feiten, bronnen, verhaal en klasactiviteit.",
 			blocked:
 				"Dit voorstel kan alleen in een leeg concept worden ingevuld. Je huidige werk blijft bewaard.",
 			cannotComplete: "ChatGPT kon geen veilig volledig voorstel maken.",
@@ -290,6 +290,40 @@ export const messages = {
 			cancelPublish: "Nog even controleren",
 			retryUpdate: "Website-update opnieuw starten",
 		},
+		aiReview: {
+			title: "Controle van ChatGPT-voorstel",
+			intro:
+				"De opbouw is technisch gecontroleerd. Dat zegt niet dat feiten, citaten of bronlinks juist zijn. Controleer ze zelf.",
+			truthWarning:
+				"Een werkende link bewijst niet dat de bron de bewering ondersteunt.",
+			linkChoice:
+				"Wanneer je op Openen klikt, kies je alleen de bronlink. Daarna bevestig je zelf dat je de pagina opende en inhoudelijk controleerde.",
+			changed:
+				"Je wijzigde het voorstel. Controleer de beweringen opnieuw in de huidige versie.",
+			claims: "Beweringen controleren",
+			claim: "Bewering",
+			originalSources: "ChatGPT koppelde deze bewering oorspronkelijk aan:",
+			currentSources: "Huidige bronnen voor bewering",
+			uncertainty: "Twijfel gemeld door ChatGPT",
+			noUncertainty: "ChatGPT meldde geen twijfel. Dat bewijst niets.",
+			missingEvidence: "Koppel minstens één huidige bron aan deze bewering.",
+			confirmClaim: "met de gekoppelde bronnen gecontroleerd",
+			confirmClaimHint:
+				"Open en bevestig eerst alle bronnen die je aan deze bewering koppelde.",
+			claimRemoved: "Ik heb deze bewering uit de huidige tekst verwijderd",
+			sources: "Bronnen zelf openen en controleren",
+			sourcesIntro:
+				"Open elke bron en controleer zelf uitgever, inhoud, context en steun voor de beweringen.",
+			openSource: "openen in een nieuw tabblad",
+			linkChosen: "Bronlink gekozen. Controleer de pagina nu zelf.",
+			confirmSource: "zelf geopend en gecontroleerd",
+			confirmSourceHint: "Kies eerst de bronlink met Openen.",
+			unrelatedSource:
+				"Deze bron is nog niet aan een huidige bewering gekoppeld.",
+			complete: "Alle bronnen en beweringen zijn inhoudelijk nagekeken.",
+			incomplete: "Publiceren kan pas na de volledige inhoudelijke controle.",
+			sensitivity: "Aandachtspunten voor gevoelige inhoud",
+		},
 		review: {
 			loading: "Voorbeeld laden…",
 			profiles: "Vakrichtingen",
@@ -318,6 +352,8 @@ export const messages = {
 			descriptionBefore: "Je publiceert",
 			descriptionAfter:
 				"We slaan de inhoud op en starten daarna een update van de website.",
+			aiReviewConfirmed:
+				"Je bevestigde dat je de bronnen en belangrijke beweringen zelf inhoudelijk controleerde.",
 		},
 		draft: {
 			found: "Onvoltooid concept gevonden",

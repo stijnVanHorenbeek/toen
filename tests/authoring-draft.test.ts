@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest";
+import {
+	createAiDraftReview,
+	markAiSourceLinkChosen,
+	setAiClaimStatus,
+	setAiSourceConfirmed,
+} from "../src/lib/admin/ai-draft-review";
 import { clearAuthoringBeatSourceReferences } from "../src/lib/admin/authoring-beat";
 import {
 	addExistingTopicToAuthoringDraft,
@@ -269,6 +275,118 @@ describe("authoring draft conversion", () => {
 			draft: { beat: { question: "Bewaarde vraag" } },
 		});
 		expect(isInitialAuthoringDraft(current)).toBe(false);
+	});
+
+	it("restores version 3 AI review provenance without adding it to canonical input", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.title = "Ingevoerd voorstel";
+		draft.sources = [
+			{
+				id: "source-a",
+				title: "Bron A",
+				publisher: "Archief",
+				url: "https://example.org/a",
+			},
+		];
+		let aiReview = createAiDraftReview(
+			draft,
+			[
+				{
+					text: "Een belangrijke bewering.",
+					sourceUrls: ["https://example.org/a"],
+					uncertainty: "De datering blijft betwist.",
+				},
+			],
+			"123e4567-e89b-42d3-a456-426614174000",
+		);
+		aiReview = markAiSourceLinkChosen(aiReview, draft, "source-a");
+		aiReview = setAiSourceConfirmed(aiReview, draft, "source-a", true);
+		aiReview = setAiClaimStatus(aiReview, draft, "claim-1", "confirmed");
+
+		const restored = parseStoredAuthoringDraft(
+			JSON.stringify({ version: 3, step: 4, draft, aiReview }),
+		);
+
+		expect(restored).toMatchObject({
+			step: 3,
+			aiReview: {
+				requestId: "123e4567-e89b-42d3-a456-426614174000",
+				claims: [
+					{
+						uncertainty: "De datering blijft betwist.",
+						status: "confirmed",
+					},
+				],
+				sourceReviews: [
+					{
+						chosenUrl: "https://example.org/a",
+						confirmedUrl: "https://example.org/a",
+					},
+				],
+			},
+		});
+		expect(toEventDraftInput(restored?.draft ?? draft)).not.toHaveProperty(
+			"aiReview",
+		);
+	});
+
+	it("restores AI review after editor adds a seventeenth source and long URL", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.sources = Array.from({ length: 17 }, (_, index) => ({
+			id: `source-${index + 1}`,
+			title: `Bron ${index + 1}`,
+			publisher: "Archief",
+			url:
+				index === 0
+					? "https://example.org/a"
+					: `https://example.org/${index + 1}`,
+		}));
+		let aiReview = createAiDraftReview(
+			draft,
+			[
+				{
+					text: "Bewering",
+					sourceUrls: ["https://example.org/a"],
+					uncertainty: null,
+				},
+			],
+			"123e4567-e89b-42d3-a456-426614174000",
+		);
+		draft.sources[0].url = `https://example.org/${"a".repeat(2_100)}`;
+		aiReview = markAiSourceLinkChosen(aiReview, draft, "source-1");
+
+		const restored = parseStoredAuthoringDraft(
+			JSON.stringify({ version: 3, step: 3, draft, aiReview }),
+		);
+		expect(restored?.aiReview?.sourceReviews).toHaveLength(17);
+		expect(restored?.aiReview?.sourceReviews[0]?.chosenUrl).toBe(
+			draft.sources[0].url,
+		);
+	});
+
+	it("fails closed for duplicate source identities in stored AI review", () => {
+		const draft = createInitialAuthoringDraft();
+		draft.sources = [
+			{ id: "same", title: "A", publisher: "P", url: "https://example.org/a" },
+			{ id: "same", title: "B", publisher: "P", url: "https://example.org/b" },
+		];
+		const aiReview = createAiDraftReview(
+			draft,
+			[
+				{
+					text: "Bewering",
+					sourceUrls: ["https://example.org/a"],
+					uncertainty: null,
+				},
+			],
+			"123e4567-e89b-42d3-a456-426614174000",
+		);
+
+		expect(
+			parseStoredAuthoringDraft(
+				JSON.stringify({ version: 3, step: 1, draft, aiReview }),
+			),
+		).toBeNull();
 	});
 
 	it("falls back to a valid legacy draft when current storage is malformed", () => {

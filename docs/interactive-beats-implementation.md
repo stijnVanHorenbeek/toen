@@ -277,7 +277,19 @@ Importer accepts either one raw JSON object or exactly one outer lower-case `jso
 
 Strict envelopes accept only `complete` or `cannot-complete`, format version 1, and exact active request UUID. Complete responses require canonical event input, Beat V2, supported Markdown, bounded taxonomy/source/claim data, exact claim-to-source URL relationships, and a lossless canonical → authoring → canonical round trip. Non-representable route structures fail rather than changing activity semantics. A valid `cannot-complete` response is shown as a safe terminal explanation, not mislabeled as malformed. Deterministic repair instructions describe bounded Dutch issues without echoing hostile pasted text; clipboard denial receives the same focused manual-copy fallback.
 
-Historical truth remains outside parser guarantees. Source opening, claim warnings, uncertainty review, and publication gating belong to the visual AI/source-review milestone.
+Historical truth remains outside parser guarantees.
+
+### Imported AI review and source confirmation
+
+Source review applies only to drafts created by a successful ChatGPT import. Manual drafts retain the existing review flow. Imported claims and their original URL relationships are mapped to stable local source identities and stored beside—not inside—the canonical `AuthoringDraft`. Local storage version 3 keeps draft, step, AI provenance, current claim relationships, URL-bound source attestations, and claim decisions together. Version 2 and version 1 drafts migrate as manual drafts under this delivery's atomic-rollout assumption: response import was not deployed before the version 3 review gate. That migration must become conservative if release ordering changes. Restored review-stage drafts still return to editing because canonical server previews are never persisted.
+
+Review uses the same safe `EventArticle` and exact `BeatPlayer` as publication/runtime preview. An admin-only layer renders claim text, original and current source relationships, uncertainty, sensitivity notes, and unverified-source status through React text nodes and controlled links. It states that technical shape, URL syntax, link activation, and even a working page do not prove historical support. Link activation records only that the teacher chose the current link; a separate confirmation attests that the teacher opened and checked the page.
+
+Every current source must be chosen and confirmed against its exact current URL. Every active claim must retain at least one current source relationship and be explicitly confirmed after its linked sources, or be explicitly marked as no longer present in the current text. Teachers can correct canonical story, source, and beat fields through the existing stages and can correct current claim/source relationships in review without returning to ChatGPT. Original ChatGPT URLs remain visible as provenance.
+
+Any canonical edit invalidates the server preview, marks the imported proposal as changed, and resets claim decisions. Source URL edits additionally clear that source's link choice and confirmation, including an A → B → A edit. Added sources start unchecked; removed sources lose their current claim relationships; reordering preserves source identity. Review changes persist locally but never enter `toEventDraftInput`, preview payloads, event Markdown, or published content.
+
+Publication controls, confirmation opening, and the publish action all fail closed while imported-AI review is incomplete. Manual drafts bypass only this AI-specific gate and still require canonical server preview plus explicit publication confirmation. This remains an editorial UX attestation, not proof of source reachability, understanding, or historical truth; local storage and direct API access are not compliance-grade evidence.
 
 ## Serial delivery plan
 

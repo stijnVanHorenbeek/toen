@@ -7,6 +7,7 @@ import {
 import { type VakrichtingId, vakrichtingIds } from "../content/taxonomy";
 import { formatEventTag } from "../i18n/locale";
 import { messages } from "../i18n/messages.nl-BE";
+import { type AiDraftReview, aiDraftReviewSchema } from "./ai-draft-review";
 import {
 	type AuthoringBeatDraft,
 	authoringBeatDraftSchema,
@@ -80,6 +81,11 @@ const storedDraftFields = {
 		.min(1),
 };
 
+const currentStoredDraftSchema = z.strictObject({
+	...storedDraftFields,
+	beat: authoringBeatDraftSchema.nullable(),
+});
+
 const storedAuthoringDraftSchema = z.union([
 	z.strictObject({
 		version: z.literal(1),
@@ -89,16 +95,40 @@ const storedAuthoringDraftSchema = z.union([
 	z.strictObject({
 		version: z.literal(2),
 		step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-		draft: z.strictObject({
-			...storedDraftFields,
-			beat: authoringBeatDraftSchema.nullable(),
-		}),
+		draft: currentStoredDraftSchema,
 	}),
+	z
+		.strictObject({
+			version: z.literal(3),
+			step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+			draft: currentStoredDraftSchema,
+			aiReview: aiDraftReviewSchema.nullable(),
+		})
+		.superRefine((session, context) => {
+			if (!session.aiReview) return;
+			const sourceIds = session.draft.sources.map(({ id }) => id);
+			if (
+				sourceIds.some((id) => !id || id.length > 128) ||
+				new Set(sourceIds).size !== sourceIds.length
+			) {
+				context.addIssue({
+					code: "custom",
+					path: ["draft", "sources"],
+					message: "Bron-ID's moeten ingevuld en uniek zijn.",
+				});
+			}
+		}),
 ]);
+
+export type StoredAuthoringDraft = {
+	draft: AuthoringDraft;
+	step: AuthoringStep;
+	aiReview: AiDraftReview | null;
+};
 
 export function parseStoredAuthoringDraft(
 	value: string,
-): { draft: AuthoringDraft; step: AuthoringStep } | null {
+): StoredAuthoringDraft | null {
 	try {
 		const result = storedAuthoringDraftSchema.safeParse(JSON.parse(value));
 		if (!result.success) return null;
@@ -106,11 +136,13 @@ export function parseStoredAuthoringDraft(
 			return {
 				draft: { ...result.data.draft, beat: null },
 				step: result.data.step === 3 ? 2 : result.data.step,
+				aiReview: null,
 			};
 		}
 		return {
 			draft: result.data.draft,
 			step: result.data.step === 4 ? 3 : result.data.step,
+			aiReview: result.data.version === 3 ? result.data.aiReview : null,
 		};
 	} catch {
 		return null;
@@ -119,9 +151,10 @@ export function parseStoredAuthoringDraft(
 
 export function selectStoredAuthoringDraft(
 	currentValue: string | null,
-	legacyValue: string | null,
-): { draft: AuthoringDraft; step: AuthoringStep } | null {
-	for (const value of [currentValue, legacyValue]) {
+	previousValue: string | null,
+	legacyValue: string | null = null,
+): StoredAuthoringDraft | null {
+	for (const value of [currentValue, previousValue, legacyValue]) {
 		if (!value) continue;
 		const parsed = parseStoredAuthoringDraft(value);
 		if (parsed) return parsed;

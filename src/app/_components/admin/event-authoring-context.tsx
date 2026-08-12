@@ -8,6 +8,19 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	type AiClaimStatus,
+	type AiDraftReview,
+	createAiDraftReview,
+	getAiDraftReviewStatus,
+	markAiDraftEdited,
+	markAiSourceLinkChosen,
+	removeAiReviewSource,
+	resetAiSourceAttestation,
+	setAiClaimStatus,
+	setAiSourceConfirmed,
+	toggleAiClaimSource,
+} from "@/lib/admin/ai-draft-review";
 import { clearAuthoringBeatSourceReferences } from "@/lib/admin/authoring-beat";
 import type {
 	AuthoringDraft,
@@ -25,11 +38,13 @@ import {
 	toEventDraftInput,
 	validateAuthoringStory,
 } from "@/lib/admin/authoring-draft";
+import type { ChatGptClaim } from "@/lib/admin/chatgpt-response";
 import type { EventDraftPreview } from "@/lib/content/event-draft";
 import type { VakrichtingId } from "@/lib/content/taxonomy";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 
-const storageKey = "toen:event-draft:v2";
+const storageKey = "toen:event-draft:v3";
+const previousStorageKey = "toen:event-draft:v2";
 const legacyStorageKey = "toen:event-draft:v1";
 
 type Step = AuthoringStep;
@@ -59,7 +74,13 @@ type AuthoringContextValue = {
 		isPreviewing: boolean;
 		isPublishing: boolean;
 		confirmationOpen: boolean;
-		restoredDraft: { draft: AuthoringDraft; step: Step } | null;
+		aiReview: AiDraftReview | null;
+		aiReviewComplete: boolean;
+		restoredDraft: {
+			draft: AuthoringDraft;
+			step: Step;
+			aiReview: AiDraftReview | null;
+		} | null;
 		saveStatus: SaveStatus;
 	};
 	actions: {
@@ -85,7 +106,15 @@ type AuthoringContextValue = {
 		enableBeat: () => void;
 		disableBeat: () => void;
 		updateBeat: (beat: NonNullable<AuthoringDraft["beat"]>) => void;
-		applyImportedDraft: (draft: AuthoringDraft) => boolean;
+		applyImportedDraft: (input: {
+			draft: AuthoringDraft;
+			claims: ChatGptClaim[];
+			requestId: string;
+		}) => boolean;
+		markAiSourceChosen: (sourceId: string) => void;
+		setAiSourceConfirmed: (sourceId: string, confirmed: boolean) => void;
+		toggleAiClaimSource: (claimId: string, sourceId: string) => void;
+		setAiClaimStatus: (claimId: string, status: AiClaimStatus) => void;
 		openConfirmation: () => void;
 		closeConfirmation: () => void;
 		publish: () => Promise<void>;
@@ -121,9 +150,11 @@ export function EventAuthoringProvider({
 	const [isPreviewing, setIsPreviewing] = useState(false);
 	const [isPublishing, setIsPublishing] = useState(false);
 	const [confirmationOpen, setConfirmationOpen] = useState(false);
+	const [aiReview, setAiReview] = useState<AiDraftReview | null>(null);
 	const [restoredDraft, setRestoredDraft] = useState<{
 		draft: AuthoringDraft;
 		step: Step;
+		aiReview: AiDraftReview | null;
 	} | null>(null);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 	const [storageReady, setStorageReady] = useState(false);
@@ -134,12 +165,20 @@ export function EventAuthoringProvider({
 	useEffect(() => {
 		try {
 			const currentValue = localStorage.getItem(storageKey);
+			const previousValue = localStorage.getItem(previousStorageKey);
 			const legacyValue = localStorage.getItem(legacyStorageKey);
-			const parsed = selectStoredAuthoringDraft(currentValue, legacyValue);
+			const parsed = selectStoredAuthoringDraft(
+				currentValue,
+				previousValue,
+				legacyValue,
+			);
 			if (parsed) {
 				setRestoredDraft(parsed);
 			} else {
 				if (currentValue !== null) localStorage.removeItem(storageKey);
+				if (previousValue !== null) {
+					localStorage.removeItem(previousStorageKey);
+				}
 				if (legacyValue !== null) localStorage.removeItem(legacyStorageKey);
 			}
 		} catch {
@@ -150,7 +189,7 @@ export function EventAuthoringProvider({
 
 	useEffect(() => {
 		if (!storageReady || restoredDraft) return;
-		if (isInitialAuthoringDraft(draft)) {
+		if (isInitialAuthoringDraft(draft) && aiReview === null) {
 			clearStoredDraft();
 			setSaveStatus("idle");
 			return;
@@ -161,9 +200,10 @@ export function EventAuthoringProvider({
 			try {
 				localStorage.setItem(
 					storageKey,
-					JSON.stringify({ version: 2, draft, step }),
+					JSON.stringify({ version: 3, draft, step, aiReview }),
 				);
 				try {
+					localStorage.removeItem(previousStorageKey);
 					localStorage.removeItem(legacyStorageKey);
 				} catch {
 					// Current version is saved; stale legacy cleanup can fail independently.
@@ -179,7 +219,7 @@ export function EventAuthoringProvider({
 				saveTimeout.current = null;
 			}
 		};
-	}, [draft, restoredDraft, step, storageReady]);
+	}, [aiReview, draft, restoredDraft, step, storageReady]);
 
 	useEffect(() => {
 		if (saveStatus !== "saving" && saveStatus !== "failed") return;
@@ -207,6 +247,7 @@ export function EventAuthoringProvider({
 		value: AuthoringDraft[Key],
 	) {
 		invalidate();
+		setAiReview((current) => (current ? markAiDraftEdited(current) : null));
 		setDraft((current) => ({ ...current, [field]: value }));
 	}
 
@@ -261,6 +302,7 @@ export function EventAuthoringProvider({
 		const nextDraft = addTopicToAuthoringDraft(draft, label);
 		if (nextDraft === draft) return;
 		invalidate();
+		setAiReview((current) => (current ? markAiDraftEdited(current) : null));
 		setDraft(nextDraft);
 	}
 
@@ -268,11 +310,13 @@ export function EventAuthoringProvider({
 		const nextDraft = addExistingTopicToAuthoringDraft(draft, topic, label);
 		if (nextDraft === draft) return;
 		invalidate();
+		setAiReview((current) => (current ? markAiDraftEdited(current) : null));
 		setDraft(nextDraft);
 	}
 
 	function removeTopic(topic: string) {
 		invalidate();
+		setAiReview((current) => (current ? markAiDraftEdited(current) : null));
 		setDraft((current) => {
 			const { [topic]: _removed, ...topicLabels } = current.topicLabels;
 			return {
@@ -295,18 +339,30 @@ export function EventAuthoringProvider({
 		field: keyof AuthoringSource,
 		value: string,
 	) {
-		update(
-			"sources",
-			draft.sources.map((source, sourceIndex) =>
+		const sourceId = draft.sources[index]?.id ?? `source-${index + 1}`;
+		invalidate();
+		setAiReview((current) => {
+			if (!current) return null;
+			const edited = markAiDraftEdited(current);
+			return field === "url"
+				? resetAiSourceAttestation(edited, sourceId)
+				: edited;
+		});
+		setDraft((current) => ({
+			...current,
+			sources: current.sources.map((source, sourceIndex) =>
 				sourceIndex === index ? { ...source, [field]: value } : source,
 			),
-		);
+		}));
 	}
 
 	function removeSource(index: number) {
 		if (draft.sources.length === 1) return;
 		const sourceId = draft.sources[index]?.id ?? `source-${index + 1}`;
 		invalidate();
+		setAiReview((current) =>
+			current ? removeAiReviewSource(current, sourceId) : null,
+		);
 		setDraft((current) => ({
 			...current,
 			sources: current.sources.filter(
@@ -343,7 +399,15 @@ export function EventAuthoringProvider({
 		update("beat", beat);
 	}
 
-	function applyImportedDraft(importedDraft: AuthoringDraft): boolean {
+	function applyImportedDraft({
+		draft: importedDraft,
+		claims,
+		requestId,
+	}: {
+		draft: AuthoringDraft;
+		claims: ChatGptClaim[];
+		requestId: string;
+	}): boolean {
 		if (
 			!storageReady ||
 			!isInitialAuthoringDraft(draft) ||
@@ -352,15 +416,49 @@ export function EventAuthoringProvider({
 		) {
 			return false;
 		}
+		const normalizedDraft = withSourceIds(importedDraft);
 		invalidate();
 		setConfirmationOpen(false);
-		setDraft(withSourceIds(importedDraft));
+		setAiReview(createAiDraftReview(normalizedDraft, claims, requestId));
+		setDraft(normalizedDraft);
 		setStep(1);
 		return true;
 	}
 
+	function markAiSourceChosen(sourceId: string) {
+		setAiReview((current) =>
+			current ? markAiSourceLinkChosen(current, draft, sourceId) : null,
+		);
+	}
+
+	function confirmAiSource(sourceId: string, confirmed: boolean) {
+		setAiReview((current) =>
+			current
+				? setAiSourceConfirmed(current, draft, sourceId, confirmed)
+				: null,
+		);
+	}
+
+	function changeAiClaimSource(claimId: string, sourceId: string) {
+		setAiReview((current) =>
+			current ? toggleAiClaimSource(current, draft, claimId, sourceId) : null,
+		);
+	}
+
+	function changeAiClaimStatus(claimId: string, status: AiClaimStatus) {
+		setAiReview((current) =>
+			current ? setAiClaimStatus(current, draft, claimId, status) : null,
+		);
+	}
+
 	async function publish() {
-		if (!validatedInput || publishInFlight.current) return;
+		if (
+			!validatedInput ||
+			publishInFlight.current ||
+			(aiReview && !getAiDraftReviewStatus(aiReview, draft).complete)
+		) {
+			return;
+		}
 		publishInFlight.current = true;
 		const generation = previewGeneration.current;
 		setConfirmationOpen(false);
@@ -399,6 +497,7 @@ export function EventAuthoringProvider({
 	function restoreDraft() {
 		if (!restoredDraft) return;
 		setDraft(withSourceIds(restoredDraft.draft));
+		setAiReview(restoredDraft.aiReview);
 		setStep(restoredDraft.step);
 		setRestoredDraft(null);
 		setSaveStatus("saved");
@@ -409,6 +508,9 @@ export function EventAuthoringProvider({
 		setRestoredDraft(null);
 		setSaveStatus("idle");
 	}
+
+	const aiReviewComplete =
+		aiReview === null || getAiDraftReviewStatus(aiReview, draft).complete;
 
 	const value: AuthoringContextValue = {
 		state: {
@@ -422,6 +524,8 @@ export function EventAuthoringProvider({
 			isPreviewing,
 			isPublishing,
 			confirmationOpen,
+			aiReview,
+			aiReviewComplete,
 			restoredDraft,
 			saveStatus,
 		},
@@ -442,7 +546,13 @@ export function EventAuthoringProvider({
 			disableBeat,
 			updateBeat,
 			applyImportedDraft,
-			openConfirmation: () => setConfirmationOpen(true),
+			markAiSourceChosen,
+			setAiSourceConfirmed: confirmAiSource,
+			toggleAiClaimSource: changeAiClaimSource,
+			setAiClaimStatus: changeAiClaimStatus,
+			openConfirmation: () => {
+				if (aiReviewComplete) setConfirmationOpen(true);
+			},
 			closeConfirmation: () => setConfirmationOpen(false),
 			publish,
 			restoreDraft,
@@ -568,10 +678,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function clearStoredDraft(): void {
 	try {
 		localStorage.removeItem(storageKey);
+		localStorage.removeItem(previousStorageKey);
 		localStorage.removeItem(legacyStorageKey);
 	} catch {
 		try {
 			localStorage.setItem(storageKey, "discarded");
+			localStorage.setItem(previousStorageKey, "discarded");
 			localStorage.setItem(legacyStorageKey, "discarded");
 		} catch {
 			// Browser storage can reject both cleanup operations.
@@ -580,12 +692,19 @@ function clearStoredDraft(): void {
 }
 
 function withSourceIds(draft: AuthoringDraft): AuthoringDraft {
+	const used = new Set<string>();
 	return {
 		...createInitialAuthoringDraft(),
 		...draft,
-		sources: draft.sources.map((source, index) => ({
-			...source,
-			id: source.id ?? `source-${index + 1}`,
-		})),
+		sources: draft.sources.map((source, index) => {
+			let id = source.id?.trim() || `source-${index + 1}`;
+			let suffix = 2;
+			while (used.has(id)) {
+				id = `source-${index + 1}-${suffix}`;
+				suffix += 1;
+			}
+			used.add(id);
+			return { ...source, id };
+		}),
 	};
 }

@@ -182,6 +182,24 @@ When(
 );
 
 When(
+	"I paste a complete ChatGPT answer titled {string} with a long unbroken second source title",
+	async ({ page }, title: string) => {
+		const response = await completeChatGptAnswer(page);
+		response.draft.title = title;
+		const sources = response.draft.sources as Array<Record<string, unknown>>;
+		sources[1].title = "bron".repeat(60);
+		sources[1].publisher = "uitgever".repeat(20);
+		const claims = (
+			response as unknown as { claims: Array<Record<string, unknown>> }
+		).claims;
+		claims[0].uncertainty = "onzekerheid".repeat(45);
+		await page
+			.getByLabel("Antwoord van ChatGPT")
+			.fill(JSON.stringify(response));
+	},
+);
+
+When(
 	"I paste the malformed ChatGPT answer {string}",
 	async ({ page }, value: string) => {
 		await page.getByLabel("Antwoord van ChatGPT").fill(value);
@@ -499,6 +517,72 @@ When("I request the reader preview", async ({ page }) => {
 	await page.getByRole("button", { name: "Voorbeeld bekijken" }).click();
 });
 
+When("I continue the imported AI proposal to review", async ({ page }) => {
+	if (
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.isVisible()
+	) {
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.click();
+	}
+	await continueToActivity(page);
+	await page.getByRole("button", { name: "Voorbeeld bekijken" }).click();
+});
+
+When(
+	"I remove every current source relationship from the first AI claim",
+	async ({ page }) => {
+		const relationships = page.getByRole("group", {
+			name: "Huidige bronnen voor bewering 1",
+		});
+		await expect(relationships).toBeVisible();
+		for (const checkbox of await relationships.getByRole("checkbox").all()) {
+			if (await checkbox.isChecked()) await checkbox.uncheck();
+		}
+	},
+);
+
+When("I choose and confirm every imported source", async ({ page }) => {
+	for (const source of [
+		"Werkelijke eerste brontitel",
+		"Werkelijke tweede brontitel",
+	]) {
+		const link = page.getByRole("link", {
+			name: `${source} openen in een nieuw tabblad`,
+		});
+		await link.evaluate((element) => {
+			element.addEventListener("click", (event) => event.preventDefault(), {
+				once: true,
+			});
+			(element as HTMLAnchorElement).click();
+		});
+		await page
+			.getByRole("checkbox", {
+				name: `Ik heb ${source} zelf geopend en gecontroleerd`,
+			})
+			.check();
+	}
+});
+
+When("I confirm every current AI claim", async ({ page }) => {
+	for (const checkbox of await page
+		.getByRole("checkbox", {
+			name: /Ik heb bewering \d+ met de gekoppelde bronnen gecontroleerd/,
+		})
+		.all()) {
+		await checkbox.check();
+	}
+});
+
+When("I edit the imported story after AI review", async ({ page }) => {
+	await page.getByRole("button", { name: "Verhaal wijzigen" }).click();
+	await page
+		.getByLabel("Korte samenvatting")
+		.fill("Deze historisch belangrijke bewering werd aangepast.");
+});
+
 When("I request the reader preview without waiting", async ({ page }) => {
 	await continueToActivity(page);
 	pendingPreviewResponse = page.waitForResponse((response) =>
@@ -569,9 +653,15 @@ When("I clear the title", async ({ page }) => {
 	await page.getByLabel("Titel").fill("");
 	await expect
 		.poll(() =>
-			page.evaluate(() => localStorage.getItem("toen:event-draft:v2")),
+			page.evaluate(() =>
+				[
+					"toen:event-draft:v1",
+					"toen:event-draft:v2",
+					"toen:event-draft:v3",
+				].every((key) => localStorage.getItem(key) === null),
+			),
 		)
-		.toBeNull();
+		.toBe(true);
 });
 
 When("I wait until the concept is saved", async ({ page }) => {
@@ -858,6 +948,193 @@ Then("the imported answer remains visible", async ({ page }) => {
 	);
 });
 
+Then(
+	"I see the imported article and exact classroom activity",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("article").getByRole("heading", {
+				name: "AI-voorstel voor controle",
+			}),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Klasvoorbeeld openen" }),
+		).toBeVisible();
+	},
+);
+
+Then(
+	"the exact AI classroom preview remains scrollable on a narrow teacher screen",
+	async ({ page }) => {
+		await page.setViewportSize({ width: 320, height: 568 });
+		await page.getByRole("button", { name: "Klasvoorbeeld openen" }).click();
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		await dialog.getByText("12 minuten", { exact: true }).click();
+		await dialog.getByRole("button", { name: "Start", exact: true }).click();
+		const stageRegion = dialog.locator("[data-classroom-stage-region]");
+		const layout = await stageRegion.evaluate((element) => ({
+			overflowY: getComputedStyle(element).overflowY,
+			clientHeight: element.clientHeight,
+			scrollHeight: element.scrollHeight,
+			clientWidth: element.clientWidth,
+			scrollWidth: element.scrollWidth,
+		}));
+		expect(layout.overflowY).toBe("auto");
+		expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
+		expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+		await dialog.getByRole("button", { name: "Terug naar controle" }).click();
+	},
+);
+
+Then(
+	"I see AI claims, source relationships, and editorial warnings",
+	async ({ page }) => {
+		const review = page.getByRole("region", {
+			name: "Controle van ChatGPT-voorstel",
+		});
+		await expect(
+			review.getByText("Eén inhoudelijk belangrijke historische bewering."),
+		).toBeVisible();
+		await expect(
+			review.getByRole("heading", {
+				name: "Werkelijke eerste brontitel",
+				exact: true,
+			}),
+		).toBeVisible();
+		await expect(
+			review.getByText("Twijfel gemeld door ChatGPT:", { exact: false }),
+		).toBeVisible();
+		await expect(
+			review.getByText(
+				"Een werkende link bewijst niet dat de bron de bewering ondersteunt.",
+			),
+		).toBeVisible();
+		await expect(
+			review.getByText(/koppelen als huidige bron bij bewering 1/).first(),
+		).toBeVisible();
+		await expect(review).not.toContainText("ondersteunt bewering 1");
+		await expect(
+			review.getByText("Twijfel gemeld door ChatGPT:", { exact: false }),
+		).toBeVisible();
+		await expect(review).toContainText("onzekerheid".repeat(45));
+	},
+);
+
+Then(
+	"source link choice is not described as proof or reachability",
+	async ({ page }) => {
+		const review = page.getByRole("region", {
+			name: "Controle van ChatGPT-voorstel",
+		});
+		await expect(review).not.toContainText("bereikbaar");
+		await expect(review).not.toContainText("bewezen");
+		await expect(review).toContainText("kies je alleen de bronlink");
+	},
+);
+
+Then(
+	"AI source confirmations are unchecked before link choice",
+	async ({ page }) => {
+		for (const checkbox of await page
+			.getByRole("checkbox", { name: /zelf geopend en gecontroleerd/ })
+			.all()) {
+			await expect(checkbox).toBeDisabled();
+			await expect(checkbox).not.toBeChecked();
+			await expect(checkbox).toHaveAttribute(
+				"aria-describedby",
+				/-confirm-hint$/,
+			);
+		}
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Ik heb bewering 1 met de gekoppelde bronnen gecontroleerd",
+			}),
+		).toHaveAttribute("aria-describedby", "claim-1-confirm-hint");
+	},
+);
+
+Then(
+	"the AI draft review reflows without horizontal page scrolling",
+	async ({ page }) => {
+		const layout = await page.evaluate(() => ({
+			overflow: document.documentElement.scrollWidth - window.innerWidth,
+			offenders: [...document.querySelectorAll<HTMLElement>("body *")]
+				.filter(
+					(element) =>
+						element.getBoundingClientRect().right > window.innerWidth + 1,
+				)
+				.slice(0, 5)
+				.map((element) => ({
+					tag: element.tagName,
+					className: element.className,
+					text: element.textContent?.slice(0, 80),
+					right: element.getBoundingClientRect().right,
+				})),
+		}));
+		expect(
+			layout.overflow,
+			JSON.stringify(layout.offenders),
+		).toBeLessThanOrEqual(1);
+	},
+);
+
+Then(
+	"publication is unavailable until the AI review is complete",
+	async ({ page }) => {
+		const publish = page.getByRole("button", { name: "Publiceren" });
+		await expect(publish).toBeDisabled();
+		await expect(publish).toHaveAttribute(
+			"aria-describedby",
+			"ai-review-status",
+		);
+		await expect(
+			page.getByText(
+				"Publiceren kan pas na de volledige inhoudelijke controle.",
+			),
+		).toBeVisible();
+	},
+);
+
+Then("I see the restored AI claim", async ({ page }) => {
+	await expect(
+		page
+			.getByRole("region", { name: "Controle van ChatGPT-voorstel" })
+			.getByText("Eén inhoudelijk belangrijke historische bewering."),
+	).toBeVisible();
+});
+
+Then("the first AI claim reports missing evidence", async ({ page }) => {
+	await expect(
+		page.getByRole("alert").filter({
+			hasText: "Koppel minstens één huidige bron aan deze bewering.",
+		}),
+	).toBeVisible();
+});
+
+Then("publication is available after AI review", async ({ page }) => {
+	await expect(page.getByRole("button", { name: "Publiceren" })).toBeEnabled();
+	await expect(
+		page.getByText("Alle bronnen en beweringen zijn inhoudelijk nagekeken."),
+	).toBeVisible();
+});
+
+Then("the changed AI proposal warning is visible", async ({ page }) => {
+	await expect(
+		page.getByText(
+			"Je wijzigde het voorstel. Controleer de beweringen opnieuw in de huidige versie.",
+		),
+	).toBeVisible();
+});
+
+Then("every AI claim needs review again", async ({ page }) => {
+	for (const checkbox of await page
+		.getByRole("checkbox", {
+			name: /Ik heb bewering \d+ met de gekoppelde bronnen gecontroleerd/,
+		})
+		.all()) {
+		await expect(checkbox).not.toBeChecked();
+	}
+});
+
 Then("the imported sources and activity are editable", async ({ page }) => {
 	await page
 		.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
@@ -1030,6 +1307,30 @@ Then("I see that the preview could not be made", async ({ page }) => {
 	).toBeVisible();
 });
 
+Then("no publication action is available", async ({ page }) => {
+	await expect(page.getByRole("button", { name: "Publiceren" })).toHaveCount(0);
+});
+
+Then("the AI review provenance remains stored", async ({ page }) => {
+	await expect
+		.poll(async () =>
+			page.evaluate(() => {
+				const value = localStorage.getItem("toen:event-draft:v3");
+				if (!value) return false;
+				const stored = JSON.parse(value) as {
+					version?: number;
+					aiReview?: { claims?: unknown[] } | null;
+				};
+				return (
+					stored.version === 3 &&
+					Boolean(stored.aiReview) &&
+					stored.aiReview?.claims?.length === 1
+				);
+			}),
+		)
+		.toBe(true);
+});
+
 Then("the stale draft does not reach review", async ({ page }) => {
 	if (!pendingPreviewResponse)
 		throw new Error("No preview response is pending");
@@ -1041,6 +1342,26 @@ Then("the stale draft does not reach review", async ({ page }) => {
 	await expect(
 		page.getByRole("button", { name: "Ga verder naar klasactiviteit" }),
 	).toBeEnabled();
+});
+
+Then("all local draft versions are cleared", async ({ page }) => {
+	await expect
+		.poll(() =>
+			page.evaluate(() =>
+				[
+					"toen:event-draft:v1",
+					"toen:event-draft:v2",
+					"toen:event-draft:v3",
+				].every((key) => localStorage.getItem(key) === null),
+			),
+		)
+		.toBe(true);
+});
+
+Then("no AI review is shown for the manual draft", async ({ page }) => {
+	await expect(
+		page.getByRole("region", { name: "Controle van ChatGPT-voorstel" }),
+	).toHaveCount(0);
 });
 
 Then("the created commit is shown", async ({ page }) => {
