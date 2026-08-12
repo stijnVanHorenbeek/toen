@@ -269,6 +269,16 @@ When reliable source URLs cannot be checked, response uses `status: "cannot-comp
 
 Clipboard success keeps protocol text out of normal teacher flow. Clipboard rejection reveals same instructions in a focused read-only field for manual copying. UI discloses that pasted content goes to OpenAI, forbids student personal data and secrets, opens plain `https://chatgpt.com/` in a new tab, and never opens it automatically.
 
+### ChatGPT response import contract
+
+First release applies a valid response only to a completely empty authoring draft with no pending stored-draft recovery. It never merges fields, fills blanks, selects sections, or overwrites existing teacher work. Pasted text remains in component memory after validation errors and is never written to browser storage. Applying a valid import atomically invalidates any preview/publication state, consumes the active request, keeps the teacher on the story stage, and still requires canonical server preview plus explicit publication confirmation.
+
+Importer accepts either one raw JSON object or exactly one outer lower-case `json` code fence. It uses no `eval`, JSON5, YAML, brace search, or prose extraction. Before one final `JSON.parse`, a JSON grammar preflight enforces 65,536 UTF-8 bytes, depth 32, 2,048 values, 1,024 object members, 128 members per object, 64 items per array, 128-character keys, 20,000-character strings, 49,152 decoded string bytes, and 32-character numbers. Preflight rejects duplicate decoded keys, unsafe markup, malformed Unicode, and prototype/credential/path keys.
+
+Strict envelopes accept only `complete` or `cannot-complete`, format version 1, and exact active request UUID. Complete responses require canonical event input, Beat V2, supported Markdown, bounded taxonomy/source/claim data, exact claim-to-source URL relationships, and a lossless canonical → authoring → canonical round trip. Non-representable route structures fail rather than changing activity semantics. A valid `cannot-complete` response is shown as a safe terminal explanation, not mislabeled as malformed. Deterministic repair instructions describe bounded Dutch issues without echoing hostile pasted text; clipboard denial receives the same focused manual-copy fallback.
+
+Historical truth remains outside parser guarantees. Source opening, claim warnings, uncertainty review, and publication gating belong to the visual AI/source-review milestone.
+
 ## Serial delivery plan
 
 ### Milestone 1 — domain parity

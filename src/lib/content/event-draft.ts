@@ -12,15 +12,24 @@ import {
 	serializeEventDocument,
 } from "./event-document";
 
+const eventDraftFields = {
+	...eventFrontmatterSchema.shape,
+	body: z
+		.string()
+		.trim()
+		.min(1)
+		.refine(isSupportedEditorMarkdown, messages.errors.bodyFormat),
+};
+
+export const eventDraftInputSchema = z
+	.strictObject(eventDraftFields)
+	.superRefine((value, context) => {
+		validateSelectedTopicLabels(value, context);
+		validateInteractiveBeatIdentityAndSources(value, context);
+	});
+
 const eventDraftSchema = z
-	.object({
-		...eventFrontmatterSchema.shape,
-		body: z
-			.string()
-			.trim()
-			.min(1)
-			.refine(isSupportedEditorMarkdown, messages.errors.bodyFormat),
-	})
+	.object(eventDraftFields)
 	.superRefine((value, context) => {
 		validateSelectedTopicLabels(value, context);
 		validateInteractiveBeatIdentityAndSources(value, context);

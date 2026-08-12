@@ -5,7 +5,8 @@ Feature: Gebeurtenissen schrijven
     And I open the event admin
     When I choose help from ChatGPT
     Then I see that copied content goes to OpenAI and must not contain student data
-    When I prepare ChatGPT help for "De val van Constantinopel"
+    When I type the story title "Bestaand privéconcept"
+    And I prepare ChatGPT help for "De val van Constantinopel"
     And I make the ChatGPT instructions
     Then the copy action has focus
     When I copy the ChatGPT instructions
@@ -38,6 +39,101 @@ Feature: Gebeurtenissen schrijven
     And I make the ChatGPT instructions
     And I change the ChatGPT topic to "De maanlanding"
     Then the ChatGPT instructions must be made again
+
+  Scenario: Een geldig ChatGPT-antwoord vult alleen een leeg concept
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And active ChatGPT request storage disappears
+    And I paste a complete ChatGPT answer titled "Ingevoerd geschiedenisverhaal"
+    And I check and use the ChatGPT answer
+    Then the imported story title is "Ingevoerd geschiedenisverhaal"
+    And the imported answer remains visible
+    And the imported sources and activity are editable
+    And publication still requires a server preview
+    And the active ChatGPT request was consumed
+
+  Scenario: Een ongeldig ChatGPT-antwoord bewaart tekst en maakt herstelinstructies
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I type the story title "Mijn eigen werk"
+    And I paste the malformed ChatGPT answer "vooraf <script>kapot</script>"
+    And I check and use the ChatGPT answer
+    Then my story title remains "Mijn eigen werk"
+    And the pasted ChatGPT answer remains visible
+    And a plain Dutch import error has focus
+    When I copy the ChatGPT repair instructions
+    Then the clipboard contains repair instructions without the hostile paste
+    When I remake the ChatGPT instructions
+    Then the old import error and repair action are cleared
+    And the pasted ChatGPT answer remains visible
+
+  Scenario: Herstelinstructies blijven kopieerbaar zonder klembordtoegang
+    Given the browser clipboard rejects copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I paste the malformed ChatGPT answer "kapot antwoord"
+    And I check and use the ChatGPT answer
+    And I copy the ChatGPT repair instructions
+    Then selectable manual repair instructions are focused
+    And the manual repair instructions do not repeat "kapot antwoord"
+
+  Scenario: Een geldig ChatGPT-antwoord overschrijft bestaand werk niet
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I type the story title "Mijn bewaarde verhaal"
+    And I paste a complete ChatGPT answer titled "Mag niet overschrijven"
+    And I check and use the ChatGPT answer
+    Then my story title remains "Mijn bewaarde verhaal"
+    And the pasted ChatGPT answer remains visible
+    And I see that ChatGPT import needs an empty draft
+
+  Scenario: Een bewaard concept wordt niet door ChatGPT overschreven
+    Given the browser clipboard accepts copied instructions
+    And a local event draft exists
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "Mag bewaard werk niet overschrijven"
+    And I check and use the ChatGPT answer
+    Then I see that ChatGPT import needs an empty draft
+    And the saved draft can still be restored
+
+  Scenario: Een oud of onvolledig ChatGPT-antwoord faalt veilig
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a stale ChatGPT answer
+    And I check and use the ChatGPT answer
+    Then I see that the ChatGPT answer belongs to older instructions
+
+  Scenario: ChatGPT kan veilig melden dat bronnen ontbreken
+    Given I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "Onvoldoende gedocumenteerd onderwerp"
+    And I make the ChatGPT instructions
+    And I paste a cannot-complete ChatGPT answer with a long unbroken reason
+    And I check and use the ChatGPT answer
+    Then I see why ChatGPT could not make a safe proposal
+    And the import feedback reflows on a narrow screen
+    And the story remains empty
 
   Scenario: Een gebeurtenis controleren zonder technische velden
     Given I open the event admin
