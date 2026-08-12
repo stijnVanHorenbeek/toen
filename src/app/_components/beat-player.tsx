@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { type Dispatch, useEffect, useReducer, useRef } from "react";
+import {
+	type Dispatch,
+	useCallback,
+	useEffect,
+	useReducer,
+	useRef,
+} from "react";
 import { getBeatKeyboardAction } from "@/lib/beats/keyboard";
 import {
 	type BeatDurationMinutes,
@@ -21,6 +27,7 @@ type BeatPlayerEvent = Pick<Event, "slug" | "title" | "sources"> & {
 
 type BeatPlayerProps = {
 	event: BeatPlayerEvent;
+	onEscape?: () => void;
 };
 
 type BeatStagePanelProps = {
@@ -208,12 +215,14 @@ type BeatClassroomScreenProps = {
 	event: BeatPlayerEvent;
 	state: BeatRuntimeState;
 	dispatch: Dispatch<BeatRuntimeAction>;
+	onStop?: () => void;
 };
 
 export function BeatClassroomScreen({
 	event,
 	state,
 	dispatch,
+	onStop,
 }: BeatClassroomScreenProps) {
 	if (state.status === "preparation") {
 		return (
@@ -243,7 +252,7 @@ export function BeatClassroomScreen({
 							{durations.map((durationMinutes) => (
 								<label
 									key={durationMinutes}
-									className="flex min-h-14 cursor-pointer items-center justify-center rounded-md border border-ink/30 bg-white px-4 font-bold has-checked:border-accent has-checked:bg-accent has-checked:text-white"
+									className="flex min-h-14 cursor-pointer items-center justify-center rounded-md border border-ink/30 bg-white px-4 font-bold outline-offset-2 has-checked:border-accent has-checked:bg-accent has-checked:text-white focus-within:outline-2 focus-within:outline-accent"
 								>
 									<input
 										type="radio"
@@ -341,7 +350,7 @@ export function BeatClassroomScreen({
 	return (
 		<main className="classroom-runtime flex h-dvh flex-col overflow-hidden">
 			<header className="flex shrink-0 items-center justify-between border-ink/15 border-b px-6 py-3">
-				<p className="truncate font-bold">{event.title}</p>
+				<h1 className="truncate font-bold">{event.title}</h1>
 				<p className="shrink-0 text-ink/60 text-sm">
 					Stap {state.currentStageIndex + 1} van {state.routeStages.length}
 				</p>
@@ -378,7 +387,16 @@ export function BeatClassroomScreen({
 						{messages.beat.controls.skip}
 					</button>
 				) : null}
-				<div className="hidden flex-1 sm:block" />
+				<p
+					data-teacher-cue
+					className="order-first w-full min-w-0 text-pretty text-ink/70 text-xs sm:order-none sm:flex-1 sm:text-center"
+				>
+					<strong className="text-ink">{messages.beat.teacherCue}:</strong>{" "}
+					{stage.teacherPrompt}
+				</p>
+				<button type="button" className="text-button px-3" onClick={onStop}>
+					{messages.beat.controls.stop}
+				</button>
 				<button
 					type="button"
 					className="text-button px-3"
@@ -415,7 +433,7 @@ export function BeatClassroomScreen({
 	);
 }
 
-export function BeatPlayer({ event }: BeatPlayerProps) {
+export function BeatPlayer({ event, onEscape }: BeatPlayerProps) {
 	const [state, dispatch] = useReducer(
 		reduceBeatRuntime,
 		undefined,
@@ -423,6 +441,14 @@ export function BeatPlayer({ event }: BeatPlayerProps) {
 	);
 	const activeStageIndex =
 		state.status === "running" ? state.currentStageIndex : null;
+	const canFinish =
+		state.status === "running" &&
+		state.routeStages[state.currentStageIndex]?.phase === "lesson-bridge";
+	const requestStop = useCallback(() => {
+		if (window.confirm(messages.beat.stopConfirm)) {
+			dispatch({ type: "stop" });
+		}
+	}, []);
 	const focusKey =
 		activeStageIndex === null ? state.status : `running:${activeStageIndex}`;
 	const previousFocusKey = useRef(focusKey);
@@ -453,16 +479,27 @@ export function BeatPlayer({ event }: BeatPlayerProps) {
 						"button, a, input, select, textarea, [contenteditable=true]",
 					),
 				),
+				canFinish,
 			});
 			if (!action) return;
 			event.preventDefault();
+			if (action.type === "stop") {
+				if (onEscape) onEscape();
+				else requestStop();
+				return;
+			}
 			dispatch(action);
 		}
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [state.status]);
+	}, [state.status, canFinish, onEscape, requestStop]);
 
 	return (
-		<BeatClassroomScreen event={event} state={state} dispatch={dispatch} />
+		<BeatClassroomScreen
+			event={event}
+			state={state}
+			dispatch={dispatch}
+			onStop={requestStop}
+		/>
 	);
 }

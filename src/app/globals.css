@@ -41,6 +41,22 @@ body {
 	outline-offset: 4px;
 }
 
+button:not(:disabled):not([aria-disabled="true"]),
+summary,
+label:has(input:is([type="checkbox"], [type="radio"]):not(:disabled)) {
+	cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+label:has(input:is([type="checkbox"], [type="radio"]):disabled) {
+	cursor: not-allowed;
+}
+
+label:has(input:is([type="checkbox"], [type="radio"]):disabled) {
+	opacity: 0.55;
+}
+
 .prose-event {
 	font-family: var(--font-display), serif;
 	font-size: 1.2rem;
@@ -108,8 +124,12 @@ body {
 	.primary-button,
 	.secondary-button,
 	.text-button,
-	.small-button {
+	.small-button,
+	.compact-button {
+		display: inline-flex;
 		min-height: 3rem;
+		align-items: center;
+		justify-content: center;
 		touch-action: manipulation;
 	}
 
@@ -121,13 +141,8 @@ body {
 		padding-inline: 1.25rem;
 	}
 
-	.primary-button:hover {
+	.primary-button:hover:not(:disabled):not([aria-disabled="true"]) {
 		background: #842e23;
-	}
-
-	.primary-button:disabled {
-		cursor: wait;
-		opacity: 0.55;
 	}
 
 	.secondary-button {
@@ -138,8 +153,8 @@ body {
 		padding-inline: 1.25rem;
 	}
 
-	.secondary-button:hover,
-	.small-button:hover:not(:disabled) {
+	.secondary-button:hover:not(:disabled):not([aria-disabled="true"]),
+	.small-button:hover:not(:disabled):not([aria-disabled="true"]) {
 		background: color-mix(in srgb, var(--ink) 8%, white);
 	}
 
@@ -157,9 +172,21 @@ body {
 		font-weight: 700;
 	}
 
-	.small-button:disabled {
-		opacity: 0.35;
+	.primary-button:disabled,
+	.secondary-button:disabled,
+	.text-button:disabled,
+	.small-button:disabled,
+	.compact-button:disabled {
+		opacity: 0.45;
 	}
+}
+
+[data-classroom-preview-player] > .classroom-runtime {
+	height: 100%;
+}
+
+[data-classroom-preview-player] > .classroom-shell {
+	min-height: 100%;
 }
 
 .editor-input {

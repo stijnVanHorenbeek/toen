@@ -71,6 +71,30 @@ Feature: Classroom history beat
     And I rapidly activate the classroom control "Volgende" twice
     Then beat phase "commitment" is visible
 
+  Scenario: Stop presentation safely without feeling trapped
+    Given I open the Apollo 11 classroom beat
+    When I start the classroom beat
+    Then the current teacher cue is visible
+    When I choose to stop but cancel
+    Then beat phase "opening" is visible
+    When I stop the classroom beat with Escape and confirm
+    Then I see the classroom beat preparation again
+    And the preparation heading has keyboard focus
+
+  Scenario: Finish presentation with the same keyboard control
+    Given I open the Apollo 11 classroom beat
+    When I start the classroom beat
+    And I advance to classroom phase "lesson-bridge"
+    And I press the classroom key "ArrowRight"
+    Then I see that the classroom beat is complete
+
+  Scenario: Classroom controls communicate pointer, focus, and disabled state
+    Given I open the Apollo 11 classroom beat
+    Then duration choices show visible keyboard focus
+    And enabled classroom actions use the pointer cursor
+    When I start the classroom beat
+    Then disabled classroom actions do not look interactive
+
   Scenario Outline: Classroom state fits supported projector sizes
     Given the classroom viewport is <width> by <height>
     And I open the Apollo 11 classroom beat

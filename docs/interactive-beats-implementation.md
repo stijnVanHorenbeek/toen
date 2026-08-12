@@ -132,13 +132,16 @@ Single mirrored projector shows a quiet control rail. Teacher actions remain vis
 Required controls:
 
 - `Start`;
-- `Volgende` or `Onthul`;
+- `Volgende` or `Toon meer`;
 - `Terug`;
 - `Overslaan` for optional evidence/discussion;
+- `Stoppen` with confirmation, which returns to the activity preparation screen;
 - `Opnieuw` with confirmation;
-- `Afronden` at defined 5-, 8-, or 12-minute closure.
+- `Klaar` at the defined 5-, 8-, or 12-minute closure.
 
-No autoplay or countdown. Suggested time is teacher guidance, not deadline. Reload returns to preparation with clear reset message. Runtime stores no student identity or response history.
+The quiet control rail also shows the current short teacher prompt. `Escape` requests the same confirmed stop in the public presentation; inside the admin preview, `Escape` closes the preview and returns focus to its opener. `ArrowRight` and Space advance the presentation and finish it from the lesson bridge, so a clicker does not appear to stop working at the final stage.
+
+No autoplay or countdown. Suggested time is teacher guidance, not deadline. Reload returns to preparation with clear reset message; session recovery is deferred. Runtime stores no student identity or response history.
 
 ## Domain decisions
 

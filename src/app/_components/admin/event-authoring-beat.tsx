@@ -767,7 +767,7 @@ function ResolutionSources({
 					return (
 						<label
 							key={id}
-							className="flex min-h-11 items-center gap-3 rounded-md border border-ink/20 px-3"
+							className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-ink/20 px-3"
 						>
 							<input
 								type="checkbox"

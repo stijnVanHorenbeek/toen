@@ -106,7 +106,7 @@ export function AiDraftReviewPanel() {
 										</li>
 									))}
 								</ul>
-								<label className="mt-5 flex items-start gap-3 rounded-sm border border-ink/25 p-3">
+								<label className="mt-5 flex cursor-pointer items-start gap-3 rounded-sm border border-ink/25 p-3">
 									<input
 										type="checkbox"
 										checked={claim.status === "removed"}
@@ -143,7 +143,7 @@ export function AiDraftReviewPanel() {
 													return (
 														<label
 															key={sourceId}
-															className="flex min-h-11 min-w-0 items-center gap-3 rounded-sm border border-ink/25 px-3 py-2"
+															className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 rounded-sm border border-ink/25 px-3 py-2"
 														>
 															<input
 																type="checkbox"
@@ -176,7 +176,7 @@ export function AiDraftReviewPanel() {
 												{messages.admin.aiReview.missingEvidence}
 											</p>
 										) : null}
-										<label className="mt-5 flex items-start gap-3 rounded-sm border border-ink/25 p-3">
+										<label className="mt-5 flex cursor-pointer items-start gap-3 rounded-sm border border-ink/25 p-3">
 											<input
 												type="checkbox"
 												checked={claim.status === "confirmed"}
@@ -265,7 +265,7 @@ export function AiDraftReviewPanel() {
 										{messages.admin.aiReview.linkChosen}
 									</p>
 								) : null}
-								<label className="mt-4 flex items-start gap-3">
+								<label className="mt-4 flex cursor-pointer items-start gap-3">
 									<input
 										type="checkbox"
 										checked={confirmed}
