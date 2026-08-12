@@ -139,7 +139,10 @@ When("I prepare ChatGPT help for {string}", async ({ page }, topic: string) => {
 		.getByLabel("Werkvorm voor de activiteit")
 		.selectOption("source-duel");
 	await page.getByLabel("Antwoordvorm").selectOption("response-cards");
-	await page.getByLabel("Titel").fill("Bestaand privéconcept");
+});
+
+When("I type the story title {string}", async ({ page }, title: string) => {
+	await page.getByLabel("Titel").fill(title);
 });
 
 When("I enter only spaces as the ChatGPT topic", async ({ page }) => {
@@ -159,6 +162,74 @@ When("I make the ChatGPT instructions", async ({ page }) => {
 
 When("I copy the ChatGPT instructions", async ({ page }) => {
 	await page.getByRole("button", { name: "Instructies kopiëren" }).click();
+});
+
+When("active ChatGPT request storage disappears", async ({ page }) => {
+	await page.evaluate(() =>
+		sessionStorage.removeItem("toen:chatgpt-request:v1"),
+	);
+});
+
+When(
+	"I paste a complete ChatGPT answer titled {string}",
+	async ({ page }, title: string) => {
+		const response = await completeChatGptAnswer(page);
+		(response.draft as Record<string, unknown>).title = title;
+		await page
+			.getByLabel("Antwoord van ChatGPT")
+			.fill(JSON.stringify(response));
+	},
+);
+
+When(
+	"I paste the malformed ChatGPT answer {string}",
+	async ({ page }, value: string) => {
+		await page.getByLabel("Antwoord van ChatGPT").fill(value);
+	},
+);
+
+When("I paste a stale ChatGPT answer", async ({ page }) => {
+	const response = await completeChatGptAnswer(page);
+	response.requestId = "123e4567-e89b-42d3-a456-426614174111";
+	await page.getByLabel("Antwoord van ChatGPT").fill(JSON.stringify(response));
+});
+
+When(
+	"I paste a cannot-complete ChatGPT answer with a long unbroken reason",
+	async ({ page }) => {
+		const stored = await page.evaluate(() =>
+			sessionStorage.getItem("toen:chatgpt-request:v1"),
+		);
+		if (!stored) throw new Error("No active ChatGPT request");
+		const active = JSON.parse(stored) as {
+			formatVersion: number;
+			requestId: string;
+		};
+		await page.getByLabel("Antwoord van ChatGPT").fill(
+			JSON.stringify({
+				formatVersion: active.formatVersion,
+				requestId: active.requestId,
+				status: "cannot-complete",
+				reasons: ["oncontroleerbarebron".repeat(14)],
+			}),
+		);
+	},
+);
+
+When("I check and use the ChatGPT answer", async ({ page }) => {
+	await page
+		.getByRole("button", { name: "Antwoord controleren en invullen" })
+		.click();
+});
+
+When("I copy the ChatGPT repair instructions", async ({ page }) => {
+	await page
+		.getByRole("button", { name: "Herstelinstructies kopiëren" })
+		.click();
+});
+
+When("I remake the ChatGPT instructions", async ({ page }) => {
+	await page.getByRole("button", { name: "Instructies opnieuw maken" }).click();
 });
 
 When("I complete the story of an exact historical event", completeExactStory);
@@ -773,6 +844,163 @@ Then(
 	},
 );
 
+Then(
+	"the imported story title is {string}",
+	async ({ page }, title: string) => {
+		await expect(page.getByLabel("Titel")).toHaveValue(title);
+		await expect(page.getByLabel("Titel")).toBeFocused();
+	},
+);
+
+Then("the imported answer remains visible", async ({ page }) => {
+	await expect(page.getByLabel("Antwoord van ChatGPT")).toHaveValue(
+		/"status":"complete"/,
+	);
+});
+
+Then("the imported sources and activity are editable", async ({ page }) => {
+	await page
+		.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+		.click();
+	const sourceTitle = page.getByLabel("Titel van bron 1");
+	await expect(sourceTitle).toHaveValue("Werkelijke eerste brontitel");
+	await sourceTitle.fill("Aangepaste eerste brontitel");
+	await expect(sourceTitle).toHaveValue("Aangepaste eerste brontitel");
+	await page
+		.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+		.click();
+	const question = page.locator('[id="beat.question"]');
+	await expect(question).toHaveValue("Eén centrale historische vraag?");
+	await question.fill("Aangepaste centrale historische vraag?");
+	await expect(question).toHaveValue("Aangepaste centrale historische vraag?");
+	await expect(page.getByLabel("Hoe antwoorden leerlingen?")).toHaveValue(
+		"response-cards",
+	);
+});
+
+Then("the active ChatGPT request was consumed", async ({ page }) => {
+	expect(
+		await page.evaluate(() =>
+			sessionStorage.getItem("toen:chatgpt-request:v1"),
+		),
+	).toBeNull();
+});
+
+Then("publication still requires a server preview", async ({ page }) => {
+	await expect(page.getByRole("button", { name: "Publiceren" })).toHaveCount(0);
+	await expect(
+		page.getByRole("button", { name: "Voorbeeld bekijken" }),
+	).toBeVisible();
+});
+
+Then("my story title remains {string}", async ({ page }, title: string) => {
+	await expect(page.getByLabel("Titel")).toHaveValue(title);
+});
+
+Then("the pasted ChatGPT answer remains visible", async ({ page }) => {
+	await expect(page.getByLabel("Antwoord van ChatGPT")).not.toHaveValue("");
+});
+
+Then("a plain Dutch import error has focus", async ({ page }) => {
+	const error = page.getByRole("alert").filter({
+		hasText: "Het antwoord is niet volledig of niet leesbaar.",
+	});
+	await expect(error).toBeVisible();
+	await expect(error).toBeFocused();
+});
+
+Then("the old import error and repair action are cleared", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Herstelinstructies kopiëren" }),
+	).toHaveCount(0);
+	await expect(
+		page.getByRole("alert").filter({
+			hasText: "Het antwoord is niet volledig of niet leesbaar.",
+		}),
+	).toHaveCount(0);
+});
+
+Then(
+	"the clipboard contains repair instructions without the hostile paste",
+	async ({ page }) => {
+		const copied = await page.evaluate(
+			() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
+		);
+		expect(copied).toContain("Herstel je vorige antwoord");
+		expect(copied).not.toContain("<script>kapot</script>");
+	},
+);
+
+Then("I see that ChatGPT import needs an empty draft", async ({ page }) => {
+	const alert = page.getByRole("alert").filter({
+		hasText: "Dit voorstel kan alleen in een leeg concept worden ingevuld.",
+	});
+	await expect(alert).toBeVisible();
+	await expect(alert).toBeFocused();
+});
+
+Then("the saved draft can still be restored", async ({ page }) => {
+	await expect(
+		page.getByRole("heading", { name: "Onvoltooid concept gevonden" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Concept herstellen" }),
+	).toBeEnabled();
+});
+
+Then(
+	"I see that the ChatGPT answer belongs to older instructions",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("alert").filter({
+				hasText: "Dit antwoord hoort niet bij de laatst gemaakte instructies.",
+			}),
+		).toBeVisible();
+	},
+);
+
+Then("I see why ChatGPT could not make a safe proposal", async ({ page }) => {
+	const alert = page.getByRole("alert").filter({
+		hasText: "ChatGPT kon geen veilig volledig voorstel maken.",
+	});
+	await expect(alert.locator("li")).toHaveText(
+		"oncontroleerbarebron".repeat(14),
+	);
+	await expect(alert).toBeFocused();
+});
+
+Then("the import feedback reflows on a narrow screen", async ({ page }) => {
+	await page.setViewportSize({ width: 320, height: 568 });
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - window.innerWidth,
+	);
+	expect(overflow).toBeLessThanOrEqual(1);
+});
+
+Then("the story remains empty", async ({ page }) => {
+	await expect(page.getByLabel("Titel")).toHaveValue("");
+});
+
+Then("selectable manual repair instructions are focused", async ({ page }) => {
+	const instructions = page.getByLabel(
+		"Herstelinstructies om zelf te kopiëren",
+	);
+	await expect(instructions).toBeVisible();
+	await expect(instructions).toBeFocused();
+	await expect(instructions).toHaveAttribute("readonly", "");
+});
+
+Then(
+	"the manual repair instructions do not repeat {string}",
+	async ({ page }, hostile: string) => {
+		const instructions = await page
+			.getByLabel("Herstelinstructies om zelf te kopiëren")
+			.inputValue();
+		expect(instructions).toContain("Herstel je vorige antwoord");
+		expect(instructions).not.toContain(hostile);
+	},
+);
+
 Then("selectable manual instructions are focused", async ({ page }) => {
 	const instructions = page.getByLabel("Instructies om zelf te kopiëren");
 	await expect(instructions).toBeVisible();
@@ -998,6 +1226,24 @@ async function completeMinimumClassification(
 	await page
 		.getByLabel("URL van bron 1")
 		.fill("https://www.britannica.com/event/Fall-of-Constantinople-1453");
+}
+
+async function completeChatGptAnswer(
+	page: import("@playwright/test").Page,
+): Promise<{ requestId: string; draft: Record<string, unknown> }> {
+	const prompt = await page.evaluate(
+		() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
+	);
+	const match =
+		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n([\s\S]*?)\n\nREGELS VOOR HET OBJECT/.exec(
+			prompt,
+		);
+	if (!match)
+		throw new Error("Complete ChatGPT answer missing from instructions");
+	return JSON.parse(match[1]) as {
+		requestId: string;
+		draft: Record<string, unknown>;
+	};
 }
 
 function publishResult(

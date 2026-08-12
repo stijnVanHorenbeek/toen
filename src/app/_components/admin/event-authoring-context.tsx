@@ -85,6 +85,7 @@ type AuthoringContextValue = {
 		enableBeat: () => void;
 		disableBeat: () => void;
 		updateBeat: (beat: NonNullable<AuthoringDraft["beat"]>) => void;
+		applyImportedDraft: (draft: AuthoringDraft) => boolean;
 		openConfirmation: () => void;
 		closeConfirmation: () => void;
 		publish: () => Promise<void>;
@@ -342,6 +343,22 @@ export function EventAuthoringProvider({
 		update("beat", beat);
 	}
 
+	function applyImportedDraft(importedDraft: AuthoringDraft): boolean {
+		if (
+			!storageReady ||
+			!isInitialAuthoringDraft(draft) ||
+			restoredDraft !== null ||
+			isPublishing
+		) {
+			return false;
+		}
+		invalidate();
+		setConfirmationOpen(false);
+		setDraft(withSourceIds(importedDraft));
+		setStep(1);
+		return true;
+	}
+
 	async function publish() {
 		if (!validatedInput || publishInFlight.current) return;
 		publishInFlight.current = true;
@@ -424,6 +441,7 @@ export function EventAuthoringProvider({
 			enableBeat,
 			disableBeat,
 			updateBeat,
+			applyImportedDraft,
 			openConfirmation: () => setConfirmationOpen(true),
 			closeConfirmation: () => setConfirmationOpen(false),
 			publish,

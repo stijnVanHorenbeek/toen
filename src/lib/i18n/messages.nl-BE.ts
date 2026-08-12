@@ -147,6 +147,51 @@ export const messages = {
 			manualLabel: "Instructies om zelf te kopiëren",
 			selectAll: "Alles selecteren",
 			openChatGpt: "Open ChatGPT in een nieuw tabblad",
+			responseTitle: "Antwoord terugzetten",
+			responseIntro:
+				"Plak het volledige antwoord uit ChatGPT. We controleren het eerst; er wordt niets automatisch gepubliceerd.",
+			responseLabel: "Antwoord van ChatGPT",
+			responseHint:
+				"Bij een fout blijft het antwoord hier staan zodat je het kunt herstellen.",
+			applyResponse: "Antwoord controleren en invullen",
+			applied:
+				"Voorstel ingevuld. Controleer nu verhaal, bronnen en klasactiviteit.",
+			blocked:
+				"Dit voorstel kan alleen in een leeg concept worden ingevuld. Je huidige werk blijft bewaard.",
+			cannotComplete: "ChatGPT kon geen veilig volledig voorstel maken.",
+			copyRepair: "Herstelinstructies kopiëren",
+			repairCopied:
+				"Herstelinstructies gekopieerd. Plak ze in hetzelfde ChatGPT-gesprek.",
+			repairManual:
+				"Automatisch kopiëren lukte niet. De herstelinstructies hieronder zijn geselecteerd.",
+			repairLabel: "Herstelinstructies om zelf te kopiëren",
+			importErrors: {
+				"invalid-fence":
+					"Plak het volledige antwoord zonder extra tekst ervoor of erna.",
+				"invalid-json": "Het antwoord is niet volledig of niet leesbaar.",
+				"invalid-envelope": "Het antwoord volgt de afgesproken opbouw niet.",
+				"duplicate-key":
+					"Het antwoord bevat hetzelfde onderdeel meer dan één keer en kan niet veilig worden gebruikt.",
+				"forbidden-key":
+					"Het antwoord bevat gegevens die hier niet thuishoren.",
+				"too-large": "Het antwoord is te groot. Vraag om een korter antwoord.",
+				"too-deep": "Het antwoord is te diep opgebouwd.",
+				"too-many-values": "Het antwoord bevat te veel onderdelen.",
+				"string-too-long": "Een tekst in het antwoord is te lang.",
+				"number-too-long": "Een getal in het antwoord is te lang.",
+				"unsupported-version":
+					"Deze versie van het antwoord wordt niet ondersteund.",
+				"missing-request": "Maak eerst nieuwe instructies voor ChatGPT.",
+				"stale-request":
+					"Dit antwoord hoort niet bij de laatst gemaakte instructies. Maak nieuwe instructies.",
+				"invalid-markdown":
+					"Het verhaal bevat opmaak of links die deze editor niet ondersteunt.",
+				"invalid-claims":
+					"Een bewering verwijst niet correct naar de bronnen in het voorstel.",
+				"unsafe-content": "Het antwoord bevat onveilige inhoud.",
+				"unsupported-structure":
+					"Deze duurkeuzes kunnen niet zonder inhoudsverlies worden bewerkt.",
+			},
 		},
 		fields: {
 			title: "Titel",
