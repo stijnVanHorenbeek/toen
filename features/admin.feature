@@ -135,6 +135,114 @@ Feature: Gebeurtenissen schrijven
     And the import feedback reflows on a narrow screen
     And the story remains empty
 
+  Scenario: Een AI-voorstel toont beweringen en ongecontroleerde bronnen
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "AI-voorstel voor controle" with a long unbroken second source title
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    Then I see the imported article and exact classroom activity
+    And the exact AI classroom preview remains scrollable on a narrow teacher screen
+    And I see AI claims, source relationships, and editorial warnings
+    And source link choice is not described as proof or reachability
+    And AI source confirmations are unchecked before link choice
+    And publication is unavailable until the AI review is complete
+    And the AI draft review reflows without horizontal page scrolling
+
+  Scenario: Ontbrekend bewijs in een AI-voorstel blokkeert publicatie
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "AI-voorstel met bewijs"
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    And I remove every current source relationship from the first AI claim
+    Then the first AI claim reports missing evidence
+    And publication is unavailable until the AI review is complete
+
+  Scenario: Een wijziging aan een AI-bewering vraagt nieuwe controle
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "AI-voorstel dat wijzigt"
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    And I choose and confirm every imported source
+    And I confirm every current AI claim
+    Then publication is available after AI review
+    When I edit the imported story after AI review
+    And I continue the imported AI proposal to review
+    Then the changed AI proposal warning is visible
+    And every AI claim needs review again
+    And publication is unavailable until the AI review is complete
+
+  Scenario: Een mislukte voorbeeldcontrole bewaart de AI-controle
+    Given the browser clipboard accepts copied instructions
+    And preview responses fail without structured errors
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "AI-voorstel met mislukt voorbeeld"
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    Then I see that the preview could not be made
+    And no publication action is available
+    And the AI review provenance remains stored
+
+  Scenario: Een hersteld AI-voorstel omzeilt de broncontrole niet
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "Bewaard AI-voorstel"
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    And I wait until the concept is saved
+    And I refresh the page
+    And I restore the local draft
+    And I request the reader preview
+    Then I see the restored AI claim
+    And publication is unavailable until the AI review is complete
+
+  Scenario: Een volledig gecontroleerd AI-voorstel wordt veilig gepubliceerd
+    Given the browser clipboard accepts copied instructions
+    And GitHub publishing commits and triggers deployment
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste a complete ChatGPT answer titled "Gecontroleerd AI-voorstel"
+    And I check and use the ChatGPT answer
+    And I continue the imported AI proposal to review
+    And I choose and confirm every imported source
+    And I confirm every current AI claim
+    And I wait until the concept is saved
+    And I refresh the page
+    And I restore the local draft
+    And I request the reader preview
+    Then publication is available after AI review
+    When I choose to publish the event
+    Then a publication confirmation names "Gecontroleerd AI-voorstel"
+    When I confirm publication
+    Then the created commit is shown
+    And I see that the website update started without claiming the event is live
+    And all local draft versions are cleared
+
   Scenario: Een gebeurtenis controleren zonder technische velden
     Given I open the event admin
     Then the heading "Nieuwe gebeurtenis" is visible
@@ -149,6 +257,7 @@ Feature: Gebeurtenissen schrijven
     And I see the source "Tweede bron" in the review
     And I see the historical date "29 mei 1453"
     And the inferred event URL ends with "/events/constantinopel-valt-1453"
+    And no AI review is shown for the manual draft
 
   Scenario: Een klasactiviteit maken en exact controleren
     Given I open the event admin

@@ -82,22 +82,22 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 				<div className="prose-event min-w-0 max-w-2xl">
 					<ReactMarkdown>{event.body}</ReactMarkdown>
 				</div>
-				<aside className="border-ink/15 border-t pt-5 lg:border-t-0 lg:border-l lg:pl-7 lg:pt-0">
+				<aside className="min-w-0 border-ink/15 border-t pt-5 lg:border-t-0 lg:border-l lg:pl-7 lg:pt-0">
 					<SourceHeading className="font-semibold text-xs uppercase tracking-[0.2em]">
 						{messages.event.sources}
 					</SourceHeading>
 					<ul className="mt-5 space-y-5">
 						{event.sources.map((source) => (
-							<li key={source.url}>
+							<li key={source.url} className="min-w-0">
 								<a
 									href={source.url}
 									target="_blank"
 									rel="noreferrer"
-									className="font-serif text-lg decoration-accent/50 underline underline-offset-4 hover:text-accent"
+									className="block max-w-full break-all font-serif text-lg decoration-accent/50 underline underline-offset-4 hover:text-accent"
 								>
 									{source.title}
 								</a>
-								<p className="mt-1 text-ink/70 text-sm leading-5">
+								<p className="mt-1 break-all text-ink/70 text-sm leading-5">
 									{source.publisher}
 								</p>
 							</li>

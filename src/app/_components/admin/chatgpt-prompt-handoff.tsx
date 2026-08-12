@@ -115,7 +115,13 @@ export function ChatGptPromptHandoff() {
 		const result = parseChatGptResponse(pastedResponse, activeRequest);
 		setRepairCopyState("idle");
 		if (result.kind === "ready") {
-			if (actions.applyImportedDraft(result.draft)) {
+			if (
+				actions.applyImportedDraft({
+					draft: result.draft,
+					claims: result.claims,
+					requestId: result.requestId,
+				})
+			) {
 				setImportState({ kind: "applied" });
 				setGenerated(null);
 				setCopyState("idle");

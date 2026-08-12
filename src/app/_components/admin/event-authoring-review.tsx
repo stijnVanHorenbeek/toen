@@ -7,6 +7,7 @@ import { formatStep, formatVakrichting } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 import { BeatPlayer } from "../beat-player";
 import { EventArticle } from "../event-article";
+import { AiDraftReviewPanel } from "./event-authoring-ai-review";
 import { useEventAuthoring } from "./event-authoring-context";
 import { StageActions, StageHeader } from "./event-authoring-fields";
 
@@ -39,6 +40,7 @@ export function ReviewStage() {
 			<EventArticle event={event} variant="preview" />
 			{event.beat ? <ClassroomPreview event={event} beat={event.beat} /> : null}
 			{event.beat ? <TeacherCueReview beat={event.beat} /> : null}
+			<AiDraftReviewPanel />
 
 			<div className="mt-8 grid gap-6 rounded-md border border-ink/25 bg-white p-6 sm:grid-cols-2">
 				<div>
@@ -102,8 +104,18 @@ export function ReviewStage() {
 						<button
 							type="button"
 							disabled={state.isPublishing}
-							onClick={() => void actions.publish()}
-							className="primary-button"
+							aria-disabled={!state.aiReviewComplete || undefined}
+							aria-describedby={state.aiReview ? "ai-review-status" : undefined}
+							onClick={() => {
+								if (!state.aiReviewComplete) {
+									focusAiReviewStatus();
+									return;
+								}
+								void actions.publish();
+							}}
+							className={`primary-button ${
+								state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
+							}`}
 						>
 							{messages.admin.actions.retryUpdate}
 						</button>
@@ -112,8 +124,18 @@ export function ReviewStage() {
 							ref={publishButton}
 							type="button"
 							disabled={state.isPublishing}
-							onClick={actions.openConfirmation}
-							className="primary-button"
+							aria-disabled={!state.aiReviewComplete || undefined}
+							aria-describedby={state.aiReview ? "ai-review-status" : undefined}
+							onClick={() => {
+								if (!state.aiReviewComplete) {
+									focusAiReviewStatus();
+									return;
+								}
+								actions.openConfirmation();
+							}}
+							className={`primary-button ${
+								state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
+							}`}
 						>
 							{state.isPublishing
 								? messages.admin.actions.publishing
@@ -125,6 +147,14 @@ export function ReviewStage() {
 			<PublicationConfirmation returnFocusRef={publishButton} />
 		</section>
 	);
+}
+
+function focusAiReviewStatus() {
+	requestAnimationFrame(() => {
+		const status = document.getElementById("ai-review-status");
+		status?.focus();
+		status?.scrollIntoView({ block: "center" });
+	});
 }
 
 function ClassroomPreview({
@@ -361,10 +391,15 @@ function PublicationConfirmation({
 					<strong>{state.preview.event.title}</strong>.{" "}
 					{messages.admin.dialog.descriptionAfter}
 				</p>
+				{state.aiReview ? (
+					<p className="mt-3 text-ink/75 text-sm leading-6">
+						{messages.admin.dialog.aiReviewConfirmed}
+					</p>
+				) : null}
 				<div className="mt-7 flex flex-wrap gap-3">
 					<button
 						type="button"
-						disabled={state.isPublishing}
+						disabled={state.isPublishing || !state.aiReviewComplete}
 						onClick={() => void actions.publish()}
 						className="primary-button"
 					>

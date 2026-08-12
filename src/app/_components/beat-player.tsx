@@ -45,7 +45,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 					{stage.stimulus}
 				</p>
 				{beat.mechanic === "source-duel" ? (
-					<ul className="mx-auto mt-6 grid max-w-5xl grid-cols-2 gap-4 text-left">
+					<ul className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-4 text-left sm:grid-cols-2">
 						{beat.sourceCards.map((card) => {
 							const source = sources.find(({ url }) => url === card.sourceUrl);
 							return (
@@ -61,7 +61,7 @@ export function BeatStagePanel({ beat, stage, sources }: BeatStagePanelProps) {
 										{card.excerpt}
 									</p>
 									{source ? (
-										<p className="mt-3 font-bold text-ink/55 text-xs uppercase tracking-[0.1em]">
+										<p className="mt-3 break-all font-bold text-ink/55 text-xs uppercase tracking-[0.1em]">
 											<cite className="not-italic">{source.title}</cite> ·{" "}
 											{source.publisher}
 										</p>
@@ -188,8 +188,8 @@ function BeatChoices({ beat }: { beat: InteractiveBeat }) {
 		<ul
 			className={
 				beat.choices.length === 4
-					? "mx-auto mt-8 grid max-w-5xl grid-cols-2 gap-4 lg:grid-cols-4"
-					: "mx-auto mt-8 grid max-w-5xl grid-cols-3 gap-4"
+					? "mx-auto mt-8 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+					: "mx-auto mt-8 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-3"
 			}
 		>
 			{beat.choices.map((choice) => (
@@ -239,7 +239,7 @@ export function BeatClassroomScreen({
 						<legend className="font-bold text-lg">
 							{messages.beat.duration}
 						</legend>
-						<div className="mt-4 grid grid-cols-3 gap-3">
+						<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
 							{durations.map((durationMinutes) => (
 								<label
 									key={durationMinutes}
@@ -350,13 +350,15 @@ export function BeatClassroomScreen({
 				data-classroom-stage-region
 				tabIndex={-1}
 				aria-live="polite"
-				className="flex min-h-0 flex-1 items-center justify-center px-6 py-4 text-center"
+				className="min-h-0 flex-1 overflow-y-auto px-6 py-4 text-center"
 			>
-				<BeatStagePanel
-					beat={event.beat}
-					stage={stage}
-					sources={event.sources}
-				/>
+				<div className="flex min-h-full w-full items-center justify-center">
+					<BeatStagePanel
+						beat={event.beat}
+						stage={stage}
+						sources={event.sources}
+					/>
+				</div>
 			</div>
 			<footer className="flex shrink-0 flex-wrap items-center gap-2 border-ink/15 border-t bg-paper px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-3">
 				<button
