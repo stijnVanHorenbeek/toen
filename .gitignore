@@ -20,9 +20,13 @@
 # production
 /build
 
-# generated canonical content
+# generated canonical content and release projections
 /content/events/
 /content/revision.json
+/.generated/
+/public/releases/
+/public/workers/
+/public/media/assets/
 
 # misc
 .DS_Store

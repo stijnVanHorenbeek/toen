@@ -16,7 +16,7 @@ export type HistoricalVisual = {
 
 export const historicalVisuals = {
 	"apollo-11-aldrin": {
-		src: "/media/events/apollo-11-aldrin.webp",
+		src: "/media/assets/2d514da09e22846759e1552189646ee456a973fa641399599875dc10bae7c5cb.webp",
 		width: 1_800,
 		height: 1_800,
 		alt: "Buzz Aldrin staat op het maanoppervlak naast een poot van maanlander Eagle.",
@@ -32,7 +32,7 @@ export const historicalVisuals = {
 		focalPoint: "50% 42%",
 	},
 	"belgian-revolution-wappers": {
-		src: "/media/events/belgian-revolution-wappers.webp",
+		src: "/media/assets/b8bc7ee21c4d138e330add00f2327e7bb289ed27dd327f09ae447b173b82473b.webp",
 		width: 800,
 		height: 554,
 		alt: "Revolutionairen verzamelen zich met de Belgische driekleur op de Grote Markt van Brussel.",
@@ -52,7 +52,7 @@ export const historicalVisuals = {
 		focalPoint: "58% 48%",
 	},
 	"d-day-omaha-beach": {
-		src: "/media/events/d-day-omaha-beach.webp",
+		src: "/media/assets/7c61a71b2f8b3bec106201460788bc91feadb4ac42534cbe95bfa3afc425ea81.webp",
 		width: 1_800,
 		height: 1_426,
 		alt: "Amerikaanse militairen verlaten een landingsvaartuig en waden door het water naar Omaha Beach.",
@@ -69,7 +69,7 @@ export const historicalVisuals = {
 		focalPoint: "50% 54%",
 	},
 	"fall-of-constantinople-dudley": {
-		src: "/media/events/fall-of-constantinople-dudley.webp",
+		src: "/media/assets/6a2ff4521055ff3d04b2c58d3b543a8dc905bd1a805d3789ba74d1f5d3440cda.webp",
 		width: 725,
 		height: 959,
 		alt: "Historische illustratie van Ottomaanse troepen die de muren van Constantinopel bestormen.",
@@ -90,7 +90,9 @@ export const historicalVisuals = {
 	},
 } as const satisfies Record<string, HistoricalVisual>;
 
-const eventVisualIds: Record<string, keyof typeof historicalVisuals> = {
+export type HistoricalVisualId = keyof typeof historicalVisuals;
+
+const eventVisualIds: Record<string, HistoricalVisualId> = {
 	"apollo-11-1969": "apollo-11-aldrin",
 	"belgium-independence-1830": "belgian-revolution-wappers",
 	"d-day-de-geallieerde-landing-in-normandie-1944": "d-day-omaha-beach",
@@ -98,7 +100,11 @@ const eventVisualIds: Record<string, keyof typeof historicalVisuals> = {
 	"constantinopel-valt-1453": "fall-of-constantinople-dudley",
 };
 
+export function getEventVisualId(slug: string): HistoricalVisualId | null {
+	return eventVisualIds[slug] ?? null;
+}
+
 export function getEventVisual(slug: string): HistoricalVisual | null {
-	const visualId = eventVisualIds[slug];
+	const visualId = getEventVisualId(slug);
 	return visualId ? historicalVisuals[visualId] : null;
 }

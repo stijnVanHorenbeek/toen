@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, use } from "react";
-import type { EventCatalogEntry } from "@/lib/content/event-catalog";
+import type { EventExplorerBootstrap } from "@/lib/content/event-explorer-data";
 import {
 	type EventExplorerValue,
 	useEventExplorerValue,
@@ -10,13 +10,13 @@ import {
 const EventExplorerContext = createContext<EventExplorerValue | null>(null);
 
 export function EventExplorerProvider({
+	bootstrap,
 	children,
-	events,
 }: {
+	bootstrap: EventExplorerBootstrap;
 	children: ReactNode;
-	events: EventCatalogEntry[];
 }) {
-	const value = useEventExplorerValue(events);
+	const value = useEventExplorerValue(bootstrap);
 	return <EventExplorerContext value={value}>{children}</EventExplorerContext>;
 }
 

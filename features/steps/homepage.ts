@@ -91,6 +91,15 @@ When("I search activities for {string}", async ({ page }, query: string) => {
 	await page.getByLabel("Zoek op onderwerp of gebeurtenis").fill(query);
 });
 
+When(
+	"I rapidly replace the activity search with {string} and {string}",
+	async ({ page }, first: string, second: string) => {
+		const search = page.getByLabel("Zoek op onderwerp of gebeurtenis");
+		await search.fill(first);
+		await search.fill(second);
+	},
+);
+
 When("I choose the topic {string}", async ({ page }, topic: string) => {
 	await page.getByLabel(topic, { exact: true }).check();
 });
@@ -114,6 +123,34 @@ Then("the recommendation explains why it fits", async ({ page }) => {
 		.getByRole("list", { name: "Waarom deze activiteit past" });
 	await expect(fit).toContainText("Komt overeen met je zoekopdracht");
 	await expect(fit).toContainText("Oorlog");
+});
+
+Then("a static event archive link is available", async ({ page }) => {
+	await expect(
+		page.getByRole("link", { name: "Blader door alle gebeurtenissen" }),
+	).toHaveAttribute("href", "/archive");
+});
+
+When("I open the static event archive", async ({ page }) => {
+	await page
+		.getByRole("link", { name: "Blader door alle gebeurtenissen" })
+		.click();
+});
+
+Then("period and topic archive links are available", async ({ page }) => {
+	await expect(page).toHaveURL(/\/archive$/);
+	await expect(
+		page.getByRole("heading", { name: "Per periode" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: "Per onderwerp" }),
+	).toBeVisible();
+	await expect(
+		page.locator('a[href^="/archive/periods/"]').first(),
+	).toBeVisible();
+	await expect(
+		page.locator('a[href^="/archive/topics/"]').first(),
+	).toBeVisible();
 });
 
 When("I tab to the first classroom start action", async ({ page }) => {

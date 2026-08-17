@@ -53,6 +53,18 @@ Feature: Homepage
     And the recommendation explains why it fits
     And activity fit is exposed as a named list
 
+  Scenario: Discard stale search work
+    Given I open the homepage
+    When I open the homepage filters if needed
+    And I rapidly replace the activity search with "Apollo" and "D Day"
+    Then the first recommended activity starts "/events/d-day-de-geallieerde-landing-in-normandie-1944/play"
+
+  Scenario: Browse events without worker search
+    Given I open the homepage
+    Then a static event archive link is available
+    When I open the static event archive
+    Then period and topic archive links are available
+
   Scenario: Reach classroom launch by keyboard
     Given I open the homepage
     When I tab to the first classroom start action

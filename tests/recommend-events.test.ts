@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { EventCatalogEntry } from "../src/lib/content/event-catalog";
-import { recommendEvents } from "../src/lib/content/recommend-events";
+import {
+	recommendEventPage,
+	recommendEvents,
+} from "../src/lib/content/recommend-events";
 
 function event(
 	slug: string,
@@ -156,6 +159,32 @@ describe("recommendEvents", () => {
 		expect(result.events).toHaveLength(4);
 		expect(result.additionalEvents).toHaveLength(2);
 		expect(result.totalCount).toBe(6);
+	});
+
+	it("returns bounded deterministic pages for worker delivery", () => {
+		const catalog = Array.from({ length: 60 }, (_, index) =>
+			event(`event-${String(index).padStart(2, "0")}`),
+		);
+
+		const first = recommendEventPage(catalog, basePreferences, {
+			offset: 0,
+			limit: 24,
+		});
+		const second = recommendEventPage(catalog, basePreferences, {
+			offset: 24,
+			limit: 24,
+		});
+
+		expect(first.events).toHaveLength(24);
+		expect(second.events).toHaveLength(24);
+		expect(first.totalCount).toBe(60);
+		expect(second.events[0]?.event.slug).toBe("event-24");
+		expect(() =>
+			recommendEventPage(catalog, basePreferences, {
+				offset: 0,
+				limit: 25,
+			}),
+		).toThrow("at most 24");
 	});
 
 	it("uses slugs as a deterministic tie-breaker", () => {

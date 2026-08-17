@@ -25,6 +25,12 @@ export const messages = {
 		showing: "getoond",
 		showAll: "Toon alle",
 		showLess: "Toon minder",
+		loadingResults: "Resultaten laden…",
+		searchUnavailable: "Zoeken is tijdelijk niet beschikbaar.",
+		retrySearch: "Probeer opnieuw",
+		previousResults: "Vorige resultaten",
+		nextResults: "Volgende resultaten",
+		page: "Pagina",
 		mechanics: {
 			"vote-revote": "Kiezen en herzien",
 			"source-duel": "Bronnen vergelijken",
@@ -47,6 +53,17 @@ export const messages = {
 		noMatchesTitle: "Geen passende activiteit gevonden",
 		noMatches:
 			"Pas je zoekopdracht of filters aan. Achtergrondverhalen blijven beschikbaar via hun eigen adres.",
+	},
+	archive: {
+		title: "Alle gebeurtenissen",
+		intro:
+			"Blader zonder zoekfunctie door historische periodes of onderwerpen.",
+		periods: "Per periode",
+		topics: "Per onderwerp",
+		backHome: "Terug naar start",
+		browseAll: "Blader door alle gebeurtenissen",
+		periodTitle: "Gebeurtenissen van {minimum} tot {maximum}",
+		topicTitle: "Gebeurtenissen over {topic}",
 	},
 	event: {
 		notFound: "Niet gevonden",
