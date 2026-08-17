@@ -16,6 +16,7 @@ Current public experience recommends historical events and renders sourced artic
 - [Release artifacts v1](docs/architecture/release-artifacts-v1.md)
 - [Browser search v1](docs/architecture/browser-search-v1.md)
 - [Static media v1](docs/architecture/static-media-v1.md)
+- [Static public site v1](docs/architecture/static-public-v1.md)
 - [Cloudflare routing topology](docs/architecture/cloudflare-routing-topology.md)
 
 ## Teacher flow
@@ -30,7 +31,7 @@ Editors use Access-protected `/admin`. They write or import a draft, verify sour
 
 ## Architecture and ownership
 
-Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Transitional article and classroom routes still package Markdown until static page migration removes OpenNext content reads.
+Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Shadow static build emits one article and classroom HTML file per event without Markdown or RSC sidecars. Current production remains on OpenNext until canary and rollback acceptance.
 
 Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. GitHub App may write only canonical content repository. Deploy Hook rebuilds application from committed content. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
@@ -53,6 +54,12 @@ pnpm dev:local
 `TOEN_CONTENT_DIR` is resolved from the application root. Local content is verified before it is copied into generated content directory. Development also creates a marked development search artifact, content-hashed browser Worker, and verified content-addressed media assets. CI and production leave this variable unset, verify immutable Git revisions, and reject development search artifacts.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+Build verified shadow Static Assets output with:
+
+```bash
+pnpm build:static
+```
 
 Start with `src/app/page.tsx`. Next.js reloads development page after edits.
 

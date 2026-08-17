@@ -1,7 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+	type ComponentPropsWithoutRef,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { getRecommendationPagination } from "@/lib/content/recommendation-pagination";
 import { formatNumber } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
@@ -141,6 +146,13 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 			) : null}
 		</div>
 	);
+}
+
+function Link({
+	href,
+	...props
+}: { href: string } & Omit<ComponentPropsWithoutRef<"a">, "href">) {
+	return <a href={href} {...props} />;
 }
 
 function SearchFailure({ retry }: { retry: () => void }) {

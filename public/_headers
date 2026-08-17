@@ -8,3 +8,5 @@
   Cache-Control: public,max-age=31536000,immutable
 /workers/event-search-*
   Cache-Control: public,max-age=31536000,immutable
+/assets/*
+  Cache-Control: public,max-age=31536000,immutable

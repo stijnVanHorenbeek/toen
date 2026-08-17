@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { HistoricalVisual } from "@/lib/content/event-media";
 
 export function HistoricalVisualFigure({
@@ -16,8 +15,8 @@ export function HistoricalVisualFigure({
 }) {
 	return (
 		<figure className={className} data-historical-visual>
-			<Image
-				unoptimized
+			{/* biome-ignore lint/performance/noImgElement: immutable curated asset needs framework-independent markup */}
+			<img
 				src={visual.src}
 				width={visual.width}
 				height={visual.height}

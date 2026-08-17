@@ -1,4 +1,3 @@
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { Event } from "@/lib/content/event-document";
@@ -149,12 +148,12 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 					<p className="mt-3 max-w-2xl text-pretty text-ink/65 leading-7">
 						{event.beat.question}
 					</p>
-					<Link
+					<a
 						href={`/events/${event.slug}/play`}
 						className="primary-button mt-6 inline-flex items-center"
 					>
 						{messages.home.startActivity}
-					</Link>
+					</a>
 				</section>
 			) : null}
 		</article>

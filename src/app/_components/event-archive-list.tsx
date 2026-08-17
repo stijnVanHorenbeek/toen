@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { EventCatalogEntry } from "@/lib/content/event-catalog";
 
@@ -11,12 +10,12 @@ export function EventArchiveList({ events }: { events: EventCatalogEntry[] }) {
 						{formatHistoricalDate(event.date)}
 					</p>
 					<h2 className="mt-1 font-serif text-xl font-medium">
-						<Link
+						<a
 							href={`/events/${event.slug}`}
 							className="inline-flex min-h-11 items-center underline-offset-4 hover:text-accent hover:underline"
 						>
 							{event.title}
-						</Link>
+						</a>
 					</h2>
 				</li>
 			))}

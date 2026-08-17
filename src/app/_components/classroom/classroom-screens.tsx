@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
 	type CSSProperties,
 	type Dispatch,
@@ -149,9 +148,9 @@ function PreparationScreen({
 						>
 							{messages.beat.start}
 						</button>
-						<Link href={`/events/${event.slug}`} className="text-button">
+						<a href={`/events/${event.slug}`} className="text-button">
 							{messages.beat.article}
-						</Link>
+						</a>
 					</div>
 					<p className="mt-6 hidden text-ink/60 text-sm @min-[60rem]/classroom-preparation:block">
 						{messages.beat.reloadNotice}
@@ -236,12 +235,12 @@ function CompletionScreen({
 					{messages.beat.completedNote}
 				</p>
 				<div className="mt-9 flex flex-wrap items-center justify-center gap-5">
-					<Link href="/" className="primary-button">
+					<a href="/" className="primary-button">
 						{messages.beat.home}
-					</Link>
-					<Link href={`/events/${event.slug}`} className="text-button">
+					</a>
+					<a href={`/events/${event.slug}`} className="text-button">
 						{messages.beat.returnToArticle}
-					</Link>
+					</a>
 					<button
 						type="button"
 						className="text-button"

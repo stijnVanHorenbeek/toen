@@ -1,4 +1,4 @@
-import Link from "next/link";
+import type { ComponentPropsWithoutRef } from "react";
 import { HistoricalVisualFigure } from "@/app/_components/historical-visual";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { EventCatalogEntry } from "@/lib/content/event-catalog";
@@ -134,6 +134,13 @@ export function EventCard({
 			</div>
 		</article>
 	);
+}
+
+function Link({
+	href,
+	...props
+}: { href: string } & Omit<ComponentPropsWithoutRef<"a">, "href">) {
+	return <a href={href} {...props} />;
 }
 
 function getFitLabels(
