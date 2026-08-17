@@ -27,7 +27,7 @@ const environmentSchema = z.object({
 	GITHUB_APP_PRIVATE_KEY: z.string().min(1),
 	GITHUB_REPOSITORY: z.string().regex(/^[^/]+\/[^/]+$/),
 	GITHUB_BASE_BRANCH: z.string().min(1),
-	CONTENT_DEPLOY_HOOK_URL: deployHookUrlSchema,
+	CONTENT_DEPLOY_HOOK_URL: deployHookUrlSchema.optional(),
 });
 
 export type GitHubEnvironment = Partial<z.input<typeof environmentSchema>> & {
@@ -104,6 +104,8 @@ export async function githubAppConfigFromEnvironment(
 		owner,
 		repository,
 		baseBranch: parsed.data.GITHUB_BASE_BRANCH,
-		deployHookUrl: parsed.data.CONTENT_DEPLOY_HOOK_URL,
+		...(parsed.data.CONTENT_DEPLOY_HOOK_URL
+			? { deployHookUrl: parsed.data.CONTENT_DEPLOY_HOOK_URL }
+			: {}),
 	};
 }

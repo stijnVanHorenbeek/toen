@@ -60,7 +60,7 @@ describe("github configuration", () => {
 		await expect(githubPublishModeFromEnvironment({})).resolves.toBe("dry-run");
 	});
 
-	it("requires a constrained deploy hook URL for complete configuration", async () => {
+	it("reads GitHub configuration without requiring legacy deploy hook", async () => {
 		const base = {
 			GITHUB_APP_ID: "123456",
 			GITHUB_APP_INSTALLATION_ID: "789012",
@@ -68,7 +68,10 @@ describe("github configuration", () => {
 			GITHUB_REPOSITORY: "example-owner/toen-content",
 			GITHUB_BASE_BRANCH: "main",
 		};
-		await expect(githubAppConfigFromEnvironment(base)).resolves.toBeNull();
+		await expect(githubAppConfigFromEnvironment(base)).resolves.toMatchObject({
+			owner: "example-owner",
+			repository: "toen-content",
+		});
 		for (const invalidUrl of [
 			"http://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/id",
 			"https://api.cloudflare.com:444/client/v4/workers/builds/deploy_hooks/id",
@@ -180,6 +183,53 @@ describe("publishEventDraft", () => {
 		);
 		expect(new Headers(requests[3]?.init?.headers).get("Authorization")).toBe(
 			"Bearer installation-token",
+		);
+	});
+
+	it("pins returned content SHA into exact release coordination", async () => {
+		const requests: Array<{ url: string; init?: RequestInit }> = [];
+		const contentCommitSha = "b".repeat(40);
+		const buildUuid = "123e4567-e89b-42d3-a456-426614174000";
+		const githubFetch = sequencedFetch(
+			[
+				Response.json({ token: "installation-token" }),
+				Response.json({ object: { sha: "a".repeat(40) } }),
+				Response.json({}, { status: 404 }),
+				Response.json({ commit: { sha: contentCommitSha } }, { status: 201 }),
+			],
+			requests,
+		);
+		const releaseCoordinator = vi.fn().mockResolvedValue({
+			status: "building",
+			buildUuid,
+			releaseRequestCommitSha: "c".repeat(40),
+		});
+		const releaseConfig = {
+			accountId: "d".repeat(32),
+			apiToken: "token-value-long-enough",
+			applicationSha: "e".repeat(40),
+			triggerUuid: "223e4567-e89b-42d3-a456-426614174000",
+			workerTag: "f".repeat(32),
+		};
+		const result = await publishEventDraft({
+			draft,
+			editor: "editor@example.com",
+			config: await config(),
+			githubFetch,
+			pipelineMode: "exact",
+			releaseConfig,
+			releaseCoordinator,
+		});
+		expect(result).toMatchObject({
+			status: "building",
+			buildUuid,
+			commitSha: contentCommitSha,
+		});
+		expect(releaseCoordinator).toHaveBeenCalledWith(
+			expect.objectContaining({
+				appSha: releaseConfig.applicationSha,
+				contentSha: contentCommitSha,
+			}),
 		);
 	});
 

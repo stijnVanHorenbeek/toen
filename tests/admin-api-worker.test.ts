@@ -11,12 +11,15 @@ describe("native admin API Worker", () => {
 		const publish = vi
 			.fn()
 			.mockResolvedValue(Response.json({ route: "publish" }));
+		const releaseStatus = vi
+			.fn()
+			.mockResolvedValue(Response.json({ route: "release-status" }));
 		const previewResponse = await routeAdminApiRequest(
 			new Request("https://example.com/api/admin/events/preview", {
 				method: "POST",
 			}),
 			environment,
-			{ preview, publish },
+			{ preview, publish, releaseStatus },
 		);
 		expect(previewResponse.status).toBe(200);
 		expect(preview).toHaveBeenCalledOnce();
@@ -26,10 +29,19 @@ describe("native admin API Worker", () => {
 				method: "POST",
 			}),
 			environment,
-			{ preview, publish },
+			{ preview, publish, releaseStatus },
 		);
 		expect(publishResponse.status).toBe(200);
 		expect(publish).toHaveBeenCalledOnce();
+		const statusResponse = await routeAdminApiRequest(
+			new Request("https://example.com/api/admin/releases/status", {
+				method: "POST",
+			}),
+			environment,
+			{ preview, publish, releaseStatus },
+		);
+		expect(statusResponse.status).toBe(200);
+		expect(releaseStatus).toHaveBeenCalledOnce();
 	});
 
 	it("rejects other methods and unknown paths with no-store", async () => {

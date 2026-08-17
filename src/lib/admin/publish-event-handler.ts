@@ -16,12 +16,19 @@ import {
 } from "../github/github-config";
 import { messages } from "../i18n/messages.nl-BE";
 import {
+	exactReleaseBuildConfigFromEnvironment,
+	type ReleaseBuildEnvironment,
+	releasePipelineModeFromEnvironment,
+} from "../release/release-build-config";
+import {
 	adminJsonResponse,
 	readAuthorizedAdminJson,
 } from "./admin-api-request";
 import { eventValidationIssues } from "./event-validation-issues";
 
-export type AdminEnvironment = AccessEnvironment & GitHubEnvironment;
+export type AdminEnvironment = AccessEnvironment &
+	GitHubEnvironment &
+	ReleaseBuildEnvironment;
 
 type HandlerDependencies = {
 	authenticate?: (
@@ -30,6 +37,7 @@ type HandlerDependencies = {
 	) => Promise<AccessIdentity | null>;
 	githubFetch?: GitHubFetch;
 	deployFetch?: typeof fetch;
+	buildFetch?: typeof fetch;
 	publish?: typeof publishEventDraft;
 	maximumBytes?: number;
 };
@@ -47,11 +55,20 @@ export async function handlePublishEventRequest(
 
 	let githubConfig: Awaited<ReturnType<typeof githubAppConfigFromEnvironment>>;
 	let publishMode: Awaited<ReturnType<typeof githubPublishModeFromEnvironment>>;
+	let pipelineMode: Awaited<
+		ReturnType<typeof releasePipelineModeFromEnvironment>
+	>;
+	let releaseConfig: Awaited<
+		ReturnType<typeof exactReleaseBuildConfigFromEnvironment>
+	>;
 	try {
-		[githubConfig, publishMode] = await Promise.all([
-			githubAppConfigFromEnvironment(environment),
-			githubPublishModeFromEnvironment(environment),
-		]);
+		[githubConfig, publishMode, pipelineMode, releaseConfig] =
+			await Promise.all([
+				githubAppConfigFromEnvironment(environment),
+				githubPublishModeFromEnvironment(environment),
+				releasePipelineModeFromEnvironment(environment),
+				exactReleaseBuildConfigFromEnvironment(environment),
+			]);
 	} catch {
 		return jsonError(
 			messages.api.publishConfigUnavailable,
@@ -59,7 +76,14 @@ export async function handlePublishEventRequest(
 			"publish_config_unavailable",
 		);
 	}
-	if (!publishMode || (publishMode === "live" && !githubConfig)) {
+	if (
+		!publishMode ||
+		!pipelineMode ||
+		(publishMode === "live" &&
+			(!githubConfig ||
+				(pipelineMode === "legacy" && !githubConfig.deployHookUrl) ||
+				(pipelineMode === "exact" && !releaseConfig)))
+	) {
 		return jsonError(
 			messages.api.publishNotConfigured,
 			503,
@@ -75,6 +99,9 @@ export async function handlePublishEventRequest(
 			config: publishMode === "live" ? githubConfig : null,
 			githubFetch: dependencies.githubFetch,
 			deployFetch: dependencies.deployFetch,
+			buildFetch: dependencies.buildFetch,
+			pipelineMode,
+			releaseConfig,
 		});
 		return adminJsonResponse(result, {
 			status: publishResponseStatus(result),
@@ -105,7 +132,13 @@ function publishResponseStatus(
 	result: Awaited<ReturnType<typeof publishEventDraft>>,
 ): number {
 	if (result.status === "dry-run") return 200;
-	if (result.status === "committed-trigger-failed") return 202;
+	if (
+		result.status === "committed-trigger-failed" ||
+		result.status === "committed" ||
+		result.status === "building"
+	) {
+		return 202;
+	}
 	return result.change === "unchanged" ? 200 : 201;
 }
 

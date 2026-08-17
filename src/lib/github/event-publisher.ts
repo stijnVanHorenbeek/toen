@@ -3,6 +3,11 @@ import {
 	parseEventDraft,
 } from "../content/event-draft";
 import {
+	CloudflareBuildsClient,
+	type ExactReleaseBuildConfig,
+} from "../release/cloudflare-builds";
+import { coordinateLockedExactRelease } from "../release/release-coordinator";
+import {
 	createInstallationToken,
 	type GitHubAppCredentials,
 } from "./github-app";
@@ -17,7 +22,7 @@ export type { GitHubFetch } from "./github-request";
 
 export type GitHubAppConfig = GitHubAppCredentials &
 	GitHubRepositoryConfig & {
-		deployHookUrl: string;
+		deployHookUrl?: string;
 	};
 
 type PublishEventDraftOptions = {
@@ -26,14 +31,22 @@ type PublishEventDraftOptions = {
 	config: GitHubAppConfig | null;
 	githubFetch?: GitHubFetch;
 	deployFetch?: typeof fetch;
+	buildFetch?: typeof fetch;
+	pipelineMode?: "legacy" | "exact";
+	releaseConfig?: ExactReleaseBuildConfig | null;
+	releaseCoordinator?: typeof coordinateLockedExactRelease;
 };
 
 export async function publishEventDraft({
+	buildFetch = fetch,
 	config,
 	deployFetch = fetch,
 	draft,
 	editor,
 	githubFetch = fetch,
+	pipelineMode = "legacy",
+	releaseConfig = null,
+	releaseCoordinator = coordinateLockedExactRelease,
 }: PublishEventDraftOptions) {
 	const event = parseEventDraft(draft);
 	const preview = createEventDraftPreview(event);
@@ -62,6 +75,27 @@ export async function publishEventDraft({
 		commitUrl: `https://github.com/${config.owner}/${config.repository}/commit/${published.commitSha}`,
 	};
 
+	if (pipelineMode === "exact") {
+		if (!releaseConfig) {
+			return {
+				status: "committed" as const,
+				reason: "release-config-unavailable" as const,
+				...result,
+			};
+		}
+		const builds = new CloudflareBuildsClient(releaseConfig, buildFetch);
+		const release = await releaseCoordinator({
+			appSha: releaseConfig.applicationSha,
+			builds,
+			contentSha: published.commitSha,
+			repository,
+		});
+		return { ...result, ...release };
+	}
+
+	if (!config.deployHookUrl) {
+		return { status: "committed-trigger-failed" as const, ...result };
+	}
 	try {
 		const response = await deployFetch(config.deployHookUrl, {
 			method: "POST",

@@ -15,6 +15,8 @@
 		"assets:check": "tsx scripts/check-static-assets.ts",
 		"static:generate": "tsx scripts/generate-static-site.ts",
 		"static:check": "tsx scripts/check-static-site.ts",
+		"release:build": "tsx scripts/build-exact-release.ts",
+		"release:activate": "tsx scripts/activate-exact-release.ts",
 		"benchmark:architecture": "node scripts/benchmark-architecture.mjs",
 		"benchmark:search": "tsx scripts/benchmark-event-search.ts",
 		"benchmark:static": "tsx scripts/benchmark-static-site.ts",

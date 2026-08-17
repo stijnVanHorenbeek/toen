@@ -404,6 +404,13 @@ export const messages = {
 			dryRun: "Deze omgeving bewaart niets. Je voorbeeld blijft beschikbaar.",
 			saved: "Inhoud opgeslagen",
 			updateStarted: "De website-update is gestart.",
+			building: "De exacte websiteversie wordt gebouwd en gecontroleerd.",
+			activated: "De gecontroleerde websiteversie is actief.",
+			committed:
+				"De inhoud is opgeslagen, maar de exacte websitebouw kon niet starten.",
+			failed:
+				"De websitebouw is mislukt. De vorige actieve versie bleef behouden.",
+			superseded: "Een nieuwere websitebouw heeft deze versie vervangen.",
 			updateFailed:
 				"De update van de website kon niet starten. Start de website-update opnieuw.",
 			storedVersion: "Opgeslagen versie bekijken",
@@ -451,6 +458,7 @@ export const messages = {
 		unauthorized: "Niet geautoriseerd.",
 		invalidOrigin: "De aanvraag komt niet van deze website.",
 		requestTooLarge: "De aanvraag is te groot.",
+		releaseStatusUnavailable: "De releasestatus is niet beschikbaar.",
 		unsupportedMedia: "Content-Type moet application/json zijn.",
 		publishConfigUnavailable: "Publicatieconfiguratie is niet beschikbaar.",
 		publishNotConfigured: "Publiceren is niet geconfigureerd.",

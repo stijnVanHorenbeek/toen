@@ -30,6 +30,8 @@ Record before deployment:
 | Content commit | |
 | Worker version before deploy | |
 | Worker version after deploy | |
+| Cloudflare build UUID | |
+| Release receipt SHA-256 | |
 | GitHub App installation checked | Yes / no |
 | Access route coverage checked | Yes / no |
 | Secrets Store binding parity checked | Yes / no |
@@ -96,8 +98,8 @@ Verify:
 
 - active deployment sends 100% traffic to one known version;
 - at least one known-good rollback version remains available;
-- all nine configured secret names are active with `workers` scope;
-- dry-run package lists same nine Secrets Store bindings;
+- all configured secret names are active with `workers` scope, including six exact-release settings when exact mode is enabled;
+- dry-run package lists same Secrets Store binding set;
 - dry-run package lists expected assets, images, and service bindings;
 - observability is enabled with explicit sampling;
 - source maps are uploaded.
@@ -114,12 +116,13 @@ curl -I https://toen.stijnvh.workers.dev/events/apollo-11-1969
 curl -I https://toen.stijnvh.workers.dev/admin
 curl -I https://toen.stijnvh.workers.dev/api/admin/events/preview
 curl -I https://toen.stijnvh.workers.dev/api/admin/events/publish
+curl -I https://toen.stijnvh.workers.dev/api/admin/releases/status
 ```
 
 Expected:
 
 - homepage and public event routes return public success responses;
-- `/admin*` and `/api/admin/events/*` redirect unauthenticated requests to Access;
+- `/admin*` and `/api/admin/*` redirect unauthenticated requests to Access;
 - publication route validates `Cf-Access-Jwt-Assertion`, issuer, audience, and email inside Worker;
 - unrelated public API paths are not accidentally covered.
 
@@ -127,13 +130,16 @@ Expected:
 
 After explicit confirmation:
 
-1. Deploy reviewed application commit with approved content SHA.
-2. Record new Worker version and deployment IDs.
-3. Open public homepage, one article, and each classroom mechanic.
-4. Verify `/admin` through Access with authorized editor.
-5. Inspect Workers Logs for exceptions or binding failures.
-6. If any blocker appears, stop.
-7. Verify active deployment is expected version at 100% traffic.
+1. Confirm exact release request contains reviewed application and content SHAs.
+2. Run build command `pnpm release:build` through approved Cloudflare trigger.
+3. Confirm build receipt, newest-build ownership, and expected Static Assets inventory.
+4. Run deploy command `pnpm release:activate` only through approved trigger.
+5. Record build UUID, receipt hash, new Worker version, and deployment IDs.
+6. Open public homepage, one article, and each classroom mechanic.
+7. Verify `/admin` through Access with authorized editor.
+8. Inspect Workers Logs for exceptions or binding failures.
+9. If any blocker appears, stop.
+10. Verify active deployment is expected version at 100% traffic.
 
 ## Controlled publication
 
@@ -144,17 +150,13 @@ After explicit confirmation and only when live mode is verified:
 3. Complete every source and AI claim decision where applicable.
 4. Confirm publication.
 5. Verify content commit path, editor attribution trailer, and GitHub App author.
-6. Verify Deploy Hook starts build for exact content commit.
-7. Verify build succeeds and production renders event.
-8. Verify retry after unchanged content creates no duplicate content commit.
+6. Verify Builds API request pins approved application SHA and returns build UUID.
+7. Verify UUID-keyed content record pins returned content commit SHA.
+8. Verify admin reports `building`, then `activated` only after successful deploy.
+9. Verify production renders event and receipt matches active build.
+10. Verify unchanged retry creates no duplicate event commit and supersedes stale build safely.
 
-A successful content commit with failed deployment trigger is partial success.
-
-It is not failed publication.
-
-Retry deployment trigger.
-
-Do not recreate or overwrite content.
+Successful content commit with failed trigger/correlation is `committed` partial success. It is not failed content publication. Retry exact build without recreating or overwriting event content. Trigger acceptance alone remains `building`, not activation.
 
 ## Rollback
 

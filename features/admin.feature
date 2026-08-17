@@ -306,6 +306,15 @@ Feature: Gebeurtenissen schrijven
     And I see that the website update started without claiming the event is live
     And all local draft versions are cleared
 
+  Scenario: Een exacte release wordt pas na activatie als actief gemeld
+    Given an exact release build activates
+    And I open the event admin
+    When I complete a valid event draft through review
+    And I choose to publish the event
+    And I confirm publication
+    Then the exact release moves from building to active
+    And all local draft versions are cleared
+
   Scenario: Een exacte datum kiezen met de kalenderknop
     Given I open the event admin
     When I choose an exact date with the calendar button

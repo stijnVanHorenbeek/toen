@@ -4,6 +4,7 @@ import {
 	createContext,
 	type ReactNode,
 	use,
+	useCallback,
 	useEffect,
 	useRef,
 	useState,
@@ -58,10 +59,24 @@ type CommitPublishResult = EventDraftPreview & {
 	commitUrl: string;
 };
 
+type ExactReleaseResult = CommitPublishResult & {
+	buildUuid: string;
+	applicationSha?: string;
+	releaseRequestCommitSha?: string;
+};
+
 export type EventPublishResult =
 	| (EventDraftPreview & { status: "dry-run" })
 	| (CommitPublishResult & { status: "committed-and-triggered" })
-	| (CommitPublishResult & { status: "committed-trigger-failed" });
+	| (CommitPublishResult & { status: "committed-trigger-failed" })
+	| (CommitPublishResult & {
+			status: "committed";
+			reason: string;
+			buildUuid?: string;
+	  })
+	| (ExactReleaseResult & {
+			status: "building" | "activated" | "failed" | "superseded";
+	  });
 
 type AuthoringContextValue = {
 	state: {
@@ -164,6 +179,15 @@ export function EventAuthoringProvider({
 	const previewGeneration = useRef(0);
 	const publishInFlight = useRef(false);
 	const saveTimeout = useRef<number | null>(null);
+	const completePublication = useCallback(() => {
+		if (saveTimeout.current !== null) {
+			window.clearTimeout(saveTimeout.current);
+			saveTimeout.current = null;
+		}
+		clearStoredDraft();
+		setValidatedInput(null);
+		setSaveStatus("idle");
+	}, []);
 
 	useEffect(() => {
 		try {
@@ -233,6 +257,44 @@ export function EventAuthoringProvider({
 		window.addEventListener("beforeunload", warnBeforeLeaving);
 		return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
 	}, [saveStatus]);
+
+	useEffect(() => {
+		if (publishResult?.status !== "building") return;
+		const buildUuid = publishResult.buildUuid;
+		let cancelled = false;
+		let timeout: number | null = null;
+		const poll = async () => {
+			try {
+				const response = await postEvent("/api/admin/releases/status", {
+					buildUuid,
+				});
+				if (cancelled) return;
+				if (response.ok && isReleaseStatusResult(response.body, buildUuid)) {
+					const status = response.body;
+					setPublishResult((current) =>
+						current?.status === "building" && current.buildUuid === buildUuid
+							? { ...current, ...status }
+							: current,
+					);
+					if (status.status === "activated") {
+						completePublication();
+						return;
+					}
+					if (status.status === "failed" || status.status === "superseded") {
+						return;
+					}
+				}
+			} catch {
+				// Transient status failures keep the committed build visible and retry.
+			}
+			if (!cancelled) timeout = window.setTimeout(() => void poll(), 2_000);
+		};
+		timeout = window.setTimeout(() => void poll(), 1_000);
+		return () => {
+			cancelled = true;
+			if (timeout !== null) window.clearTimeout(timeout);
+		};
+	}, [completePublication, publishResult]);
 
 	function invalidate() {
 		previewGeneration.current += 1;
@@ -485,13 +547,7 @@ export function EventAuthoringProvider({
 			if (generation !== previewGeneration.current) return;
 			setPublishResult(response.body);
 			if (response.body.status === "committed-and-triggered") {
-				if (saveTimeout.current !== null) {
-					window.clearTimeout(saveTimeout.current);
-					saveTimeout.current = null;
-				}
-				clearStoredDraft();
-				setValidatedInput(null);
-				setSaveStatus("idle");
+				completePublication();
 			}
 		} catch (error) {
 			if (generation !== previewGeneration.current) return;
@@ -674,12 +730,48 @@ function isEventPublishResult(value: unknown): value is EventPublishResult {
 	if (!isRecord(value) || !isEventDraftPreview(value)) return false;
 	const record = value as unknown as Record<string, unknown>;
 	if (record.status === "dry-run") return true;
-	return (
-		(record.status === "committed-and-triggered" ||
-			record.status === "committed-trigger-failed") &&
+	const commit =
 		(record.change === "created" || record.change === "unchanged") &&
 		typeof record.commitSha === "string" &&
-		typeof record.commitUrl === "string"
+		typeof record.commitUrl === "string";
+	if (!commit) return false;
+	if (
+		record.status === "committed-and-triggered" ||
+		record.status === "committed-trigger-failed"
+	) {
+		return true;
+	}
+	if (record.status === "committed") {
+		return (
+			typeof record.reason === "string" &&
+			(record.buildUuid === undefined || typeof record.buildUuid === "string")
+		);
+	}
+	return (
+		(record.status === "building" ||
+			record.status === "activated" ||
+			record.status === "failed" ||
+			record.status === "superseded") &&
+		typeof record.buildUuid === "string"
+	);
+}
+
+function isReleaseStatusResult(
+	value: unknown,
+	buildUuid: string,
+): value is {
+	status: "building" | "activated" | "failed" | "superseded";
+	buildUuid: string;
+	applicationSha: string;
+} {
+	return (
+		isRecord(value) &&
+		(value.status === "building" ||
+			value.status === "activated" ||
+			value.status === "failed" ||
+			value.status === "superseded") &&
+		value.buildUuid === buildUuid &&
+		typeof value.applicationSha === "string"
 	);
 }
 

@@ -7,6 +7,7 @@ import {
 	type AdminEnvironment,
 	handlePublishEventRequest,
 } from "../lib/admin/publish-event-handler";
+import { handleReleaseStatusRequest } from "../lib/admin/release-status-handler";
 
 type AdminRouteHandler = (
 	request: Request,
@@ -16,6 +17,7 @@ type AdminRouteHandler = (
 type RouteDependencies = {
 	preview?: AdminRouteHandler;
 	publish?: AdminRouteHandler;
+	releaseStatus?: AdminRouteHandler;
 };
 
 export async function routeAdminApiRequest(
@@ -29,7 +31,9 @@ export async function routeAdminApiRequest(
 			? (dependencies.preview ?? handlePreviewEventRequest)
 			: pathname === "/api/admin/events/publish"
 				? (dependencies.publish ?? handlePublishEventRequest)
-				: null;
+				: pathname === "/api/admin/releases/status"
+					? (dependencies.releaseStatus ?? handleReleaseStatusRequest)
+					: null;
 	if (!handler) {
 		await cancelUnreadRequestBody(request);
 		return adminJsonResponse(

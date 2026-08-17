@@ -44,11 +44,18 @@ export async function resolveApplicationRevision({
 	runGit = defaultRunGit,
 }) {
 	const supplied = environmentRevision?.trim();
-	if (supplied && immutableRevisionPattern.test(supplied)) return supplied;
-
 	const revision = (
 		await runGit(["rev-parse", "HEAD"], { cwd: appRoot })
 	).trim();
+	if (supplied && immutableRevisionPattern.test(supplied)) {
+		if (revision !== supplied) {
+			throw new Error(
+				"Workers build application SHA does not match checked-out HEAD",
+			);
+		}
+		return supplied;
+	}
+
 	if (!immutableRevisionPattern.test(revision)) {
 		throw new Error("Application revision must be a 40-character Git SHA");
 	}

@@ -26,7 +26,10 @@ export function ReviewStage() {
 	}, [preview]);
 	if (!preview) return null;
 	const event = preview.event;
-	const finished = state.publishResult?.status === "committed-and-triggered";
+	const finished =
+		state.publishResult?.status === "committed-and-triggered" ||
+		state.publishResult?.status === "activated";
+	const locked = finished || state.publishResult?.status === "building";
 	return (
 		<section aria-labelledby="review-stage-title" className="authoring-panel">
 			<StageHeader
@@ -36,8 +39,8 @@ export function ReviewStage() {
 			>
 				{messages.admin.reviewIntro}
 			</StageHeader>
-			<ReviewActionArea publishButton={publishButton} finished={finished} />
-			{finished ? null : (
+			<ReviewActionArea publishButton={publishButton} finished={locked} />
+			{locked ? null : (
 				<div data-review-edit="story" className="mb-4 flex justify-end">
 					<button
 						type="button"
@@ -50,7 +53,7 @@ export function ReviewStage() {
 				</div>
 			)}
 			<EventArticle event={event} variant="preview" />
-			{finished ? null : (
+			{locked ? null : (
 				<div data-review-edit="sources" className="mt-4 flex justify-end">
 					<button
 						type="button"
@@ -121,7 +124,10 @@ function ReviewActionArea({
 		>
 			<PublishStatus />
 			{finished ? null : state.publishResult?.status ===
-				"committed-trigger-failed" ? (
+					"committed-trigger-failed" ||
+				state.publishResult?.status === "committed" ||
+				state.publishResult?.status === "failed" ||
+				state.publishResult?.status === "superseded" ? (
 				<button
 					type="button"
 					disabled={state.isPublishing}
@@ -387,6 +393,35 @@ function PublishStatus() {
 					</strong>
 					{messages.admin.status.dryRun}
 				</p>
+			) : result?.status === "building" ? (
+				<div>
+					<strong className="block">{messages.admin.status.saved}</strong>
+					{messages.admin.status.building} <CommitLink url={result.commitUrl} />
+				</div>
+			) : result?.status === "activated" ? (
+				<div>
+					<strong className="block font-serif text-xl">
+						{messages.admin.status.activated}
+					</strong>
+					<CommitLink url={result.commitUrl} />
+				</div>
+			) : result?.status === "committed" ? (
+				<div role="alert">
+					<strong className="block">{messages.admin.status.saved}</strong>
+					{messages.admin.status.committed}{" "}
+					<CommitLink url={result.commitUrl} />
+				</div>
+			) : result?.status === "failed" ? (
+				<div role="alert">
+					<strong className="block">{messages.admin.status.saved}</strong>
+					{messages.admin.status.failed} <CommitLink url={result.commitUrl} />
+				</div>
+			) : result?.status === "superseded" ? (
+				<div role="alert">
+					<strong className="block">{messages.admin.status.saved}</strong>
+					{messages.admin.status.superseded}{" "}
+					<CommitLink url={result.commitUrl} />
+				</div>
 			) : result?.status === "committed-trigger-failed" ? (
 				<div role="alert">
 					<strong className="block">{messages.admin.status.saved}</strong>

@@ -18,6 +18,7 @@ Current public experience recommends historical events and renders sourced artic
 - [Static media v1](docs/architecture/static-media-v1.md)
 - [Static public site v1](docs/architecture/static-public-v1.md)
 - [Admin SPA and Worker v1](docs/architecture/admin-worker-v1.md)
+- [Exact-SHA release pipeline v1](docs/architecture/exact-release-v1.md)
 - [Cloudflare routing topology](docs/architecture/cloudflare-routing-topology.md)
 
 ## Teacher flow

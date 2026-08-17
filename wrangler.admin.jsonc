@@ -63,6 +63,36 @@
 			"binding": "ACCESS_POLICY_AUD_STORE",
 			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
 			"secret_name": "toen-access-policy-aud"
+		},
+		{
+			"binding": "RELEASE_PIPELINE_MODE_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-release-pipeline-mode"
+		},
+		{
+			"binding": "CLOUDFLARE_BUILDS_API_TOKEN_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-cloudflare-builds-api-token"
+		},
+		{
+			"binding": "CLOUDFLARE_ACCOUNT_ID_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-cloudflare-account-id"
+		},
+		{
+			"binding": "CLOUDFLARE_BUILD_TRIGGER_UUID_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-cloudflare-build-trigger-uuid"
+		},
+		{
+			"binding": "CLOUDFLARE_WORKER_TAG_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-cloudflare-worker-tag"
+		},
+		{
+			"binding": "RELEASE_APPLICATION_SHA_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-release-application-sha"
 		}
 	]
 }

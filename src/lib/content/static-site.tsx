@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	copyFile,
 	lstat,
@@ -238,6 +238,25 @@ export async function generateStaticPublicSite({
 	} finally {
 		await rm(stagedRoot, { recursive: true, force: true });
 	}
+}
+
+export async function computeStaticPublicSiteTreeSha256(
+	root: string,
+): Promise<string> {
+	const realRoot = await requireRealDirectory(root, "Static site directory");
+	const inspection = await inspectStaticPublicSite(realRoot);
+	const records: Array<{ path: string; bytes: number; sha256: string }> = [];
+	for (const relativePath of inspection.paths) {
+		const bytes = await readFile(
+			path.join(realRoot, ...relativePath.split("/")),
+		);
+		records.push({
+			path: relativePath,
+			bytes: bytes.byteLength,
+			sha256: createHash("sha256").update(bytes).digest("hex"),
+		});
+	}
+	return createHash("sha256").update(JSON.stringify(records)).digest("hex");
 }
 
 export async function inspectStaticPublicSite(
