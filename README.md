@@ -38,7 +38,7 @@ Application repository owns Next.js UI, strict runtime validation, admin workflo
 
 Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. Production publishing currently runs in dry-run mode. Enabling GitHub writes or exact Cloudflare Builds requires separate configuration and approval. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
-OpenNext remains a local compatibility and rollback build target. Read its Cloudflare documentation at https://opennext.js.org/cloudflare.
+Next.js remains local development and static compilation tool. Production rollback uses retained Cloudflare Worker version, not repository OpenNext deployment commands.
 
 ## Develop
 
@@ -58,7 +58,7 @@ pnpm dev:local
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Build verified shadow Static Assets output with:
+Build verified production-shaped Static Assets output with:
 
 ```bash
 pnpm build:static
@@ -68,10 +68,11 @@ Start with `src/app/page.tsx`. Next.js reloads development page after edits.
 
 ## Preview
 
-Preview the application locally on the Cloudflare runtime:
+Build and preview production-shaped Static Assets locally:
 
 ```bash
-pnpm preview
+pnpm build:static
+pnpm exec wrangler dev --config wrangler.static.jsonc
 ```
 
 ## Test
@@ -83,7 +84,7 @@ pnpm test
 pnpm test:e2e
 ```
 
-Browser journeys build current OpenNext Worker with immutable content revision pinned in `scripts/test-e2e.sh`. They generate explicit development-only search assets before build. Set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead.
+Browser journeys build and serve current production-shaped Static Assets with immutable content revision pinned in `scripts/test-e2e.sh`. They generate explicit development-only search and facets assets before build. Set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead.
 
 Playwright starts an isolated local Wrangler server by default. Set `TOEN_E2E_REUSE_SERVER=1` only when you intentionally want to reuse a server on `http://localhost:8787`. CI always starts an isolated server. Feature tests never use Cloudflare Access login or production routes.
 
@@ -93,7 +94,8 @@ Follow [release hardening runbook](docs/release-hardening.md). Build and inspect
 
 ```bash
 pnpm ci:build
-pnpm exec wrangler deploy --dry-run --strict
+pnpm exec wrangler deploy --dry-run --config wrangler.admin.jsonc
+pnpm exec wrangler deploy --dry-run --config wrangler.static.jsonc
 ```
 
 Production deploy and rollback require explicit operator confirmation. Do not deploy from an unreviewed dirty worktree.

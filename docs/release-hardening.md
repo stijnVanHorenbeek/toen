@@ -6,7 +6,7 @@ Engineering validation and static-first production deployment completed on 2026-
 
 Production serves public articles and interactive classroom routes through Static Assets. Access protects admin routes, and private admin API Worker has no public workers.dev target. Production publication remains dry-run until exact release configuration receives separate approval.
 
-Current public version is `0ba781ef-bc43-45d1-886b-571c3b400b04`. Known OpenNext rollback version is `d0362db7-0846-441d-8e8c-2313503c26d7`.
+Current public version is `b1389016-05ce-40b2-80b2-e4fba4b1e096`. Known OpenNext rollback version is `d0362db7-0846-441d-8e8c-2313503c26d7`. Automatic Git build trigger is disconnected.
 
 Classroom pilot remains separate adoption dependency.
 
@@ -98,9 +98,9 @@ Verify:
 - at least one known-good rollback version remains available;
 - all configured secret names are active with `workers` scope, including six exact-release settings when exact mode is enabled;
 - dry-run package lists same Secrets Store binding set;
-- dry-run package lists expected assets, images, and service bindings;
-- observability is enabled with explicit sampling;
-- source maps are uploaded.
+- dry-run packages list expected assets, service bindings, and admin Secrets Store bindings;
+- private admin observability is enabled with explicit sampling;
+- public and admin packages exclude source maps.
 
 Do not use `wrangler rollback` during inventory. It immediately creates active deployment.
 
@@ -162,7 +162,7 @@ Rollback is production mutation. Get explicit confirmation first.
 
 1. Identify last known-good version from recorded deployment inventory.
 2. Confirm its bindings still exist and match current resource contracts.
-3. Run `pnpm exec wrangler rollback <VERSION_ID>`.
+3. Run `pnpm exec wrangler rollback <VERSION_ID> --name toen`.
 4. Verify active deployment changed to selected version at 100% traffic.
 5. Verify public routes and Access-protected routes.
 6. Record reason, old version, rollback version, time, and verification result.
@@ -175,7 +175,7 @@ Then trigger rebuild and record both actions.
 
 ## Observability
 
-Workers Logs retain sampled request logs according to `wrangler.jsonc`.
+Workers Logs follow active `wrangler.static.jsonc` and `wrangler.admin.jsonc` configuration. Static asset matches bypass public Worker invocation.
 
 Publication failures emit structured `admin_event_publish_failed` events.
 

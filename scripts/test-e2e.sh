@@ -16,6 +16,6 @@ pnpm content:search:dev
 pnpm assets:workers
 pnpm assets:media
 export TOEN_ALLOW_DEVELOPMENT_SEARCH=1
-pnpm build:worker:synced
+pnpm build:static:synced
 pnpm exec bddgen
 pnpm exec playwright test

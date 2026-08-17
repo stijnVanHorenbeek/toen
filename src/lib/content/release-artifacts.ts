@@ -644,8 +644,8 @@ export function serializeJsonForHtml(value: unknown): string {
 		.replaceAll("\u2029", "\\u2029");
 }
 
-function createFacetsArtifact(
-	events: PublicEvent[],
+export function createFacetsArtifact(
+	events: Array<Pick<PublicEvent, "date" | "topics">>,
 	topicLabels: Record<string, string>,
 	releaseId: string,
 ) {

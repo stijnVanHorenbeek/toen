@@ -17,6 +17,10 @@ describe("production admin Worker topology", () => {
 			path.join(process.cwd(), ".github/workflows/verify.yml"),
 			"utf8",
 		);
+		const generatedTypes = await readFile(
+			path.join(process.cwd(), "cloudflare-env.d.ts"),
+			"utf8",
+		);
 		expect(publicConfig).toMatchObject({
 			name: "toen",
 			main: "src/workers/public-router.ts",
@@ -36,10 +40,22 @@ describe("production admin Worker topology", () => {
 		});
 		expect(adminConfig.routes).toBeUndefined();
 		expect(packageManifest.scripts["ci:build"]).toContain(
+			"pnpm build:static:synced",
+		);
+		expect(packageManifest.scripts["ci:build"]).not.toContain("build:worker");
+		expect(packageManifest.scripts["build:static:synced"]).toContain(
 			"pnpm assets:admin:check",
 		);
-		expect(packageManifest.scripts["ci:build"]).toContain("pnpm static:check");
+		expect(packageManifest.scripts["build:static:synced"]).toContain(
+			"pnpm static:check",
+		);
 		expect(workflow).toContain("run: pnpm ci:build");
+		expect(packageManifest.scripts["cf-typegen"]).toContain(
+			"wrangler.admin.jsonc",
+		);
+		expect(generatedTypes).not.toContain(".open-next");
+		expect(generatedTypes).not.toContain("WORKER_SELF_REFERENCE");
+		expect(generatedTypes).not.toContain("IMAGES: ImagesBinding");
 		expect(
 			adminConfig.secrets_store_secrets.map(
 				(binding: { binding: string }) => binding.binding,

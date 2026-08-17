@@ -53,14 +53,20 @@ No GitHub, Deploy Hook, or exact-release binding is attached. Missing publish-mo
 
 First static version `18577132-8a32-4a43-8864-b3a8ad7a355b` uploaded 43 new or changed assets and reused 8. Automated smoke rolled back because test expected wrong archive copy. Deployment itself had served tested routes correctly before that local assertion. Rollback restored OpenNext version `d0362db7-0846-441d-8e8c-2313503c26d7` at 100%.
 
-Corrected smoke predicate and second deployment reused all uploaded assets:
+Corrected smoke predicate and second deployment reused all uploaded assets. Initial static version was `0ba781ef-bc43-45d1-886b-571c3b400b04`, deployment `a2b8211e-376a-4a96-9d00-89ef966f3e67`.
+
+Post-deploy documentation merge triggered existing Cloudflare Git integration. Build `951a617e-ab57-49d0-8f7f-5d8e3ca6bb5a` ran obsolete `pnpm deploy:worker` and replaced static production with OpenNext version `eed4f25e-6e0d-4263-988e-498f10fe117a`. Observation detected the replacement through version-level CPU metrics and binding inventory.
+
+Operator approved disabling automatic builds. Git trigger `9cb38c7e-629f-472f-bdbc-48d62d806e34` was disconnected in dashboard, and Builds API now returns zero triggers for `toen`. Static bytes were restored and verified after edge propagation:
 
 - Worker: `toen`
-- Version: `0ba781ef-bc43-45d1-886b-571c3b400b04`
-- Deployment: `a2b8211e-376a-4a96-9d00-89ef966f3e67`
-- Startup: 5 ms
+- Active version: `b1389016-05ce-40b2-80b2-e4fba4b1e096`
+- Deployment: `afd28e08-7452-4aaf-adb4-f7e489d927cf`
+- Startup: 4 ms
 - Public host: `https://toen.stijnvh.workers.dev`
 - Bindings: `ADMIN_API` to `toen-admin`, plus Static Assets
+
+No automatic Git build can replace production. Future deployment requires explicit admin/static command or approved exact-release activation.
 
 ## Live validation
 
