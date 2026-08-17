@@ -1,8 +1,8 @@
 # Toen.
 
-Toen. is a source-backed history application for Flemish secondary education. It runs on Next.js through OpenNext on Cloudflare Workers.
+Toen. is a source-backed history application for Flemish secondary education. Cloudflare Workers Static Assets serve its public site. A small public router forwards protected admin APIs to a private native Worker.
 
-Current public experience recommends historical events and renders sourced articles. Next product direction adds teacher-led, 5–12 minute interactive history beats.
+Public experience recommends historical events, renders sourced articles, and provides teacher-led 5–12 minute interactive history beats.
 
 ## Product documentation
 
@@ -19,6 +19,7 @@ Current public experience recommends historical events and renders sourced artic
 - [Static public site v1](docs/architecture/static-public-v1.md)
 - [Admin SPA and Worker v1](docs/architecture/admin-worker-v1.md)
 - [Exact-SHA release pipeline v1](docs/architecture/exact-release-v1.md)
+- [Static production cutover](docs/architecture/static-production-cutover-2026-08-17.md)
 - [Cloudflare routing topology](docs/architecture/cloudflare-routing-topology.md)
 
 ## Teacher flow
@@ -33,11 +34,11 @@ Editors use Access-protected `/admin`. They write or import a draft, verify sour
 
 ## Architecture and ownership
 
-Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Shadow static build emits public HTML and protected admin SPA without Markdown or RSC sidecars. Native private admin Worker validates Access JWTs internally and receives API requests through service binding. Current production remains on OpenNext until canary and rollback acceptance.
+Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Production emits public HTML and protected admin SPA without Markdown or RSC sidecars. Native private admin Worker validates Access JWTs internally and receives API requests through service binding.
 
-Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. GitHub App may write only canonical content repository. Deploy Hook rebuilds application from committed content. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
+Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. Production publishing currently runs in dry-run mode. Enabling GitHub writes or exact Cloudflare Builds requires separate configuration and approval. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
-Read OpenNext Cloudflare documentation at https://opennext.js.org/cloudflare.
+OpenNext remains a local compatibility and rollback build target. Read its Cloudflare documentation at https://opennext.js.org/cloudflare.
 
 ## Develop
 

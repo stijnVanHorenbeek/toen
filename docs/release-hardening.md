@@ -2,15 +2,13 @@
 
 ## Status
 
-Engineering validation complete on 2026-08-12. Production release not complete.
+Engineering validation and static-first production deployment completed on 2026-08-17.
 
-Current production serves public articles and protects admin routes.
+Production serves public articles and interactive classroom routes through Static Assets. Access protects admin routes, and private admin API Worker has no public workers.dev target. Production publication remains dry-run until exact release configuration receives separate approval.
 
-However, `/events/apollo-11-1969/play` returns `404`.
+Current public version is `0ba781ef-bc43-45d1-886b-571c3b400b04`. Known OpenNext rollback version is `d0362db7-0846-441d-8e8c-2313503c26d7`.
 
-Do not claim interactive beats are deployed until production checks below pass.
-
-Classroom pilot remains separate release dependency.
+Classroom pilot remains separate adoption dependency.
 
 ## Safety boundary
 
@@ -50,10 +48,10 @@ Do not use moving branch.
 ### Application repository
 
 ```bash
-pnpm ci:build
-pnpm exec wrangler types --check --env-interface=CloudflareEnv ./cloudflare-env.d.ts
-pnpm exec wrangler deploy --dry-run --strict
-pnpm exec wrangler check startup --worker <DRY_RUN_BUNDLE>
+TOEN_CONTENT_DIR=../toen-content pnpm ci:build
+pnpm exec wrangler deploy --dry-run --config wrangler.admin.jsonc
+pnpm exec wrangler deploy --dry-run --config wrangler.static.jsonc
+pnpm exec tsx -e 'import { computeStaticPublicSiteTreeSha256 } from "./src/lib/content/static-site"; computeStaticPublicSiteTreeSha256(".generated/static-site").then(console.log)'
 ```
 
 ### Content repository

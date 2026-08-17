@@ -2,15 +2,13 @@
 
 ## Purpose
 
-Move protected authoring UI and APIs out of OpenNext runtime without changing current production routes. Shadow architecture keeps `/admin` and `/api/admin/*` on public `workers.dev` host, preserves Cloudflare Access path protection, and adds internal Access JWT verification to every supported API operation.
-
-No service, binding, Access policy, route, secret, or deployment changed during this work.
+Move protected authoring UI and APIs out of OpenNext runtime. Production keeps `/admin` and `/api/admin/*` on public `workers.dev` host, preserves Cloudflare Access path protection, and adds internal Access JWT verification to every supported API operation.
 
 ## Topology
 
-`toen-static-canary` serves static public site and `admin.html`. Static Assets handle normal files first. Public router runs first only for `/api/admin/*` and forwards those requests through `ADMIN_API` service binding.
+`toen` serves static public site and `admin.html`. Static Assets handle normal files first. Public router runs first only for `/api/admin/*` and forwards those requests through `ADMIN_API` service binding.
 
-`toen-admin-canary` contains native API Worker only. It has:
+`toen-admin` contains native API Worker only. It has:
 
 - `workers_dev: false`;
 - `preview_urls: false`;
@@ -55,7 +53,7 @@ Request processing fails closed:
 8. Reject structures deeper than 32 levels or larger than 10,000 JSON nodes.
 9. Apply strict exhaustive event schema. Browser-supplied slug remains only tolerated noncanonical field and is always replaced from title/date.
 
-Preview reuses canonical draft projection. Publish reuses existing Access identity, GitHub App configuration, content conflict checks, dry-run behavior, and Deploy Hook semantics.
+Preview reuses canonical draft projection. Production binds only Access settings, so publication defaults to dry-run. GitHub and release-pipeline bindings remain absent until separately approved.
 
 ## Build and budgets
 
@@ -76,7 +74,7 @@ Measured final API Worker:
 - target: less than 1 MiB gzip;
 - Cloudflare Free maximum: 3 MiB compressed.
 
-1,000-request preview benchmark includes real local RS256 Access JWT verification against cached key, bounded body reading, JSON parsing, strict event validation, and preview projection. It measures CPU path after JWK availability; canary must measure first-fetch latency separately:
+1,000-request preview benchmark includes real local RS256 Access JWT verification against cached key, bounded body reading, JSON parsing, strict event validation, and preview projection. It measures CPU path after JWK availability; production observation must measure first-fetch latency separately:
 
 - p95: 0.281 ms;
 - maximum: 1.055 ms;
@@ -93,16 +91,10 @@ Report: `/tmp/toen-admin-api-benchmark-final.json`.
 - Static admin SPA passed 75/75 BDD journeys, including exact build-to-activation state transition.
 - Existing OpenNext application passed complete 136/136 BDD suite after release-reader and polling changes.
 - Public static homepage/event/classroom suite passed 61/61.
-- Dry-runs validated both Worker configurations. No upload or deployment occurred.
+- Dry-runs validated both Worker configurations.
+- Production deployment on 2026-08-17 created private `toen-admin` version `c76ec211-6724-4b00-a1d3-be4969e6297a`.
+- Public smoke checks confirmed Access redirects for `/admin` and `/api/admin/*`; private workers.dev request returned `404`.
 
-## Cutover boundary
+## Production state
 
-Canary requires explicit approval before:
-
-1. creating private admin service;
-2. attaching Secrets Store bindings;
-3. creating public canary and service binding;
-4. applying or extending Access coverage to canary paths;
-5. uploading or publishing either Worker.
-
-Current `toen` OpenNext Worker remains production. Cutover waits for exact-SHA publication pipeline, accepted canary, rollback drill, and operator approval.
+Production `toen` routes admin APIs through private `toen-admin`. External Access remains mandatory. Admin Worker binds only Access team domain and audience, which keeps publication in dry-run mode. Enable GitHub or exact-release bindings only through a separate approved rollout.
