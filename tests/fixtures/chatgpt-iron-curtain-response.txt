@@ -1,0 +1,266 @@
+```json
+{
+	"formatVersion": 1,
+	"requestId": "ede971ad-4a34-4637-abcd-5d689b22d7f7",
+	"status": "complete",
+	"draft": {
+		"title": "Was het IJzeren Gordijn echt van ijzer?",
+		"date": {
+			"year": 1946,
+			"era": "ce",
+			"precision": "day",
+			"month": 3,
+			"day": 5
+		},
+		"summary": "Leerlingen kiezen of het IJzeren Gordijn in 1946 al een fysieke muur was, toetsen hun keuze aan bronnen en stemmen opnieuw. De 8-minutenroute is de kernversie; er zijn ook geneste routes van 5 en 12 minuten. ",
+		"body": "## Doel\nLeerlingen onderscheiden een politieke metafoor van de later uitgebouwde fysieke grenssystemen van de Koude Oorlog.\n\n## Werkwijze\nLaat iedereen eerst met handgebaren kiezen. Toon daarna de aanwijzingen in de gekozen route, laat kort overleggen en laat opnieuw kiezen. Sluit af met de historische uitleg en een brug naar de bredere Koude Oorlog.\n\n## Bronnen\n- Winston Churchill, The Sinews of Peace \n- NATO, Germany and NATO \n- U.S. Office of the Historian, Berlin Crisis editorial note ",
+		"profiles": ["algemeen"],
+		"topics": ["ijzeren-gordijn"],
+		"topicLabels": {
+			"ijzeren-gordijn": "IJzeren Gordijn"
+		},
+		"sources": [
+			{
+				"title": "The Sinews of Peace, 1946",
+				"publisher": "America's National Churchill Museum",
+				"url": "https://www.nationalchurchillmuseum.org/sinews-of-peace-iron-curtain-speech.html"
+			},
+			{
+				"title": "Germany and NATO",
+				"publisher": "NATO",
+				"url": "https://www.nato.int/en/about-us/nato-history/history-by-theme/my-country-and-nato/germany-and-nato"
+			},
+			{
+				"title": "Foreign Relations of the United States, 1961–1963, Volume XIV, Berlin Crisis, 1961–1962: Editorial Note 104",
+				"publisher": "Office of the Historian, U.S. Department of State",
+				"url": "https://history.state.gov/historicaldocuments/frus1961-63v14/d104"
+			}
+		],
+		"beat": {
+			"version": 2,
+			"mechanic": "vote-revote",
+			"responseMethod": "hand-signals",
+			"question": "Toen Churchill op 5 maart 1946 over een 'iron curtain' sprak, bedoelde hij vooral een echte fysieke muur door Europa?",
+			"choices": [
+				{
+					"id": "ja-fysieke-muur",
+					"label": "Ja, vooral een fysieke muur"
+				},
+				{
+					"id": "nee-politieke-scheiding",
+					"label": "Nee, vooral een politieke scheiding"
+				},
+				{
+					"id": "nog-niet-zeker",
+					"label": "Nog niet zeker"
+				}
+			],
+			"stages": [
+				{
+					"id": "opening",
+					"phase": "opening",
+					"suggestedSeconds": 20,
+					"teacherPrompt": "Projecteer alleen de vraag en de drie keuzes. Leg nog niets uit.",
+					"expectedStudentAction": "Lees de vraag en vorm zelfstandig een eerste idee.",
+					"stimulus": "Europa, kort na de Tweede Wereldoorlog. Een Britse oud-premier zegt dat er een 'ijzeren gordijn' over het continent is neergedaald."
+				},
+				{
+					"id": "commitment",
+					"phase": "commitment",
+					"suggestedSeconds": 20,
+					"teacherPrompt": "Laat iedereen tegelijk kiezen: één, twee of drie vingers voor de drie opties.",
+					"expectedStudentAction": "Kies zonder overleg en toon je antwoord.",
+					"prompt": "Kies vóór het gesprek."
+				},
+				{
+					"id": "evidence-5",
+					"phase": "evidence",
+					"suggestedSeconds": 55,
+					"teacherPrompt": "Lees de aanwijzing voor. Vraag welk woord toont dat Churchill een beeld gebruikt.",
+					"expectedStudentAction": "Zoek in de formulering naar bewijs voor metafoor of letterlijke muur.",
+					"title": "Churchills woorden in 1946",
+					"evidence": "Churchill zei dat van Stettin aan de Oostzee tot Triëst aan de Adriatische Zee een 'iron curtain' over Europa was neergedaald en plaatste hoofdsteden daarachter in een Sovjet-invloedssfeer. ",
+					"sourceUrl": "https://www.nationalchurchillmuseum.org/sinews-of-peace-iron-curtain-speech.html",
+					"earliestDurationMinutes": 5
+				},
+				{
+					"id": "discussion-5",
+					"phase": "discussion",
+					"suggestedSeconds": 60,
+					"teacherPrompt": "Laat duo's één aanwijzing uit Churchills formulering kiezen en kort verdedigen.",
+					"expectedStudentAction": "Vergelijk je eerste keuze met de bron.",
+					"prompt": "Welk detail wijst het sterkst op een metafoor of op een echte grens?",
+					"sentenceStarter": "Ik denk ... omdat Churchill ..."
+				},
+				{
+					"id": "evidence-8",
+					"phase": "evidence",
+					"suggestedSeconds": 60,
+					"teacherPrompt": "Voeg de ontwikkeling in de jaren 1950 toe. Vraag of dit de betekenis van 1946 verandert.",
+					"expectedStudentAction": "Vergelijk de situatie van 1946 met een latere fase van de Koude Oorlog.",
+					"title": "De scheiding wordt tastbaarder",
+					"evidence": "NATO beschrijft hoe in 1955 een harde, zwaar bewapende scheidingslijn tussen West- en Oost-Europa bestond, bijzonder zichtbaar in Duitsland. ",
+					"sourceUrl": "https://www.nato.int/en/about-us/nato-history/history-by-theme/my-country-and-nato/germany-and-nato",
+					"earliestDurationMinutes": 8,
+					"optional": true
+				},
+				{
+					"id": "discussion-8",
+					"phase": "discussion",
+					"suggestedSeconds": 55,
+					"teacherPrompt": "Vraag: kan een term eerst beeldspraak zijn en later ook naar echte grensinstallaties verwijzen?",
+					"expectedStudentAction": "Herweeg de betekenis van de term door tijdsverschil mee te nemen.",
+					"prompt": "Wat verandert als je 1946 vergelijkt met 1955?",
+					"optional": true
+				},
+				{
+					"id": "evidence-12",
+					"phase": "evidence",
+					"suggestedSeconds": 75,
+					"teacherPrompt": "Toon dat één beroemd fysiek onderdeel pas later ontstond. Vermijd de indruk dat dit de hele Europese grens was.",
+					"expectedStudentAction": "Plaats de Berlijnse Muur chronologisch tegenover Churchills uitspraak.",
+					"title": "Berlijn: pas in 1961 een muur",
+					"evidence": "Op 13 augustus 1961 sloot de DDR de grens naar West-Berlijn af; prikkeldraad en andere barrières groeiden uit tot de Berlijnse Muur. Dat gebeurde ruim vijftien jaar na Churchills rede. ",
+					"sourceUrl": "https://history.state.gov/historicaldocuments/frus1961-63v14/d104",
+					"earliestDurationMinutes": 12,
+					"optional": true
+				},
+				{
+					"id": "discussion-12",
+					"phase": "discussion",
+					"suggestedSeconds": 60,
+					"teacherPrompt": "Laat leerlingen één zekere conclusie en één nuance formuleren.",
+					"expectedStudentAction": "Scheid wat de bronnen rechtstreeks tonen van wat je afleidt.",
+					"prompt": "Wat weten we zeker, en wat mogen we niet veralgemenen?",
+					"optional": true
+				},
+				{
+					"id": "revision",
+					"phase": "revision",
+					"suggestedSeconds": 30,
+					"teacherPrompt": "Laat opnieuw tegelijk stemmen met hetzelfde handgebaar.",
+					"expectedStudentAction": "Behoud of wijzig je eerste keuze.",
+					"prompt": "Kies opnieuw na het bewijs."
+				},
+				{
+					"id": "reasoning",
+					"phase": "reasoning",
+					"suggestedSeconds": 45,
+					"teacherPrompt": "Vraag twee leerlingen met verschillende keuzes welk brongegeven doorslaggevend was.",
+					"expectedStudentAction": "Koppel je tweede keuze aan één concreet brongegeven.",
+					"prompt": "Welk bewijs bepaalde je tweede keuze?",
+					"optional": true
+				},
+				{
+					"id": "resolution",
+					"phase": "resolution",
+					"suggestedSeconds": 65,
+					"teacherPrompt": "Leg het onderscheid uit tussen Churchills metafoor in 1946 en latere fysieke grensregimes.",
+					"expectedStudentAction": "Controleer je redenering en corrigeer een eventuele vereenvoudiging.",
+					"title": "Metafoor én later fysieke grens",
+					"feedback": "In 1946 gebruikte Churchill het 'IJzeren Gordijn' als beeld voor de politieke en strategische scheiding van Europa en Sovjetinvloed in het oosten. Later werd die scheiding op veel plaatsen ook fysiek bewaakt; de Berlijnse Muur ontstond pas in 1961. ",
+					"misconception": "Het IJzeren Gordijn was vanaf 1946 één doorlopende betonnen muur door heel Europa.",
+					"sourceUrls": [
+						"https://www.nationalchurchillmuseum.org/sinews-of-peace-iron-curtain-speech.html",
+						"https://www.nato.int/en/about-us/nato-history/history-by-theme/my-country-and-nato/germany-and-nato",
+						"https://history.state.gov/historicaldocuments/frus1961-63v14/d104"
+					]
+				},
+				{
+					"id": "lesson-bridge",
+					"phase": "lesson-bridge",
+					"suggestedSeconds": 30,
+					"teacherPrompt": "Koppel het onderscheid aan het bredere lesthema van de Koude Oorlog.",
+					"expectedStudentAction": "Formuleer één vraag die je verder in de les wilt onderzoeken.",
+					"bridge": "Wanneer wordt een politieke scheiding ook zichtbaar in grenzen en in het dagelijks leven?"
+				}
+			],
+			"routes": [
+				{
+					"durationMinutes": 5,
+					"stageIds": [
+						"opening",
+						"commitment",
+						"evidence-5",
+						"discussion-5",
+						"revision",
+						"resolution",
+						"lesson-bridge"
+					]
+				},
+				{
+					"durationMinutes": 8,
+					"stageIds": [
+						"opening",
+						"commitment",
+						"evidence-5",
+						"discussion-5",
+						"evidence-8",
+						"discussion-8",
+						"revision",
+						"reasoning",
+						"resolution",
+						"lesson-bridge"
+					]
+				},
+				{
+					"durationMinutes": 12,
+					"stageIds": [
+						"opening",
+						"commitment",
+						"evidence-5",
+						"discussion-5",
+						"evidence-8",
+						"discussion-8",
+						"evidence-12",
+						"discussion-12",
+						"revision",
+						"reasoning",
+						"resolution",
+						"lesson-bridge"
+					]
+				}
+			]
+		}
+	},
+	"claims": [
+		{
+			"text": "Op 5 maart 1946 gebruikte Winston Churchill in Fulton de formulering dat een 'iron curtain' over Europa was neergedaald en beschreef hij hoofdsteden in Midden- en Oost-Europa als gelegen binnen de Sovjetsfeer. ",
+			"sourceUrls": [
+				"https://www.nationalchurchillmuseum.org/sinews-of-peace-iron-curtain-speech.html"
+			],
+			"uncertainty": null
+		},
+		{
+			"text": "De term in Churchills rede van 1946 functioneerde als metafoor voor een politieke en strategische scheiding, niet als aanduiding van één reeds bestaande doorlopende betonnen muur. ",
+			"sourceUrls": [
+				"https://www.nationalchurchillmuseum.org/sinews-of-peace-iron-curtain-speech.html",
+				"https://history.state.gov/historicaldocuments/frus1961-63v14/d104"
+			],
+			"uncertainty": "Dit is een interpretatieve conclusie uit Churchills beeldspraak en het feit dat bekende fysieke barrières zoals de Berlijnse Muur later ontstonden."
+		},
+		{
+			"text": "NATO beschrijft de scheiding tussen West- en Oost-Europa in 1955 als een harde, zwaar bewapende lijn, bijzonder uitgesproken in Duitsland. ",
+			"sourceUrls": [
+				"https://www.nato.int/en/about-us/nato-history/history-by-theme/my-country-and-nato/germany-and-nato"
+			],
+			"uncertainty": null
+		},
+		{
+			"text": "Op 13 augustus 1961 voerde de DDR maatregelen in die de doorgang naar West-Berlijn afsloten; prikkeldraad en andere fysieke barrières ontwikkelden zich tot de Berlijnse Muur. ",
+			"sourceUrls": [
+				"https://history.state.gov/historicaldocuments/frus1961-63v14/d104"
+			],
+			"uncertainty": null
+		},
+		{
+			"text": "Het IJzeren Gordijn had niet overal en op elk moment dezelfde fysieke vorm; de concrete grensinfrastructuur veranderde per plaats en periode. ",
+			"sourceUrls": [
+				"https://www.nato.int/en/about-us/nato-history/history-by-theme/my-country-and-nato/germany-and-nato",
+				"https://history.state.gov/historicaldocuments/frus1961-63v14/d104"
+			],
+			"uncertainty": "De gebruikte bronnen tonen Duitsland en Berlijn duidelijk, maar documenteren niet elk grenssegment in Europa."
+		}
+	]
+}
+```

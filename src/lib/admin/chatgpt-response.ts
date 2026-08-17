@@ -230,15 +230,15 @@ export function parseChatGptResponse(
 		return importError("invalid-json", activeRequest);
 	}
 	if (!isRecord(value)) return importError("invalid-envelope", activeRequest);
-	if (value.formatVersion !== CHATGPT_PROMPT_VERSION) {
-		return importError("unsupported-version", activeRequest);
-	}
 	if (!activeRequest) return importError("missing-request", null);
-	if (
-		activeRequest.formatVersion !== CHATGPT_PROMPT_VERSION ||
-		value.requestId !== activeRequest.requestId
-	) {
+	if (value.requestId !== activeRequest.requestId) {
 		return importError("stale-request", activeRequest);
+	}
+	if (
+		value.formatVersion !== CHATGPT_PROMPT_VERSION ||
+		activeRequest.formatVersion !== CHATGPT_PROMPT_VERSION
+	) {
+		return importError("unsupported-version", activeRequest);
 	}
 
 	if (value.status === "cannot-complete") {
@@ -652,7 +652,7 @@ function buildRepairPrompt(
 
 Probleem: ${errorMessage(code)}
 Gebruik formatVersion ${CHATGPT_PROMPT_VERSION} en requestId "${activeRequest.requestId}" exact.
-Geef uitsluitend één volledig rauw JSON-object zonder codeblok of uitleg.
+Geef uitsluitend één Markdown-codeblok met taal json, met daarin exact één volledig JSON-object en zonder tekst ervoor of erna.
 Behoud alleen gecontroleerde bron-URL's en verzin geen bron, citaat, feit of afbeelding.
 Als je het antwoord niet veilig en volledig kunt herstellen, geef status "cannot-complete" met concrete Nederlandse redenen.`;
 }
@@ -665,7 +665,10 @@ function importError(
 		kind: "error",
 		code,
 		message: errorMessage(code),
-		repairPrompt: activeRequest ? buildRepairPrompt(code, activeRequest) : null,
+		repairPrompt:
+			activeRequest && code !== "stale-request"
+				? buildRepairPrompt(code, activeRequest)
+				: null,
 	};
 }
 

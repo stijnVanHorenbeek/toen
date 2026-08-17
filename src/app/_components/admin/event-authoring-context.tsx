@@ -36,6 +36,7 @@ import {
 	isInitialAuthoringDraft,
 	selectStoredAuthoringDraft,
 	toEventDraftInput,
+	validateAuthoringClassification,
 	validateAuthoringStory,
 } from "@/lib/admin/authoring-draft";
 import type { ChatGptClaim } from "@/lib/admin/chatgpt-response";
@@ -81,6 +82,7 @@ type AuthoringContextValue = {
 			step: Step;
 			aiReview: AiDraftReview | null;
 		} | null;
+		storageReady: boolean;
 		saveStatus: SaveStatus;
 	};
 	actions: {
@@ -89,6 +91,7 @@ type AuthoringContextValue = {
 			value: AuthoringDraft[Key],
 		) => void;
 		continueStory: () => void;
+		continueClassification: () => void;
 		requestPreview: () => Promise<void>;
 		goToStep: (step: Step) => void;
 		toggleProfile: (profile: VakrichtingId) => void;
@@ -256,6 +259,13 @@ export function EventAuthoringProvider({
 		setErrors(nextErrors);
 		if (Object.keys(nextErrors).length > 0) return;
 		setStep(2);
+	}
+
+	function continueClassification() {
+		const nextErrors = validateAuthoringClassification(draft);
+		setErrors(nextErrors);
+		if (Object.keys(nextErrors).length > 0) return;
+		setStep(3);
 	}
 
 	async function requestPreview() {
@@ -527,11 +537,13 @@ export function EventAuthoringProvider({
 			aiReview,
 			aiReviewComplete,
 			restoredDraft,
+			storageReady,
 			saveStatus,
 		},
 		actions: {
 			update,
 			continueStory,
+			continueClassification,
 			requestPreview,
 			goToStep: (nextStep) => setStep(nextStep),
 			toggleProfile,

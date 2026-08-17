@@ -541,10 +541,14 @@ export function parseEventFrontmatter(value: unknown): EventFrontmatter {
 }
 
 export function formatHistoricalDate(date: HistoricalDate): string {
+	const formattedYear =
+		date.year >= 10_000
+			? new Intl.NumberFormat("nl-BE").format(date.year)
+			: String(date.year);
 	const year =
 		date.era === "bce"
-			? `${date.year} ${historicalDateMessages.beforeCommonEra}`
-			: String(date.year);
+			? `${formattedYear} ${historicalDateMessages.beforeCommonEra}`
+			: formattedYear;
 
 	switch (date.precision) {
 		case "day":

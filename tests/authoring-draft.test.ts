@@ -16,6 +16,7 @@ import {
 	parseStoredAuthoringDraft,
 	selectStoredAuthoringDraft,
 	toEventDraftInput,
+	validateAuthoringClassification,
 	validateAuthoringStory,
 } from "../src/lib/admin/authoring-draft";
 import { parseEventDraft } from "../src/lib/content/event-draft";
@@ -101,6 +102,29 @@ describe("authoring draft conversion", () => {
 			year: 753,
 			era: "bce",
 			precision: "year",
+		});
+	});
+
+	it("validates classification before entering activity authoring", () => {
+		const draft = createInitialAuthoringDraft();
+		expect(validateAuthoringClassification(draft)).toEqual({
+			profiles: "Kies minstens één vakrichting.",
+			topics: "Kies of voeg minstens één onderwerp toe.",
+			"sources.0.title": "Vul de bron volledig in.",
+			"sources.0.publisher": "Vul de bron volledig in.",
+			"sources.0.url": "Vul de bron volledig in.",
+		});
+
+		draft.profiles = ["algemeen"];
+		draft.topics = ["wetenschap"];
+		draft.sources[0] = {
+			title: "Bron",
+			publisher: "Museum",
+			url: "geen-url",
+		};
+		expect(validateAuthoringClassification(draft)).toEqual({
+			"sources.0.url":
+				"Vul een geldige URL in, bijvoorbeeld https://example.org/bron.",
 		});
 	});
 

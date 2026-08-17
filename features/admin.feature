@@ -1,5 +1,26 @@
 Feature: Gebeurtenissen schrijven
 
+  Scenario Outline: ChatGPT-hulp toont één duidelijke volgende stap
+    Given the admin viewport is <width> by <height>
+    And the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    Then ChatGPT handoff step "Voorstel beschrijven" is current
+    And future ChatGPT response controls are unavailable
+    When I prepare ChatGPT help for "De val van Constantinopel"
+    And I make the ChatGPT instructions
+    Then ChatGPT handoff step "Kopiëren naar ChatGPT" is current
+    And the ChatGPT preference fields are unavailable
+    When I copy the ChatGPT instructions
+    Then ChatGPT handoff step "Antwoord terugzetten" is current
+    And the Open ChatGPT action has focus
+    And the ChatGPT handoff fits the viewport
+
+    Examples:
+      | width | height |
+      | 390   | 844    |
+      | 640   | 900    |
+
   Scenario: Veilig instructies voor ChatGPT kopiëren
     Given the browser clipboard accepts copied instructions
     And I open the event admin
@@ -11,6 +32,7 @@ Feature: Gebeurtenissen schrijven
     Then the copy action has focus
     When I copy the ChatGPT instructions
     Then the clipboard contains a source-aware request for "De val van Constantinopel"
+    And the copied request requires one JSON code block in the answer
     And unrelated story fields were not copied
     And I can open ChatGPT without putting the instructions in the address
     And the normal handoff does not show technical protocol terms
@@ -56,6 +78,37 @@ Feature: Gebeurtenissen schrijven
     And publication still requires a server preview
     And the active ChatGPT request was consumed
 
+  Scenario: Een echt ChatGPT-antwoord wordt volledig teruggezet
+    Given the browser clipboard accepts copied instructions
+    And ChatGPT request IDs use the actual response ID
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "Het IJzeren Gordijn"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste the actual Iron Curtain ChatGPT answer
+    And I check and use the ChatGPT answer
+    Then the imported story title is "Was het IJzeren Gordijn echt van ijzer?"
+    And the actual Iron Curtain sources and activity are restored
+    And publication still requires a server preview
+    When I request the reader preview
+    Then the actual Iron Curtain claims are restored
+
+  Scenario: Een vers Cleopatra-voorstel doorloopt invoer en redactiecontrole
+    Given the browser clipboard accepts copied instructions
+    And I open the event admin
+    When I choose help from ChatGPT
+    And I prepare ChatGPT help for "Cleopatra VII en de slag bij Actium"
+    And I make the ChatGPT instructions
+    And I copy the ChatGPT instructions
+    And I paste the request-bound Cleopatra response
+    And I check and use the ChatGPT answer
+    Then the imported story title is "Cleopatra VII en de slag bij Actium"
+    And the Cleopatra BCE story, sources, and activity are restored
+    When I request the reader preview
+    Then the Cleopatra article and AI review are shown
+    And publication is unavailable until the AI review is complete
+
   Scenario: Een ongeldig ChatGPT-antwoord bewaart tekst en maakt herstelinstructies
     Given the browser clipboard accepts copied instructions
     And I open the event admin
@@ -69,7 +122,7 @@ Feature: Gebeurtenissen schrijven
     And the pasted ChatGPT answer remains visible
     And a plain Dutch import error has focus
     When I copy the ChatGPT repair instructions
-    Then the clipboard contains repair instructions without the hostile paste
+    Then the clipboard contains fenced repair instructions without the hostile paste
     When I remake the ChatGPT instructions
     Then the old import error and repair action are cleared
     And the pasted ChatGPT answer remains visible
@@ -100,18 +153,19 @@ Feature: Gebeurtenissen schrijven
     And the pasted ChatGPT answer remains visible
     And I see that ChatGPT import needs an empty draft
 
-  Scenario: Een bewaard concept wordt niet door ChatGPT overschreven
+  Scenario: Een hersteld concept wordt niet door ChatGPT overschreven
     Given the browser clipboard accepts copied instructions
     And a local event draft exists
     And I open the event admin
-    When I choose help from ChatGPT
+    When I restore the local draft
+    And I choose help from ChatGPT
     And I prepare ChatGPT help for "De val van Constantinopel"
     And I make the ChatGPT instructions
     And I copy the ChatGPT instructions
     And I paste a complete ChatGPT answer titled "Mag bewaard werk niet overschrijven"
     And I check and use the ChatGPT answer
     Then I see that ChatGPT import needs an empty draft
-    And the saved draft can still be restored
+    And my story title remains "Bewaard verhaal"
 
   Scenario: Een oud of onvolledig ChatGPT-antwoord faalt veilig
     Given the browser clipboard accepts copied instructions
@@ -123,6 +177,7 @@ Feature: Gebeurtenissen schrijven
     And I paste a stale ChatGPT answer
     And I check and use the ChatGPT answer
     Then I see that the ChatGPT answer belongs to older instructions
+    And no repair action can relabel the stale answer
 
   Scenario: ChatGPT kan veilig melden dat bronnen ontbreken
     Given I open the event admin
@@ -146,8 +201,12 @@ Feature: Gebeurtenissen schrijven
     And I check and use the ChatGPT answer
     And I continue the imported AI proposal to review
     Then I see the imported article and exact classroom activity
-    And the exact AI classroom preview remains scrollable on a narrow teacher screen
+    And the exact AI classroom preview fits as a slide on a narrow teacher screen
     And I see AI claims, source relationships, and editorial warnings
+    And AI source review comes before claim review
+    And AI review progress starts incomplete
+    When I go to the next incomplete AI review item
+    Then the first incomplete AI source action has focus
     And source link choice is not described as proof or reachability
     And AI source confirmations are unchecked before link choice
     And publication is unavailable until the AI review is complete
@@ -178,7 +237,10 @@ Feature: Gebeurtenissen schrijven
     And I check and use the ChatGPT answer
     And I continue the imported AI proposal to review
     And I choose and confirm every imported source
-    And I confirm every current AI claim
+    Then AI review progress shows all sources checked before claims
+    When I go to the next incomplete AI review item
+    Then the first AI claim confirmation has focus
+    When I confirm every current AI claim
     Then publication is available after AI review
     When I edit the imported story after AI review
     And I continue the imported AI proposal to review
@@ -220,7 +282,7 @@ Feature: Gebeurtenissen schrijven
 
   Scenario: Een volledig gecontroleerd AI-voorstel wordt veilig gepubliceerd
     Given the browser clipboard accepts copied instructions
-    And GitHub publishing commits and triggers deployment
+    And publish responses are delayed
     And I open the event admin
     When I choose help from ChatGPT
     And I prepare ChatGPT help for "De val van Constantinopel"
@@ -238,10 +300,17 @@ Feature: Gebeurtenissen schrijven
     Then publication is available after AI review
     When I choose to publish the event
     Then a publication confirmation names "Gecontroleerd AI-voorstel"
-    When I confirm publication
-    Then the created commit is shown
+    When I confirm publication without waiting
+    Then AI review controls are disabled while publishing
+    And the created commit is shown
     And I see that the website update started without claiming the event is live
     And all local draft versions are cleared
+
+  Scenario: Een exacte datum kiezen met de kalenderknop
+    Given I open the event admin
+    When I choose an exact date with the calendar button
+    Then the exact date field contains "29.05.1453"
+    And the calendar button is icon-only and accessible
 
   Scenario: Een gebeurtenis controleren zonder technische velden
     Given I open the event admin
@@ -259,6 +328,53 @@ Feature: Gebeurtenissen schrijven
     And the inferred event URL ends with "/events/constantinopel-valt-1453"
     And no AI review is shown for the manual draft
 
+  Scenario: Visuele hiërarchie onderscheidt groepen van invoer
+    Given I open the event admin
+    Then the ChatGPT grouping is quiet while its controls remain bounded
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I begin a classroom activity
+    Then the active activity group is quiet while its controls remain bounded
+    When I enter the central activity question "Welke keuze maak je?"
+    And I go to the next activity part
+    Then the activity part change uses restrained continuity
+
+  Scenario Outline: Klasactiviteit stap voor stap opbouwen
+    Given the admin viewport is <width> by <height>
+    And I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I begin a classroom activity
+    Then the guided activity editor shows one active part
+    And the guided activity editor fits the viewport
+    When I enter the central activity question "Welke keuze maak je?"
+    And I go to the next activity part
+    Then activity part heading "Startvraag" has focus
+    When I go to the previous activity part
+    Then the central activity question remains "Welke keuze maak je?"
+    And the activity preview action remains available
+
+    Examples:
+      | width | height |
+      | 390   | 844    |
+      | 640   | 900    |
+      | 834   | 1112   |
+      | 1440  | 1000   |
+
+  Scenario: Een fout opent het juiste klasactiviteitsonderdeel
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I clear the projected text in activity part "Startvraag"
+    And I go to the next activity part
+    And I request the reader preview
+    Then activity field "beat.stages.0.stimulus" is focused
+    And activity part heading "Startvraag" is visible
+
   Scenario: Een klasactiviteit maken en exact controleren
     Given I open the event admin
     When I complete the story of an exact historical event
@@ -267,11 +383,47 @@ Feature: Gebeurtenissen schrijven
     And I create a vote activity with response cards
     And I request the reader preview
     Then authored teacher cues are available in review
+    And the classroom correction action is inside the classroom review
     And I can open the exact classroom preview
+    And trusted image attribution remains usable in classroom preview
     And the classroom preview shows response cards
     And the classroom preview toolbar does not cover the activity
-    And classroom preview preparation remains reachable on a narrow screen
+    And classroom preview preparation fits on a narrow screen
+    And classroom preview preparation shows the response method and sensitivity guidance
     And the vocational connection appears in the lesson bridge
+
+  Scenario Outline: Klasvoorbereiding toont leerkrachtinformatie op elk scherm
+    Given the admin viewport is <width> by <height>
+    And I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I request the reader preview
+    And I can open the exact classroom preview
+    Then classroom preview preparation shows the response method and sensitivity guidance
+    And classroom preview preparation fits on a narrow screen
+
+    Examples:
+      | width | height |
+      | 320   | 568    |
+      | 390   | 844    |
+      | 1024  | 576    |
+      | 1280  | 720    |
+
+  Scenario Outline: Correcties blijven bij de gecontroleerde inhoud
+    Given the admin viewport is <width> by <height>
+    And I open the event admin
+    When I complete a valid event draft through review
+    Then story and source correction actions border the article preview
+    And the publish action is in the review action area
+    And contextual review actions fit the viewport
+
+    Examples:
+      | width | height |
+      | 390   | 844    |
+      | 834   | 1112   |
+      | 1440  | 1000   |
 
   Scenario: Een wijziging aan de klasactiviteit maakt het oude voorbeeld ongeldig
     Given I open the event admin
@@ -291,6 +443,16 @@ Feature: Gebeurtenissen schrijven
     And I create a vote activity with response cards
     And I choose article-only but cancel activity removal
     Then the activity and central question remain
+
+  Scenario: Een ingevulde activiteit kan bewust worden verwijderd
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I complete classification and two sources
+    And I create a vote activity with response cards
+    And I confirm article-only activity removal
+    And I request the reader preview
+    Then only the background article is previewed
 
   Scenario: Ongeldige activiteit blijft zichtbaar met een bruikbare veldfout
     Given I open the event admin
@@ -315,6 +477,19 @@ Feature: Gebeurtenissen schrijven
       | month CE        | november 1918 |
       | year BCE        | 753 v.Chr.    |
       | exact day BCE   | 15 maart 44 v.Chr. |
+
+  Scenario: Een handmatig dinosaurusconcept werkt van invoer tot herstel
+    Given GitHub publishing is in dry-run mode
+    And I open the event admin
+    When I manually author the approximate BCE dinosaur event with an activity
+    Then the dinosaur article and exact classroom activity are previewed
+    When I choose to publish the event
+    Then a publication confirmation names "Het einde van de niet-vliegende dinosauriërs"
+    When I confirm publication
+    Then dry-run publication is clearly not published
+    When I edit and reload the dinosaur draft
+    And I restore the local draft
+    Then the dinosaur edit, sources, activity, and approximate date are restored
 
   Scenario: Een volgende stap krijgt toetsenbordfocus
     Given I open the event admin
@@ -396,6 +571,7 @@ Feature: Gebeurtenissen schrijven
     Then a publication confirmation names "Constantinopel valt"
     When I confirm publication
     Then the created commit is shown
+    And the publication result has focus in the review action area
     And I see that the website update started without claiming the event is live
     And the same draft cannot be published again
 
@@ -407,6 +583,7 @@ Feature: Gebeurtenissen schrijven
     And I confirm publication without waiting
     Then review navigation is disabled while publishing
     And publication progress is announced
+    And publication progress is shown in the review action area
 
   Scenario: Opslagproblemen verbergen geen geslaagde publicatie
     Given GitHub publishing commits and triggers deployment
@@ -454,6 +631,22 @@ Feature: Gebeurtenissen schrijven
     When I close the confirmation with Escape
     Then the publication confirmation is closed
     And publication is still available and focused
+
+  Scenario Outline: Een opgeslagen concept vereist eerst een bewuste keuze
+    Given the admin viewport is <width> by <height>
+    And a local event draft exists
+    When I open the event admin
+    Then the stored draft decision has focus
+    And the authoring workspace is unavailable until I decide
+    And the stored draft decision fits the viewport
+    When I discard the local draft
+    Then the empty authoring workspace is available
+
+    Examples:
+      | width | height |
+      | 390   | 844    |
+      | 834   | 1112   |
+      | 1440  | 1000   |
 
   Scenario: Een opgeslagen concept herstellen
     Given a local event draft exists
@@ -505,6 +698,13 @@ Feature: Gebeurtenissen schrijven
     Then I see the field error "Vul een titel in."
     And the title field is marked invalid
 
+  Scenario: Indeling en bronnen worden gecontroleerd voor de volgende stap
+    Given I open the event admin
+    When I complete the story of an exact historical event
+    And I continue to classification and sources
+    And I try to continue to the activity
+    Then I remain on classification with its required fields marked invalid
+
   Scenario: Servervalidatie keert terug naar het verhaal
     Given I open the event admin
     When I complete a story with the title "!!!"
@@ -519,7 +719,7 @@ Feature: Gebeurtenissen schrijven
     When I complete the story of an exact historical event
     And I continue to classification and sources
     And I complete classification with an invalid source URL
-    And I request the reader preview
+    And I try to continue to the activity
     Then the source URL field is marked invalid and described by its error
 
   Scenario: Deployment opnieuw starten na gedeeltelijk succes

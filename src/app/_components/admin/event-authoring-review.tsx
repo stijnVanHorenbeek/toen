@@ -9,7 +9,7 @@ import { BeatPlayer } from "../beat-player";
 import { EventArticle } from "../event-article";
 import { AiDraftReviewPanel } from "./event-authoring-ai-review";
 import { useEventAuthoring } from "./event-authoring-context";
-import { StageActions, StageHeader } from "./event-authoring-fields";
+import { StageHeader } from "./event-authoring-fields";
 
 export function ReviewStage() {
 	const { state, actions } = useEventAuthoring();
@@ -36,13 +36,41 @@ export function ReviewStage() {
 			>
 				{messages.admin.reviewIntro}
 			</StageHeader>
-			<PublishStatus />
+			<ReviewActionArea publishButton={publishButton} finished={finished} />
+			{finished ? null : (
+				<div data-review-edit="story" className="mb-4 flex justify-end">
+					<button
+						type="button"
+						disabled={state.isPublishing}
+						onClick={() => actions.goToStep(1)}
+						className="text-button"
+					>
+						{messages.admin.actions.editStory}
+					</button>
+				</div>
+			)}
 			<EventArticle event={event} variant="preview" />
-			{event.beat ? <ClassroomPreview event={event} beat={event.beat} /> : null}
+			{finished ? null : (
+				<div data-review-edit="sources" className="mt-4 flex justify-end">
+					<button
+						type="button"
+						disabled={state.isPublishing}
+						onClick={() => actions.goToStep(2)}
+						className="text-button"
+					>
+						{messages.admin.actions.editClassification}
+					</button>
+				</div>
+			)}
+			{event.beat ? (
+				<ClassroomPreview event={event} beat={event.beat} />
+			) : (
+				<ArticleOnlyActivityReview />
+			)}
 			{event.beat ? <TeacherCueReview beat={event.beat} /> : null}
 			<AiDraftReviewPanel />
 
-			<div className="mt-8 grid gap-6 rounded-md border border-ink/25 bg-white p-6 sm:grid-cols-2">
+			<div className="passive-group mt-8 grid gap-6 sm:grid-cols-2">
 				<div>
 					<h3 className="font-serif text-xl font-semibold">
 						{messages.admin.review.profiles}
@@ -53,7 +81,7 @@ export function ReviewStage() {
 				</div>
 			</div>
 
-			<div className="mt-8 rounded-md border border-ink/25 bg-white p-6">
+			<div className="passive-group mt-8">
 				<h3 className="font-serif text-xl font-semibold">
 					{messages.admin.review.publicUrl}
 				</h3>
@@ -73,79 +101,85 @@ export function ReviewStage() {
 					</pre>
 				</details>
 			</div>
-
-			{finished ? null : (
-				<StageActions>
-					<button
-						type="button"
-						disabled={state.isPublishing}
-						onClick={() => actions.goToStep(1)}
-						className="text-button"
-					>
-						{messages.admin.actions.editStory}
-					</button>
-					<button
-						type="button"
-						disabled={state.isPublishing}
-						onClick={() => actions.goToStep(2)}
-						className="text-button"
-					>
-						{messages.admin.actions.editClassification}
-					</button>
-					<button
-						type="button"
-						disabled={state.isPublishing}
-						onClick={() => actions.goToStep(3)}
-						className="text-button"
-					>
-						{messages.admin.actions.editActivity}
-					</button>
-					{state.publishResult?.status === "committed-trigger-failed" ? (
-						<button
-							type="button"
-							disabled={state.isPublishing}
-							aria-disabled={!state.aiReviewComplete || undefined}
-							aria-describedby={state.aiReview ? "ai-review-status" : undefined}
-							onClick={() => {
-								if (!state.aiReviewComplete) {
-									focusAiReviewStatus();
-									return;
-								}
-								void actions.publish();
-							}}
-							className={`primary-button ${
-								state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
-							}`}
-						>
-							{messages.admin.actions.retryUpdate}
-						</button>
-					) : (
-						<button
-							ref={publishButton}
-							type="button"
-							disabled={state.isPublishing}
-							aria-disabled={!state.aiReviewComplete || undefined}
-							aria-describedby={state.aiReview ? "ai-review-status" : undefined}
-							onClick={() => {
-								if (!state.aiReviewComplete) {
-									focusAiReviewStatus();
-									return;
-								}
-								actions.openConfirmation();
-							}}
-							className={`primary-button ${
-								state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
-							}`}
-						>
-							{state.isPublishing
-								? messages.admin.actions.publishing
-								: messages.admin.actions.publish}
-						</button>
-					)}
-				</StageActions>
-			)}
 			<PublicationConfirmation returnFocusRef={publishButton} />
 		</section>
+	);
+}
+
+function ReviewActionArea({
+	finished,
+	publishButton,
+}: {
+	finished: boolean;
+	publishButton: RefObject<HTMLButtonElement | null>;
+}) {
+	const { state, actions } = useEventAuthoring();
+	return (
+		<div
+			data-review-actions
+			className="sticky top-2 z-20 mb-8 rounded-md border border-ink/25 bg-paper/95 p-4 shadow-[0_12px_36px_rgb(33_31_26_/_12%)] backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-5"
+		>
+			<PublishStatus />
+			{finished ? null : state.publishResult?.status ===
+				"committed-trigger-failed" ? (
+				<button
+					type="button"
+					disabled={state.isPublishing}
+					aria-disabled={!state.aiReviewComplete || undefined}
+					aria-describedby={state.aiReview ? "ai-review-status" : undefined}
+					onClick={() => {
+						if (!state.aiReviewComplete) {
+							focusAiReviewStatus();
+							return;
+						}
+						void actions.publish();
+					}}
+					className={`primary-button mt-3 shrink-0 sm:mt-0 ${
+						state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
+					}`}
+				>
+					{messages.admin.actions.retryUpdate}
+				</button>
+			) : (
+				<button
+					ref={publishButton}
+					type="button"
+					disabled={state.isPublishing}
+					aria-disabled={!state.aiReviewComplete || undefined}
+					aria-describedby={state.aiReview ? "ai-review-status" : undefined}
+					onClick={() => {
+						if (!state.aiReviewComplete) {
+							focusAiReviewStatus();
+							return;
+						}
+						actions.openConfirmation();
+					}}
+					className={`primary-button mt-3 shrink-0 sm:mt-0 ${
+						state.aiReviewComplete ? "" : "cursor-not-allowed opacity-55"
+					}`}
+				>
+					{state.isPublishing
+						? messages.admin.actions.publishing
+						: messages.admin.actions.publish}
+				</button>
+			)}
+		</div>
+	);
+}
+
+function ArticleOnlyActivityReview() {
+	const { state, actions } = useEventAuthoring();
+	return (
+		<div className="mt-4 flex justify-end">
+			<button
+				type="button"
+				disabled={state.isPublishing}
+				onClick={() => actions.goToStep(3)}
+				className="text-button"
+			>
+				{messages.admin.actions.editActivity}
+			</button>
+		</div>
 	);
 }
 
@@ -179,7 +213,7 @@ function ClassroomPreview({
 	return (
 		<section
 			aria-labelledby="classroom-preview-title"
-			className="mt-8 rounded-md border border-ink/25 bg-white p-6"
+			className="passive-group mt-8"
 		>
 			<h3
 				id="classroom-preview-title"
@@ -201,14 +235,17 @@ function ClassroomPreview({
 					) : null}
 				</div>
 			) : null}
-			<button
-				ref={openButton}
-				type="button"
-				onClick={() => setOpen(true)}
-				className="secondary-button mt-5"
-			>
-				{messages.admin.actions.openClassroomPreview}
-			</button>
+			<div className="mt-5 flex flex-wrap items-center gap-4">
+				<button
+					ref={openButton}
+					type="button"
+					onClick={() => setOpen(true)}
+					className="secondary-button"
+				>
+					{messages.admin.actions.openClassroomPreview}
+				</button>
+				<EditActivityButton />
+			</div>
 			{open ? (
 				<dialog
 					ref={dialog}
@@ -236,12 +273,17 @@ function ClassroomPreview({
 						className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
 						onClickCapture={(clickEvent) => {
 							if (!(clickEvent.target instanceof Element)) return;
-							if (!clickEvent.target.closest("a")) return;
+							const link = clickEvent.target.closest("a");
+							if (!link || link.target === "_blank") return;
 							clickEvent.preventDefault();
 							close();
 						}}
 					>
-						<BeatPlayer event={{ ...event, beat }} onEscape={close} />
+						<BeatPlayer
+							event={{ ...event, beat }}
+							onEscape={close}
+							variant="preview"
+						/>
 					</div>
 				</dialog>
 			) : null}
@@ -249,15 +291,32 @@ function ClassroomPreview({
 	);
 }
 
+function EditActivityButton() {
+	const { state, actions } = useEventAuthoring();
+	return (
+		<button
+			type="button"
+			disabled={state.isPublishing}
+			onClick={() => actions.goToStep(3)}
+			className="text-button"
+		>
+			{messages.admin.actions.editActivity}
+		</button>
+	);
+}
+
 function TeacherCueReview({ beat }: { beat: InteractiveBeat }) {
 	return (
-		<details className="mt-8 rounded-md border border-ink/25 bg-white p-6">
+		<details className="passive-group mt-8">
 			<summary className="cursor-pointer font-serif text-xl font-semibold">
 				{messages.admin.review.teacherCues}
 			</summary>
 			<ol className="mt-5 space-y-4">
 				{beat.stages.map((stage) => (
-					<li key={stage.id} className="rounded-md border border-ink/15 p-4">
+					<li
+						key={stage.id}
+						className="border-ink/15 border-t pt-4 first:border-0 first:pt-0"
+					>
 						<h4 className="font-semibold">{reviewPhaseLabel(stage.phase)}</h4>
 						<dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
 							<div>
@@ -294,44 +353,57 @@ function reviewPhaseLabel(phase: InteractiveBeat["stages"][number]["phase"]) {
 function PublishStatus() {
 	const { state } = useEventAuthoring();
 	const result = state.publishResult;
+	const statusRef = useRef<HTMLDivElement>(null);
+	const statusKey = state.publishError
+		? "error"
+		: state.isPublishing
+			? "publishing"
+			: result?.status;
+	useEffect(() => {
+		if (!statusKey || statusKey === "publishing") return;
+		statusRef.current?.focus();
+		statusRef.current?.scrollIntoView({ block: "nearest" });
+	}, [statusKey]);
 	return (
-		<div role="status" aria-live="polite" aria-atomic="true">
+		<div
+			ref={statusRef}
+			data-publish-status={statusKey || undefined}
+			tabIndex={statusKey && statusKey !== "publishing" ? -1 : undefined}
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+			className="min-w-0 flex-1"
+		>
 			{state.publishError ? (
-				<p
-					role="alert"
-					className="mb-7 rounded-md border border-accent bg-white p-4 font-semibold text-accent"
-				>
+				<p role="alert" className="font-semibold text-accent">
 					{state.publishError}
 				</p>
 			) : state.isPublishing ? (
-				<p className="mb-7 rounded-md border border-ink/25 bg-white p-4 font-semibold">
-					{messages.admin.actions.publishing}
-				</p>
+				<p className="font-semibold">{messages.admin.actions.publishing}</p>
 			) : result?.status === "dry-run" ? (
-				<p className="mb-7 rounded-md border border-amber-700 bg-white p-4">
+				<p>
 					<strong className="block">
 						{messages.admin.status.notPublished}
 					</strong>
 					{messages.admin.status.dryRun}
 				</p>
 			) : result?.status === "committed-trigger-failed" ? (
-				<div
-					role="alert"
-					className="mb-7 rounded-md border border-amber-700 bg-white p-4"
-				>
+				<div role="alert">
 					<strong className="block">{messages.admin.status.saved}</strong>
 					{messages.admin.status.updateFailed}{" "}
 					<CommitLink url={result.commitUrl} />
 				</div>
 			) : result?.status === "committed-and-triggered" ? (
-				<div className="mb-7 rounded-md border border-green-800 bg-white p-5">
-					<strong className="block font-serif text-2xl">
+				<div>
+					<strong className="block font-serif text-xl">
 						{messages.admin.status.saved}
 					</strong>
-					<p className="mt-2">{messages.admin.status.updateStarted}</p>
+					<p>{messages.admin.status.updateStarted}</p>
 					<CommitLink url={result.commitUrl} />
 				</div>
-			) : null}
+			) : (
+				<p className="text-ink/70 text-sm">{messages.admin.review.ready}</p>
+			)}
 		</div>
 	);
 }

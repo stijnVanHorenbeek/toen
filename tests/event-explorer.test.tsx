@@ -17,6 +17,15 @@ const activity: EventCatalogEntry = {
 };
 
 describe("EventExplorer", () => {
+	it("uses curated imagery to make recommendations visually distinct", () => {
+		const markup = renderToStaticMarkup(
+			<EventExplorer events={[{ ...activity, slug: "apollo-11-1969" }]} />,
+		);
+
+		expect(markup).toContain('src="/media/events/apollo-11-aldrin.webp"');
+		expect(markup).toContain('alt="Buzz Aldrin staat op het maanoppervlak');
+	});
+
 	it("offers classroom launch and background reading for runnable events", () => {
 		const markup = renderToStaticMarkup(<EventExplorer events={[activity]} />);
 

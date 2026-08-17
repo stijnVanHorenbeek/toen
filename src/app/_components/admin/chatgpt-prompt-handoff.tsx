@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	buildChatGptPrompt,
 	CHATGPT_ACTIVE_REQUEST_STORAGE_KEY,
@@ -18,9 +18,8 @@ import { vakrichtingIds } from "@/lib/content/taxonomy";
 import { formatVakrichting } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 import { useEventAuthoring } from "./event-authoring-context";
+import { Field, inputClass } from "./form-controls";
 
-const inputClass =
-	"min-h-12 w-full rounded-md border border-ink/55 bg-white px-4 text-base text-ink focus:border-accent";
 const initialInput: ChatGptPromptInput = {
 	topic: "",
 	lessonContext: "",
@@ -32,6 +31,7 @@ const initialInput: ChatGptPromptInput = {
 
 type GeneratedInstructions = { requestId: string; text: string };
 type CopyState = "idle" | "copied" | "manual";
+type HandoffStep = 1 | 2 | 3;
 type ImportState =
 	| Exclude<ChatGptImportResult, { kind: "ready" }>
 	| { kind: "applied" }
@@ -48,11 +48,28 @@ export function ChatGptPromptHandoff() {
 	const [pastedResponse, setPastedResponse] = useState("");
 	const [importState, setImportState] = useState<ImportState | null>(null);
 	const [repairCopyState, setRepairCopyState] = useState<CopyState>("idle");
+	const [currentStep, setCurrentStep] = useState<HandoffStep>(1);
 	const topicInput = useRef<HTMLInputElement>(null);
 	const copyButton = useRef<HTMLButtonElement>(null);
+	const openChatGptLink = useRef<HTMLAnchorElement>(null);
 	const manualInstructions = useRef<HTMLTextAreaElement>(null);
 	const importFeedback = useRef<HTMLDivElement>(null);
 	const manualRepair = useRef<HTMLTextAreaElement>(null);
+
+	useEffect(() => {
+		if (readActiveRequest()) setCurrentStep(3);
+	}, []);
+
+	function showStep(step: HandoffStep) {
+		setCurrentStep(step);
+		requestAnimationFrame(() => {
+			const target =
+				step === 3
+					? document.getElementById("chatgpt-response")
+					: document.getElementById(`chatgpt-step-${step}-title`);
+			target?.focus();
+		});
+	}
 
 	function update<Key extends keyof ChatGptPromptInput>(
 		field: Key,
@@ -64,6 +81,7 @@ export function ChatGptPromptHandoff() {
 		setCopyState("idle");
 		setImportState(null);
 		setRepairCopyState("idle");
+		setCurrentStep(1);
 		forgetActiveRequest();
 	}
 
@@ -80,6 +98,7 @@ export function ChatGptPromptHandoff() {
 		setCopyState("idle");
 		setImportState(null);
 		setRepairCopyState("idle");
+		setCurrentStep(2);
 		rememberActiveRequest(requestId);
 		requestAnimationFrame(() => copyButton.current?.focus());
 	}
@@ -91,8 +110,11 @@ export function ChatGptPromptHandoff() {
 				throw new Error("clipboard unavailable");
 			await navigator.clipboard.writeText(generated.text);
 			setCopyState("copied");
+			setCurrentStep(3);
+			requestAnimationFrame(() => openChatGptLink.current?.focus());
 		} catch {
 			setCopyState("manual");
+			setCurrentStep(3);
 			requestAnimationFrame(() => {
 				manualInstructions.current?.focus();
 				manualInstructions.current?.select();
@@ -156,7 +178,10 @@ export function ChatGptPromptHandoff() {
 	const repairPrompt = currentRepairPrompt(importState);
 
 	return (
-		<details className="mb-10 rounded-md border border-ink/25 bg-white p-5 sm:p-7">
+		<details
+			data-passive-group="chatgpt"
+			className="passive-group mb-10 sm:p-7"
+		>
 			<summary
 				id="chatgpt-handoff-title"
 				className="cursor-pointer font-serif text-2xl font-semibold"
@@ -165,156 +190,197 @@ export function ChatGptPromptHandoff() {
 			</summary>
 			<div className="mt-4">
 				<p className="max-w-2xl text-ink/75">{messages.admin.chatGpt.intro}</p>
-
-				<form
-					noValidate
-					className="mt-6 space-y-5"
-					onSubmit={(event) => {
-						event.preventDefault();
-						makeInstructions();
-					}}
+				<ol
+					aria-label={messages.admin.chatGpt.steps}
+					className="mt-6 grid gap-2 sm:grid-cols-3"
 				>
-					<label className="block font-semibold" htmlFor="chatgpt-topic">
-						{messages.admin.chatGpt.topic}
-						<input
-							ref={topicInput}
-							id="chatgpt-topic"
-							required
-							maxLength={160}
-							autoComplete="off"
-							value={input.topic}
-							onChange={(event) => update("topic", event.target.value)}
-							aria-invalid={topicError ? "true" : undefined}
-							aria-describedby={topicError ? "chatgpt-topic-error" : undefined}
-							className={`${inputClass} mt-2 font-normal`}
-						/>
-					</label>
-					{topicError ? (
-						<p id="chatgpt-topic-error" className="mt-2 text-red-800 text-sm">
-							{topicError}
-						</p>
-					) : null}
+					{messages.admin.chatGpt.stepLabels.map((label, index) => {
+						const step = (index + 1) as HandoffStep;
+						return (
+							<li key={label}>
+								<h3
+									id={`chatgpt-step-${step}-title`}
+									tabIndex={-1}
+									aria-current={currentStep === step ? "step" : undefined}
+									className={`rounded-md px-3 py-3 text-sm ${
+										currentStep === step
+											? "bg-accent font-semibold text-white"
+											: step < currentStep
+												? "bg-paper text-ink"
+												: "border border-ink/20 text-ink/60"
+									}`}
+								>
+									{step}. {label}
+								</h3>
+							</li>
+						);
+					})}
+				</ol>
 
-					<label className="block font-semibold" htmlFor="chatgpt-context">
-						{messages.admin.chatGpt.context}
-						<textarea
-							id="chatgpt-context"
-							rows={3}
-							maxLength={300}
-							value={input.lessonContext}
-							onChange={(event) => update("lessonContext", event.target.value)}
-							className={`${inputClass} mt-2 resize-y py-3 font-normal`}
-						/>
-					</label>
-
-					<div className="grid gap-5 sm:grid-cols-2">
-						<label className="block font-semibold" htmlFor="chatgpt-duration">
-							{messages.admin.chatGpt.duration}
-							<select
-								id="chatgpt-duration"
-								value={input.durationMinutes}
-								onChange={(event) =>
-									update(
-										"durationMinutes",
-										Number(event.target.value) as 5 | 8 | 12,
-									)
-								}
-								className={`${inputClass} mt-2 font-normal`}
-							>
-								{([5, 8, 12] as const).map((duration) => (
-									<option key={duration} value={duration}>
-										{duration} minuten
-									</option>
-								))}
-							</select>
-						</label>
-
-						<label className="block font-semibold" htmlFor="chatgpt-profile">
-							{messages.admin.chatGpt.profile}
-							<select
-								id="chatgpt-profile"
-								value={input.profile}
-								onChange={(event) =>
-									update("profile", event.target.value as typeof input.profile)
-								}
-								className={`${inputClass} mt-2 font-normal`}
-							>
-								{vakrichtingIds.map((profile) => (
-									<option key={profile} value={profile}>
-										{formatVakrichting(profile)}
-									</option>
-								))}
-							</select>
-						</label>
-
-						<label className="block font-semibold" htmlFor="chatgpt-mechanic">
-							{messages.admin.chatGpt.mechanic}
-							<select
-								id="chatgpt-mechanic"
-								value={input.mechanic}
-								onChange={(event) =>
-									update(
-										"mechanic",
-										event.target.value as typeof input.mechanic,
-									)
-								}
-								className={`${inputClass} mt-2 font-normal`}
-							>
-								<option value="choose">
-									{messages.admin.chatGpt.chooseMechanic}
-								</option>
-								{(
-									["vote-revote", "source-duel", "context-decision"] as const
-								).map((mechanic) => (
-									<option key={mechanic} value={mechanic}>
-										{messages.admin.fields.mechanicOptions[mechanic]}
-									</option>
-								))}
-							</select>
-						</label>
-
-						<label
-							className="block font-semibold"
-							htmlFor="chatgpt-response-method"
+				{currentStep === 1 ? (
+					<form
+						noValidate
+						className="mt-6 space-y-5"
+						onSubmit={(event) => {
+							event.preventDefault();
+							makeInstructions();
+						}}
+					>
+						<Field
+							label={messages.admin.chatGpt.topic}
+							name="chatgpt-topic"
+							error={topicError ?? undefined}
 						>
-							{messages.admin.chatGpt.responseMethod}
-							<select
-								id="chatgpt-response-method"
-								value={input.responseMethod}
-								onChange={(event) =>
-									update(
-										"responseMethod",
-										event.target.value as typeof input.responseMethod,
-									)
-								}
-								className={`${inputClass} mt-2 font-normal`}
-							>
-								<option value="choose">
-									{messages.admin.chatGpt.chooseResponseMethod}
-								</option>
-								{beatResponseMethods.map((method) => (
-									<option key={method} value={method}>
-										{messages.admin.fields.responseMethods[method]}
-									</option>
-								))}
-							</select>
-						</label>
-					</div>
+							<input
+								ref={topicInput}
+								id="chatgpt-topic"
+								required
+								maxLength={160}
+								autoComplete="off"
+								value={input.topic}
+								onChange={(event) => update("topic", event.target.value)}
+								className={`${inputClass} font-normal`}
+							/>
+						</Field>
 
-					<div className="rounded-md bg-paper p-4 text-sm leading-6 text-ink/80">
-						<p>{messages.admin.chatGpt.privacy}</p>
-						<a
-							href="https://openai.com/policies/privacy-policy/"
-							target="_blank"
-							rel="noreferrer"
-							className="mt-2 inline-block font-semibold text-accent underline underline-offset-4"
+						<Field
+							label={messages.admin.chatGpt.context}
+							name="chatgpt-context"
 						>
-							{messages.admin.chatGpt.privacyLink}
-						</a>
-					</div>
+							<textarea
+								id="chatgpt-context"
+								rows={3}
+								maxLength={300}
+								value={input.lessonContext}
+								onChange={(event) =>
+									update("lessonContext", event.target.value)
+								}
+								className={`${inputClass} resize-y py-3 font-normal`}
+							/>
+						</Field>
 
-					{generated ? (
-						<div className="flex flex-wrap gap-3">
+						<div className="grid gap-5 sm:grid-cols-2">
+							<label className="block font-semibold" htmlFor="chatgpt-duration">
+								{messages.admin.chatGpt.duration}
+								<select
+									id="chatgpt-duration"
+									value={input.durationMinutes}
+									onChange={(event) =>
+										update(
+											"durationMinutes",
+											Number(event.target.value) as 5 | 8 | 12,
+										)
+									}
+									className={`${inputClass} mt-2 font-normal`}
+								>
+									{([5, 8, 12] as const).map((duration) => (
+										<option key={duration} value={duration}>
+											{duration} minuten
+										</option>
+									))}
+								</select>
+							</label>
+
+							<label className="block font-semibold" htmlFor="chatgpt-profile">
+								{messages.admin.chatGpt.profile}
+								<select
+									id="chatgpt-profile"
+									value={input.profile}
+									onChange={(event) =>
+										update(
+											"profile",
+											event.target.value as typeof input.profile,
+										)
+									}
+									className={`${inputClass} mt-2 font-normal`}
+								>
+									{vakrichtingIds.map((profile) => (
+										<option key={profile} value={profile}>
+											{formatVakrichting(profile)}
+										</option>
+									))}
+								</select>
+							</label>
+
+							<label className="block font-semibold" htmlFor="chatgpt-mechanic">
+								{messages.admin.chatGpt.mechanic}
+								<select
+									id="chatgpt-mechanic"
+									value={input.mechanic}
+									onChange={(event) =>
+										update(
+											"mechanic",
+											event.target.value as typeof input.mechanic,
+										)
+									}
+									className={`${inputClass} mt-2 font-normal`}
+								>
+									<option value="choose">
+										{messages.admin.chatGpt.chooseMechanic}
+									</option>
+									{(
+										["vote-revote", "source-duel", "context-decision"] as const
+									).map((mechanic) => (
+										<option key={mechanic} value={mechanic}>
+											{messages.admin.fields.mechanicOptions[mechanic]}
+										</option>
+									))}
+								</select>
+							</label>
+
+							<label
+								className="block font-semibold"
+								htmlFor="chatgpt-response-method"
+							>
+								{messages.admin.chatGpt.responseMethod}
+								<select
+									id="chatgpt-response-method"
+									value={input.responseMethod}
+									onChange={(event) =>
+										update(
+											"responseMethod",
+											event.target.value as typeof input.responseMethod,
+										)
+									}
+									className={`${inputClass} mt-2 font-normal`}
+								>
+									<option value="choose">
+										{messages.admin.chatGpt.chooseResponseMethod}
+									</option>
+									{beatResponseMethods.map((method) => (
+										<option key={method} value={method}>
+											{messages.admin.fields.responseMethods[method]}
+										</option>
+									))}
+								</select>
+							</label>
+						</div>
+
+						<div className="rounded-md bg-paper p-4 text-sm leading-6 text-ink/80">
+							<p>{messages.admin.chatGpt.privacy}</p>
+							<a
+								href="https://openai.com/policies/privacy-policy/"
+								target="_blank"
+								rel="noreferrer"
+								className="mt-2 inline-block font-semibold text-accent underline underline-offset-4"
+							>
+								{messages.admin.chatGpt.privacyLink}
+							</a>
+						</div>
+
+						<button type="submit" className="primary-button">
+							{messages.admin.chatGpt.make}
+						</button>
+					</form>
+				) : null}
+
+				{currentStep === 2 && generated ? (
+					<section
+						aria-labelledby="chatgpt-step-2-title"
+						className="mt-6 rounded-md bg-paper p-4 sm:p-5"
+					>
+						<p className="text-ink/75">{messages.admin.chatGpt.copyIntro}</p>
+						<div className="mt-4 flex flex-wrap gap-3">
 							<button
 								ref={copyButton}
 								type="button"
@@ -323,16 +389,23 @@ export function ChatGptPromptHandoff() {
 							>
 								{messages.admin.chatGpt.copy}
 							</button>
-							<button type="submit" className="secondary-button">
-								{messages.admin.chatGpt.remake}
+							<button
+								type="button"
+								onClick={() => showStep(1)}
+								className="secondary-button"
+							>
+								{messages.admin.chatGpt.editPreferences}
+							</button>
+							<button
+								type="button"
+								onClick={() => showStep(3)}
+								className="text-button"
+							>
+								{messages.admin.chatGpt.goToResponse}
 							</button>
 						</div>
-					) : (
-						<button type="submit" className="secondary-button">
-							{messages.admin.chatGpt.make}
-						</button>
-					)}
-				</form>
+					</section>
+				) : null}
 
 				<p
 					role="status"
@@ -374,152 +447,173 @@ export function ChatGptPromptHandoff() {
 					</div>
 				) : null}
 
-				{copyState === "copied" || copyState === "manual" ? (
-					<a
-						href="https://chatgpt.com/"
-						target="_blank"
-						rel="noreferrer"
-						className="primary-button mt-4 inline-flex items-center"
+				{currentStep === 3 ? (
+					<section
+						aria-labelledby="chatgpt-response-title"
+						className="mt-6 border-ink/20 border-t pt-6"
 					>
-						{messages.admin.chatGpt.openChatGpt}
-					</a>
-				) : null}
-
-				<section
-					aria-labelledby="chatgpt-response-title"
-					className="mt-8 border-ink/20 border-t pt-6"
-				>
-					<h3
-						id="chatgpt-response-title"
-						className="font-serif text-xl font-semibold"
-					>
-						{messages.admin.chatGpt.responseTitle}
-					</h3>
-					<p className="mt-2 text-ink/75">
-						{messages.admin.chatGpt.responseIntro}
-					</p>
-					<label
-						className="mt-5 block font-semibold"
-						htmlFor="chatgpt-response"
-					>
-						{messages.admin.chatGpt.responseLabel}
-					</label>
-					<textarea
-						id="chatgpt-response"
-						rows={10}
-						value={pastedResponse}
-						onChange={(event) => {
-							setPastedResponse(event.target.value);
-							setImportState(null);
-							setRepairCopyState("idle");
-						}}
-						aria-invalid={importState?.kind === "error" ? "true" : undefined}
-						aria-describedby={
-							importState?.kind === "error"
-								? "chatgpt-response-hint chatgpt-import-feedback"
-								: "chatgpt-response-hint"
-						}
-						className={`${inputClass} mt-2 resize-y py-3 font-mono text-xs`}
-					/>
-					<p id="chatgpt-response-hint" className="mt-2 text-ink/70 text-sm">
-						{messages.admin.chatGpt.responseHint}
-					</p>
-					<button
-						type="button"
-						onClick={checkAndApplyResponse}
-						className="primary-button mt-4"
-					>
-						{messages.admin.chatGpt.applyResponse}
-					</button>
-
-					<p
-						role="status"
-						aria-live="polite"
-						aria-atomic="true"
-						className="mt-4 font-semibold text-ink/80"
-					>
-						{importState?.kind === "applied"
-							? messages.admin.chatGpt.applied
-							: ""}
-					</p>
-					{importState?.kind === "blocked" ? (
-						<div
-							ref={importFeedback}
-							role="alert"
-							tabIndex={-1}
-							className="mt-4 rounded-md border border-red-800/30 bg-red-50 p-4 text-red-900"
+						{copyState === "copied" || copyState === "manual" ? (
+							<div className="mb-6 flex flex-wrap items-center gap-4 rounded-md bg-paper p-4">
+								<a
+									ref={openChatGptLink}
+									href="https://chatgpt.com/"
+									target="_blank"
+									rel="noreferrer"
+									className="primary-button inline-flex items-center"
+								>
+									{messages.admin.chatGpt.openChatGpt}
+								</a>
+								<button
+									type="button"
+									onClick={() => showStep(2)}
+									className="text-button"
+								>
+									{messages.admin.chatGpt.copyAgain}
+								</button>
+							</div>
+						) : null}
+						{generated ? (
+							<button
+								type="button"
+								onClick={makeInstructions}
+								className="text-button mb-5"
+							>
+								{messages.admin.chatGpt.remake}
+							</button>
+						) : null}
+						<h3
+							id="chatgpt-response-title"
+							className="font-serif text-xl font-semibold"
 						>
-							{messages.admin.chatGpt.blocked}
-						</div>
-					) : null}
-					{importState?.kind === "error" ? (
-						<div
-							ref={importFeedback}
-							id="chatgpt-import-feedback"
-							role="alert"
-							tabIndex={-1}
-							className="mt-4 rounded-md border border-red-800/30 bg-red-50 p-4 text-red-900"
+							{messages.admin.chatGpt.responseTitle}
+						</h3>
+						<p className="mt-2 text-ink/75">
+							{messages.admin.chatGpt.responseIntro}
+						</p>
+						<label
+							className="mt-5 block font-semibold"
+							htmlFor="chatgpt-response"
 						>
-							{importState.message}
-						</div>
-					) : null}
-					{importState?.kind === "cannot-complete" ? (
-						<div
-							ref={importFeedback}
-							role="alert"
-							tabIndex={-1}
-							className="mt-4 break-words rounded-md border border-amber-800/30 bg-amber-50 p-4 text-amber-950"
-						>
-							<p className="font-semibold">
-								{messages.admin.chatGpt.cannotComplete}
-							</p>
-							<ul className="mt-2 list-disc space-y-1 pl-5">
-								{importState.reasons.map((reason) => (
-									<li key={reason}>{reason}</li>
-								))}
-							</ul>
-						</div>
-					) : null}
-
-					{repairPrompt ? (
+							{messages.admin.chatGpt.responseLabel}
+						</label>
+						<textarea
+							id="chatgpt-response"
+							rows={10}
+							value={pastedResponse}
+							onChange={(event) => {
+								setPastedResponse(event.target.value);
+								setImportState(null);
+								setRepairCopyState("idle");
+							}}
+							aria-invalid={importState?.kind === "error" ? "true" : undefined}
+							aria-describedby={
+								importState?.kind === "error"
+									? "chatgpt-response-hint chatgpt-import-feedback"
+									: "chatgpt-response-hint"
+							}
+							className={`${inputClass} mt-2 resize-y py-3 font-mono text-xs`}
+						/>
+						<p id="chatgpt-response-hint" className="mt-2 text-ink/70 text-sm">
+							{messages.admin.chatGpt.responseHint}
+						</p>
 						<button
 							type="button"
-							onClick={copyRepairInstructions}
-							className="secondary-button mt-4"
+							disabled={!pastedResponse.trim()}
+							onClick={checkAndApplyResponse}
+							className="primary-button mt-4"
 						>
-							{messages.admin.chatGpt.copyRepair}
+							{messages.admin.chatGpt.applyResponse}
 						</button>
-					) : null}
-					<p
-						role="status"
-						aria-live="polite"
-						className="mt-3 text-ink/75 text-sm"
-					>
-						{repairCopyState === "copied"
-							? messages.admin.chatGpt.repairCopied
-							: repairCopyState === "manual"
-								? messages.admin.chatGpt.repairManual
+
+						<p
+							role="status"
+							aria-live="polite"
+							aria-atomic="true"
+							className="mt-4 font-semibold text-ink/80"
+						>
+							{importState?.kind === "applied"
+								? messages.admin.chatGpt.applied
 								: ""}
-					</p>
-					{repairPrompt && repairCopyState === "manual" ? (
-						<div className="mt-3">
-							<label
-								className="block font-semibold"
-								htmlFor="chatgpt-repair-manual"
+						</p>
+						{importState?.kind === "blocked" ? (
+							<div
+								ref={importFeedback}
+								role="alert"
+								tabIndex={-1}
+								className="mt-4 rounded-md border border-red-800/30 bg-red-50 p-4 text-red-900"
 							>
-								{messages.admin.chatGpt.repairLabel}
-							</label>
-							<textarea
-								ref={manualRepair}
-								id="chatgpt-repair-manual"
-								readOnly
-								rows={7}
-								value={repairPrompt}
-								className={`${inputClass} mt-2 resize-y py-3 font-mono text-xs`}
-							/>
-						</div>
-					) : null}
-				</section>
+								{messages.admin.chatGpt.blocked}
+							</div>
+						) : null}
+						{importState?.kind === "error" ? (
+							<div
+								ref={importFeedback}
+								id="chatgpt-import-feedback"
+								role="alert"
+								tabIndex={-1}
+								className="mt-4 rounded-md border border-red-800/30 bg-red-50 p-4 text-red-900"
+							>
+								{importState.message}
+							</div>
+						) : null}
+						{importState?.kind === "cannot-complete" ? (
+							<div
+								ref={importFeedback}
+								role="alert"
+								tabIndex={-1}
+								className="mt-4 break-words rounded-md border border-amber-800/30 bg-amber-50 p-4 text-amber-950"
+							>
+								<p className="font-semibold">
+									{messages.admin.chatGpt.cannotComplete}
+								</p>
+								<ul className="mt-2 list-disc space-y-1 pl-5">
+									{importState.reasons.map((reason) => (
+										<li key={reason}>{reason}</li>
+									))}
+								</ul>
+							</div>
+						) : null}
+
+						{repairPrompt ? (
+							<button
+								type="button"
+								onClick={copyRepairInstructions}
+								className="secondary-button mt-4"
+							>
+								{messages.admin.chatGpt.copyRepair}
+							</button>
+						) : null}
+						<p
+							role="status"
+							aria-live="polite"
+							className="mt-3 text-ink/75 text-sm"
+						>
+							{repairCopyState === "copied"
+								? messages.admin.chatGpt.repairCopied
+								: repairCopyState === "manual"
+									? messages.admin.chatGpt.repairManual
+									: ""}
+						</p>
+						{repairPrompt && repairCopyState === "manual" ? (
+							<div className="mt-3">
+								<label
+									className="block font-semibold"
+									htmlFor="chatgpt-repair-manual"
+								>
+									{messages.admin.chatGpt.repairLabel}
+								</label>
+								<textarea
+									ref={manualRepair}
+									id="chatgpt-repair-manual"
+									readOnly
+									rows={7}
+									value={repairPrompt}
+									className={`${inputClass} mt-2 resize-y py-3 font-mono text-xs`}
+								/>
+							</div>
+						) : null}
+					</section>
+				) : null}
 			</div>
 		</details>
 	);

@@ -19,6 +19,22 @@ import {
 
 const beat = interactiveBeatSchema.parse(voteRevoteBeat);
 const sources = beatSources.map((source) => ({ ...source }));
+const visual = {
+	src: "/media/events/apollo-11-aldrin.webp",
+	width: 1_800,
+	height: 1_800,
+	alt: "Buzz Aldrin staat op het maanoppervlak.",
+	caption: "Buzz Aldrin tijdens Apollo 11, 20 juli 1969.",
+	credit: "Neil A. Armstrong / NASA",
+	license: "Publiek domein",
+	licenseRationale: "Officiële NASA-foto.",
+	sourceUrl: "https://commons.wikimedia.org/wiki/File:Aldrin_Apollo_11.jpg",
+	originalUrl:
+		"https://upload.wikimedia.org/wikipedia/commons/9/9c/Aldrin_Apollo_11.jpg",
+	derivative: "Testbestand.",
+	sha256: "test",
+	focalPoint: "50% 42%",
+};
 
 describe("BeatStagePanel", () => {
 	it("shows Skip only on optional stages and Finish only at closure", () => {
@@ -43,7 +59,8 @@ describe("BeatStagePanel", () => {
 			/>,
 		);
 		expect(optionalMarkup).toContain(">Overslaan</button>");
-		expect(optionalMarkup).toContain(">Stoppen</button>");
+		expect(optionalMarkup).toContain('aria-label="Presentatie sluiten"');
+		expect(optionalMarkup).not.toContain(">Stoppen</button>");
 		expect(optionalMarkup).toContain(optionalStage.teacherPrompt);
 		expect(optionalMarkup).not.toContain(">Klaar</button>");
 
@@ -58,9 +75,66 @@ describe("BeatStagePanel", () => {
 			/>,
 		);
 		expect(closureMarkup).toContain(">Klaar</button>");
-		expect(closureMarkup).toContain(">Stoppen</button>");
+		expect(closureMarkup).toContain('aria-label="Presentatie sluiten"');
+		expect(closureMarkup).not.toContain(">Stoppen</button>");
 		expect(closureMarkup).not.toContain(">Overslaan</button>");
 		expect(closureMarkup).not.toContain(">Volgende</button>");
+	});
+
+	it("keeps public and admin preview stage semantics and controls in parity", () => {
+		const event = { slug: "test-event", title: "Test event", sources, beat };
+		const routeStages = createBeatRuntimeStages(beat, 5);
+		const state = reduceBeatRuntime(createBeatRuntimeState(), {
+			type: "start",
+			routeStages,
+		});
+		if (state.status !== "running") throw new Error("Expected running state");
+		const renderVariant = (variant: "page" | "preview") =>
+			renderToStaticMarkup(
+				<BeatClassroomScreen
+					event={event}
+					state={state}
+					dispatch={() => undefined}
+					variant={variant}
+				/>,
+			);
+		const normalizeVariant = (markup: string) =>
+			markup
+				.replace(/data-classroom-player-variant="(?:page|preview)"/g, "")
+				.replace(/class="([^"]*)"/g, (_match, classes: string) =>
+					classes
+						.split(" ")
+						.filter(
+							(className) => className !== "h-dvh" && className !== "h-full",
+						)
+						.join(" "),
+				);
+
+		const pageMarkup = renderVariant("page");
+		const previewMarkup = renderVariant("preview");
+		expect(pageMarkup).toContain('data-classroom-player-variant="page"');
+		expect(previewMarkup).toContain('data-classroom-player-variant="preview"');
+		expect(normalizeVariant(previewMarkup)).toBe(normalizeVariant(pageMarkup));
+	});
+
+	it("uses a dominant attributed visual when curated media is available", () => {
+		const opening = beat.stages.find((stage) => stage.phase === "opening");
+		if (!opening) throw new Error("Missing opening fixture");
+		const markup = renderToStaticMarkup(
+			<BeatStagePanel
+				beat={beat}
+				stage={opening}
+				sources={sources}
+				visual={visual}
+			/>,
+		);
+
+		expect(markup).toContain(`src="${visual.src}"`);
+		expect(markup).toContain(`alt="${visual.alt}"`);
+		expect(markup).toContain(visual.credit);
+		expect(markup).toContain(visual.license);
+		expect(markup).toContain(`href="${visual.sourceUrl}"`);
+		expect(markup).not.toContain(visual.caption);
 	});
 
 	it("renders the opening problem without presenter instructions", () => {
@@ -245,6 +319,10 @@ describe("BeatStagePanel", () => {
 		);
 
 		expect(preparation).toContain("Antwoordkaarten");
+		expect(preparation).toContain('aria-label="5 minuten"');
+		expect(preparation).toContain(">5 min</span>");
+		expect(preparation).toContain("<fieldset");
+		expect(preparation).toContain("<legend");
 		expect(bridge).toContain("Koppel dit aan veilige werkprocedures.");
 	});
 

@@ -3,6 +3,8 @@ import { createBdd, test } from "playwright-bdd";
 
 const { Given, Then, When } = createBdd(test);
 
+let serverFirstRecommendation = "";
+
 Given("I open the homepage", async ({ page }) => {
 	await page.goto("/");
 });
@@ -61,6 +63,29 @@ Then("I see the classroom activity preparation", async ({ page }) => {
 	await expect(page.locator("[data-beat-preparation]")).toBeVisible();
 	await expect(page.getByLabel("8 minuten")).toBeChecked();
 });
+
+When("I open the homepage filters", async ({ page }) => {
+	await page.getByRole("button", { name: "Zoeken en voorkeuren" }).click();
+});
+
+When("I open the homepage filters if needed", async ({ page }) => {
+	const search = page.getByLabel("Zoek op onderwerp of gebeurtenis");
+	if (await search.isVisible()) return;
+	await page.getByRole("button", { name: "Zoeken en voorkeuren" }).click();
+});
+
+Given(
+	"I record the server-rendered first recommendation",
+	async ({ request }) => {
+		const response = await request.get("/");
+		const html = await response.text();
+		serverFirstRecommendation =
+			/data-recommended-event[^>]*>[\s\S]*?<article[^>]*>[\s\S]*?<h2[^>]*>([^<]+)/.exec(
+				html,
+			)?.[1] ?? "";
+		expect(serverFirstRecommendation).not.toBe("");
+	},
+);
 
 When("I search activities for {string}", async ({ page }, query: string) => {
 	await page.getByLabel("Zoek op onderwerp of gebeurtenis").fill(query);
@@ -121,10 +146,101 @@ Then(
 			page.getByRole("region", { name: "Kies een activiteit" }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("region", { name: "Zoeken en filteren" }),
+			page.getByRole("region", { name: "Zoeken en voorkeuren" }),
 		).toBeVisible();
 	},
 );
+
+Then(
+	"compact filter access appears before the featured recommendation",
+	async ({ page }) => {
+		const [trigger, featured] = await Promise.all([
+			page.getByRole("button", { name: "Zoeken en voorkeuren" }).boundingBox(),
+			page.locator("[data-featured-recommendation]").boundingBox(),
+		]);
+		if (!trigger || !featured) throw new Error("Missing discovery layout");
+		expect(trigger.y).toBeLessThan(featured.y);
+	},
+);
+
+Then("the activity search receives focus", async ({ page }) => {
+	await expect(
+		page.getByLabel("Zoek op onderwerp of gebeurtenis"),
+	).toBeFocused();
+});
+
+Then(
+	"topic choices say they give matching activities priority",
+	async ({ page }) => {
+		await expect(
+			page.getByText("Geef passende activiteiten voorrang", { exact: true }),
+		).toBeVisible();
+	},
+);
+
+Then(
+	"only the first recommendation uses the featured treatment",
+	async ({ page }) => {
+		await expect(page.locator("[data-featured-recommendation]")).toHaveCount(1);
+		await expect(
+			page.locator("[data-compact-recommendation]").first(),
+		).toBeVisible();
+	},
+);
+
+Then(
+	"a secondary recommendation is shorter than the featured recommendation",
+	async ({ page }) => {
+		const [featured, compact] = await Promise.all([
+			page.locator("[data-featured-recommendation]").boundingBox(),
+			page.locator("[data-compact-recommendation]").first().boundingBox(),
+		]);
+		if (!featured || !compact) throw new Error("Missing recommendation cards");
+		expect(compact.height).toBeLessThan(featured.height * 0.7);
+	},
+);
+
+Then(
+	"secondary recommendation titles open background reading",
+	async ({ page }) => {
+		const recommendations = page.locator("[data-compact-recommendation]");
+		for (const recommendation of await recommendations.all()) {
+			const heading = recommendation.getByRole("heading", { level: 2 });
+			const title = (await heading.textContent())?.trim();
+			expect(title).toBeTruthy();
+			await expect(
+				recommendation.getByRole("link", { name: title }),
+			).toHaveAttribute("href", /\/events\/[^/]+$/);
+		}
+	},
+);
+
+Then("secondary classroom starts use quiet actions", async ({ page }) => {
+	const recommendations = page.locator("[data-compact-recommendation]");
+	for (const recommendation of await recommendations.all()) {
+		await expect(
+			recommendation.getByRole("link", { name: "Start activiteit" }),
+		).not.toHaveClass(/primary-button/);
+	}
+});
+
+Then(
+	"recommendation cards follow the page heading hierarchy",
+	async ({ page }) => {
+		const recommendations = page.locator("[data-recommended-event]");
+		await expect(recommendations.locator("h2")).toHaveCount(
+			await recommendations.count(),
+		);
+		await expect(recommendations.locator("h3")).toHaveCount(0);
+	},
+);
+
+Then("the hydrated first recommendation is unchanged", async ({ page }) => {
+	await page.waitForTimeout(100);
+	await expect(page.locator("[data-featured-recommendation] h2")).toHaveText(
+		serverFirstRecommendation,
+	);
+});
 
 Then("activity fit is exposed as a named list", async ({ page }) => {
 	await expect(
@@ -134,6 +250,22 @@ Then("activity fit is exposed as a named list", async ({ page }) => {
 			.getByRole("list", { name: "Waarom deze activiteit past" }),
 	).toBeVisible();
 });
+
+Then(
+	"filter grouping is quiet while filter controls remain bounded",
+	async ({ page }) => {
+		const grouping = page.locator("[data-passive-group='filters']");
+		await expect(grouping).toHaveCSS("border-top-width", "0px");
+		await expect(grouping).toHaveCSS(
+			"background-color",
+			"rgba(255, 255, 255, 0.38)",
+		);
+		await expect(page.getByLabel("Zoek op onderwerp of gebeurtenis")).toHaveCSS(
+			"border-top-width",
+			"1px",
+		);
+	},
+);
 
 Then("the homepage fits without horizontal scrolling", async ({ page }) => {
 	const geometry = await page.evaluate(() => ({

@@ -28,8 +28,18 @@ const validFrontmatter = {
 describe("historical events", () => {
 	it("formats approximate BCE dates without false precision", () => {
 		expect(
+			formatHistoricalDate({ year: 1944, era: "ce", precision: "year" }),
+		).toBe("1944");
+		expect(
 			formatHistoricalDate({ year: 44, era: "bce", precision: "approximate" }),
 		).toBe("ca. 44 v.Chr.");
+		expect(
+			formatHistoricalDate({
+				year: 66_000_000,
+				era: "bce",
+				precision: "approximate",
+			}),
+		).toBe("ca. 66.000.000 v.Chr.");
 	});
 
 	it("accepts valid event frontmatter", () => {

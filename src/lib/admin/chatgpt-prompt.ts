@@ -4,6 +4,7 @@ import { vakrichtingIds } from "../content/taxonomy";
 
 export const CHATGPT_PROMPT_VERSION = 1 as const;
 export const CHATGPT_ACTIVE_REQUEST_STORAGE_KEY = "toen:chatgpt-request:v1";
+const JSON_CODE_FENCE = "```";
 
 const mechanicPreferences = [
 	"choose",
@@ -98,6 +99,9 @@ Maak een zelfstandig bruikbare activiteit van 5, 8 en 12 minuten rond het opgege
 - Bij responseMethod "choose" kies je één antwoordvorm uit de toegelaten waarden hieronder. Anders gebruik je exact de opgegeven responseMethod.
 - Gebruik het gekozen profiel. Voeg alleen extra profielen toe wanneer de inhoud er aantoonbaar bij past.
 - Een vocationalConnection mag alleen bij een concrete link met werk, techniek, zorg, logistiek, materiaal of regels. Laat het veld anders weg.
+- draft.summary vat de historische gebeurtenis samen voor de lezer. draft.body is een zelfstandig historisch achtergrondartikel, geen lesplan, handleiding of opsomming van de activiteit.
+- Zet lesinstructies alleen in teacherPrompt en expectedStudentAction. Zet keuze-, bewijs- en discussietekst alleen in de passende beat-velden.
+- Noem in draft.summary en draft.body geen minutenroutes, geneste routes, velden, JSON, prompt of werkwijze van de activiteit.
 - Houd projectietekst kort. De leerkracht bepaalt het tempo; leerlingen hebben geen account, telefoon, app of wifi nodig.
 - Vraag eerst een keuze, toon daarna bewijs, laat leerlingen redeneren en herzien, geef vervolgens historische uitleg en keer terug naar de les.
 
@@ -110,9 +114,10 @@ TOEGELATEN WAARDEN
 - date precision: day, month, year, approximate
 
 ANTWOORDFORMAAT
-Geef uitsluitend één rauw JSON-object. Gebruik geen Markdown-codeblok, inleiding, uitleg of tekst na het object. Neem geen extra sleutels op.
+Geef uitsluitend één Markdown-codeblok met taal json. Zet daarin exact één volledig JSON-object. Gebruik geen inleiding, uitleg of tekst voor of na het codeblok. Neem geen extra sleutels op.
 
 Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:
+${JSON_CODE_FENCE}json
 {
   "formatVersion": ${CHATGPT_PROMPT_VERSION},
   "requestId": "${parsedRequestId}",
@@ -126,8 +131,8 @@ Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:
       "month": 5,
       "day": 29
     },
-    "summary": "Samenvatting in één of twee zinnen.",
-    "body": "Veilige Markdown met alleen tussenkoppen, alinea's, vet, cursief, lijsten, citaten en http(s)-links naar bronnen.",
+    "summary": "Historische samenvatting in één of twee zinnen, zonder lesinstructies.",
+    "body": "Zelfstandig historisch achtergrondartikel in veilige Markdown met alleen tussenkoppen, alinea's, vet, cursief, lijsten, citaten en http(s)-links naar bronnen.",
     "profiles": ["${parsedInput.profile}"],
     "topics": ["kort-onderwerp-id"],
     "topicLabels": {
@@ -296,6 +301,7 @@ Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:
     }
   ]
 }
+${JSON_CODE_FENCE}
 
 REGELS VOOR HET OBJECT
 - formatVersion is exact ${CHATGPT_PROMPT_VERSION}. requestId is exact "${parsedRequestId}". Wijzig beide nooit.
@@ -322,13 +328,15 @@ REGELS VOOR HET OBJECT
 - claims bevat elke inhoudelijk belangrijke historische bewering uit verhaal, bewijs en feedback. sourceUrls is nooit leeg. uncertainty is null bij voldoende steun, anders een korte concrete uitleg.
 - Neem geen slug, canoniek pad, repository-, Git-, publicatie-, account- of credentialgegevens op.
 
-Als je niet veilig en volledig kunt antwoorden, geef uitsluitend:
+Als je niet veilig en volledig kunt antwoorden, geef uitsluitend dit ene codeblok:
+${JSON_CODE_FENCE}json
 {
   "formatVersion": ${CHATGPT_PROMPT_VERSION},
   "requestId": "${parsedRequestId}",
   "status": "cannot-complete",
   "reasons": ["Korte concrete reden in het Nederlands."]
-}`;
+}
+${JSON_CODE_FENCE}`;
 }
 
 function collisionFreeMarker(serializedInput: string, requestId: string) {
