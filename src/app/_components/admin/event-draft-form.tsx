@@ -1,7 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 import { ActivityStage } from "./event-authoring-beat";
 import {
@@ -10,15 +9,10 @@ import {
 } from "./event-authoring-context";
 import { ClassificationStage, StoryStage } from "./event-authoring-fields";
 
-const ReviewStage = dynamic(
-	() => import("./event-authoring-review").then((module) => module.ReviewStage),
-	{
-		loading: () => (
-			<p role="status" className="authoring-panel text-ink/70">
-				{messages.admin.review.loading}
-			</p>
-		),
-	},
+const ReviewStage = lazy(() =>
+	import("./event-authoring-review").then((module) => ({
+		default: module.ReviewStage,
+	})),
 );
 
 export function EventDraftForm({
@@ -86,7 +80,17 @@ function EventAuthoringWorkspace() {
 			{state.step === 1 ? <StoryStage /> : null}
 			{state.step === 2 ? <ClassificationStage /> : null}
 			{state.step === 3 ? <ActivityStage /> : null}
-			{state.step === 4 ? <ReviewStage /> : null}
+			{state.step === 4 ? (
+				<Suspense
+					fallback={
+						<p role="status" className="authoring-panel text-ink/70">
+							{messages.admin.review.loading}
+						</p>
+					}
+				>
+					<ReviewStage />
+				</Suspense>
+			) : null}
 		</div>
 	);
 }

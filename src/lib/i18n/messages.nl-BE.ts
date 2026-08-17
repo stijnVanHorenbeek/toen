@@ -449,6 +449,8 @@ export const messages = {
 		adminConfigUnavailable: "Adminconfiguratie is niet beschikbaar.",
 		adminNotConfigured: "Admin is niet geconfigureerd.",
 		unauthorized: "Niet geautoriseerd.",
+		invalidOrigin: "De aanvraag komt niet van deze website.",
+		requestTooLarge: "De aanvraag is te groot.",
 		unsupportedMedia: "Content-Type moet application/json zijn.",
 		publishConfigUnavailable: "Publicatieconfiguratie is niet beschikbaar.",
 		publishNotConfigured: "Publiceren is niet geconfigureerd.",

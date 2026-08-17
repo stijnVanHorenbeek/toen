@@ -29,12 +29,12 @@ export const eventDraftInputSchema = z
 	});
 
 const eventDraftSchema = z
-	.object(eventDraftFields)
+	.strictObject({ ...eventDraftFields, slug: z.string().optional() })
 	.superRefine((value, context) => {
 		validateSelectedTopicLabels(value, context);
 		validateInteractiveBeatIdentityAndSources(value, context);
 	})
-	.transform((draft) => ({
+	.transform(({ slug: _ignoredSlug, ...draft }) => ({
 		...draft,
 		slug: inferEventSlug(draft.title, draft.date),
 	}))

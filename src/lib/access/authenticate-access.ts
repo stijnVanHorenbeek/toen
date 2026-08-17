@@ -22,6 +22,7 @@ export type AccessEnvironment = {
 };
 
 const identitySchema = z.object({ email: z.email() });
+const remoteJwksByTeamDomain = new Map<string, JWTVerifyGetKey>();
 
 export async function accessConfigFromEnvironment(
 	environment: AccessEnvironment,
@@ -67,9 +68,7 @@ export async function authenticateAccessRequest(
 	if (!token) return null;
 
 	try {
-		const keySet =
-			jwks ??
-			createRemoteJWKSet(new URL(`${config.teamDomain}/cdn-cgi/access/certs`));
+		const keySet = jwks ?? remoteJwks(config.teamDomain);
 		const { payload } = await jwtVerify(token, keySet, {
 			issuer: config.teamDomain,
 			audience: config.audience,
@@ -78,4 +77,14 @@ export async function authenticateAccessRequest(
 	} catch {
 		return null;
 	}
+}
+
+function remoteJwks(teamDomain: string): JWTVerifyGetKey {
+	const cached = remoteJwksByTeamDomain.get(teamDomain);
+	if (cached) return cached;
+	const created = createRemoteJWKSet(
+		new URL(`${teamDomain}/cdn-cgi/access/certs`),
+	);
+	remoteJwksByTeamDomain.set(teamDomain, created);
+	return created;
 }

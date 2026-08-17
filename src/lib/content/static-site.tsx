@@ -20,6 +20,7 @@ import { EventArchiveShell } from "@/app/_components/event-archive-shell";
 import { EventArticle } from "@/app/_components/event-article";
 import { EventExplorer } from "@/app/_components/event-explorer/event-explorer";
 import {
+	compareLocalized,
 	formatNumber,
 	historicalDateMessages,
 	primaryLocale,
@@ -31,7 +32,7 @@ import {
 	type PeriodArchive,
 	type TopicArchive,
 } from "./event-archives";
-import { toEventCatalogEntry } from "./event-catalog";
+import { collectTopicLabels, toEventCatalogEntry } from "./event-catalog";
 import type { Event } from "./event-document";
 import { createEventExplorerBootstrap } from "./event-explorer-data";
 import { getEventVisual } from "./event-media";
@@ -108,6 +109,12 @@ export async function generateStaticPublicSite({
 			releaseId: discovery.releaseId,
 			workerUrl: discovery.workerUrl,
 		});
+		const adminBootstrap = {
+			topicLabels: collectTopicLabels(catalog),
+			topicOptions: [...new Set(catalog.flatMap((event) => event.topics))].sort(
+				compareLocalized,
+			),
+		};
 		if (bootstrap.searchIndexUrl !== discovery.searchIndexUrl) {
 			throw new Error("Static discovery search URL does not match release ID");
 		}
@@ -119,6 +126,17 @@ export async function generateStaticPublicSite({
 				bodyClassName: shared.bodyClassName,
 				cssPaths: shared.cssPaths,
 				homeBundleUrl: bundles.home,
+				origin: siteOrigin,
+			}),
+		);
+		await writeSiteFile(
+			stagedRoot,
+			"admin.html",
+			renderAdminDocument({
+				adminBundleUrl: bundles.admin,
+				bodyClassName: shared.bodyClassName,
+				bootstrap: adminBootstrap,
+				cssPaths: shared.cssPaths,
 				origin: siteOrigin,
 			}),
 		);
@@ -178,7 +196,7 @@ export async function generateStaticPublicSite({
 
 		const inspection = await inspectStaticPublicSite(stagedRoot);
 		const expectedHtmlFiles =
-			3 + events.length * 2 + periods.length + topics.length;
+			4 + events.length * 2 + periods.length + topics.length;
 		if (inspection.htmlFileCount !== expectedHtmlFiles) {
 			throw new Error(
 				`Static HTML inventory mismatch: expected ${expectedHtmlFiles}, received ${inspection.htmlFileCount}`,
@@ -352,6 +370,7 @@ async function buildBrowserBundles(stagedRoot: string) {
 		chunkNames: "chunks/[name]-[hash]",
 		entryNames: "[name]-[hash]",
 		entryPoints: {
+			admin: "src/static/admin-entry.tsx",
 			classroom: "src/static/classroom-entry.tsx",
 			home: "src/static/home-entry.tsx",
 		},
@@ -369,14 +388,43 @@ async function buildBrowserBundles(stagedRoot: string) {
 		write: true,
 	});
 	const entries = Object.entries(result.metafile.outputs);
-	function entryUrl(entryName: "classroom" | "home") {
+	function entryUrl(entryName: "admin" | "classroom" | "home") {
 		const match = entries.find(([, output]) =>
 			output.entryPoint?.endsWith(`src/static/${entryName}-entry.tsx`),
 		);
 		if (!match) throw new Error(`Missing ${entryName} browser bundle`);
 		return `/${path.relative(stagedRoot, path.resolve(match[0])).split(path.sep).join("/")}`;
 	}
-	return { classroom: entryUrl("classroom"), home: entryUrl("home") };
+	return {
+		admin: entryUrl("admin"),
+		classroom: entryUrl("classroom"),
+		home: entryUrl("home"),
+	};
+}
+
+function renderAdminDocument({
+	adminBundleUrl,
+	bodyClassName,
+	bootstrap,
+	cssPaths,
+	origin,
+}: {
+	adminBundleUrl: string;
+	bodyClassName: string;
+	bootstrap: { topicLabels: Record<string, string>; topicOptions: string[] };
+	cssPaths: string[];
+	origin: string;
+}) {
+	const body = `<div class="min-h-screen"><header class="border-ink/15 border-b"><div class="mx-auto flex max-w-7xl items-baseline justify-between px-6 py-6 lg:px-10"><a href="/" class="font-serif text-3xl font-semibold">${escapeHtml(messages.site.name)}</a><p class="font-mono text-ink/70 text-xs uppercase tracking-widest">${escapeHtml(messages.admin.eyebrow)}</p></div></header><main class="mx-auto max-w-5xl px-6 py-12 lg:px-10 lg:py-16"><header class="mb-10 max-w-3xl"><p class="font-semibold text-accent text-xs uppercase tracking-[0.2em]">${escapeHtml(messages.admin.eyebrow)}</p><h1 class="mt-4 text-balance font-serif text-5xl font-semibold tracking-[-0.04em] sm:text-6xl">${escapeHtml(messages.admin.title)}</h1><p class="mt-5 text-pretty text-base leading-7 text-ink/75">${escapeHtml(messages.admin.intro)}</p></header><div data-static-admin-root><p role="status" class="text-ink/70">${escapeHtml(messages.admin.review.loading)}</p></div><noscript>${escapeHtml(messages.admin.intro)}</noscript></main></div><script id="static-admin-data" type="application/json">${serializeInlineJson(bootstrap)}</script><script type="module" src="${escapeAttribute(adminBundleUrl)}"></script>`;
+	return renderDocument({
+		body,
+		bodyClassName,
+		canonical: `${origin}/admin`,
+		cssPaths,
+		description: messages.admin.intro,
+		robots: "noindex,nofollow",
+		title: `${messages.admin.title} | ${messages.site.name}`,
+	});
 }
 
 function renderHomeDocument({

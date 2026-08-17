@@ -1,10 +1,8 @@
 import { ZodError } from "zod";
-import {
-	type AccessConfig,
-	type AccessEnvironment,
-	type AccessIdentity,
-	accessConfigFromEnvironment,
-	authenticateAccessRequest,
+import type {
+	AccessConfig,
+	AccessEnvironment,
+	AccessIdentity,
 } from "../access/authenticate-access";
 import {
 	ContentConflictError,
@@ -17,6 +15,10 @@ import {
 	githubPublishModeFromEnvironment,
 } from "../github/github-config";
 import { messages } from "../i18n/messages.nl-BE";
+import {
+	adminJsonResponse,
+	readAuthorizedAdminJson,
+} from "./admin-api-request";
 import { eventValidationIssues } from "./event-validation-issues";
 
 export type AdminEnvironment = AccessEnvironment & GitHubEnvironment;
@@ -29,6 +31,7 @@ type HandlerDependencies = {
 	githubFetch?: GitHubFetch;
 	deployFetch?: typeof fetch;
 	publish?: typeof publishEventDraft;
+	maximumBytes?: number;
 };
 
 export async function handlePublishEventRequest(
@@ -36,41 +39,11 @@ export async function handlePublishEventRequest(
 	environment: AdminEnvironment,
 	dependencies: HandlerDependencies = {},
 ): Promise<Response> {
-	let accessConfig: AccessConfig | null;
-	try {
-		accessConfig = await accessConfigFromEnvironment(environment);
-	} catch {
-		return jsonError(
-			messages.api.adminConfigUnavailable,
-			503,
-			"admin_config_unavailable",
-		);
-	}
-	if (!accessConfig) {
-		return jsonError(
-			messages.api.adminNotConfigured,
-			503,
-			"admin_not_configured",
-		);
-	}
-
-	const authenticate = dependencies.authenticate ?? authenticateAccessRequest;
-	const identity = await authenticate(request, accessConfig);
-	if (!identity)
-		return jsonError(messages.api.unauthorized, 401, "unauthorized");
-
-	const mediaType = request.headers
-		.get("Content-Type")
-		?.split(";", 1)[0]
-		?.trim()
-		.toLowerCase();
-	if (mediaType !== "application/json") {
-		return jsonError(
-			messages.api.unsupportedMedia,
-			415,
-			"unsupported_media_type",
-		);
-	}
+	const authorized = await readAuthorizedAdminJson(request, environment, {
+		authenticate: dependencies.authenticate,
+		maximumBytes: dependencies.maximumBytes,
+	});
+	if (!authorized.ok) return authorized.response;
 
 	let githubConfig: Awaited<ReturnType<typeof githubAppConfigFromEnvironment>>;
 	let publishMode: Awaited<ReturnType<typeof githubPublishModeFromEnvironment>>;
@@ -97,15 +70,14 @@ export async function handlePublishEventRequest(
 	try {
 		const publish = dependencies.publish ?? publishEventDraft;
 		const result = await publish({
-			draft: await request.json(),
-			editor: identity.email,
+			draft: authorized.value,
+			editor: authorized.identity.email,
 			config: publishMode === "live" ? githubConfig : null,
 			githubFetch: dependencies.githubFetch,
 			deployFetch: dependencies.deployFetch,
 		});
-		return Response.json(result, {
+		return adminJsonResponse(result, {
 			status: publishResponseStatus(result),
-			headers: { "Cache-Control": "no-store" },
 		});
 	} catch (error) {
 		if (error instanceof ContentConflictError) {
@@ -143,8 +115,5 @@ function jsonError(
 	code: string,
 	extra: Record<string, unknown> = {},
 ): Response {
-	return Response.json(
-		{ code, error, ...extra },
-		{ status, headers: { "Cache-Control": "no-store" } },
-	);
+	return adminJsonResponse({ code, error, ...extra }, { status });
 }

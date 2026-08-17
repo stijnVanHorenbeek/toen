@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 import { createBdd, test } from "playwright-bdd";
+import { handlePreviewEventRequest } from "../../src/lib/admin/preview-event-handler";
 
-const { Given, Then, When } = createBdd(test);
+const { Before, Given, Then, When } = createBdd(test);
 let pendingPreviewResponse: Promise<unknown> | null = null;
 
 type ClipboardTestWindow = Window & {
@@ -18,6 +19,33 @@ const cleopatraResponseTemplate = readFileSync(
 	"tests/fixtures/cleopatra-response.template.txt",
 	"utf8",
 );
+
+Before(async ({ page }) => {
+	await page.route("**/api/admin/events/preview", async (route) => {
+		const browserRequest = route.request();
+		const headers = new Headers(await browserRequest.allHeaders());
+		headers.set("Origin", new URL(browserRequest.url()).origin);
+		const response = await handlePreviewEventRequest(
+			new Request(browserRequest.url(), {
+				method: browserRequest.method(),
+				headers,
+				body: browserRequest.postData(),
+			}),
+			{
+				ACCESS_TEAM_DOMAIN: "https://example.cloudflareaccess.com",
+				ACCESS_POLICY_AUD: "e2e-audience",
+			},
+			{
+				authenticate: async () => ({ email: "editor@example.com" }),
+			},
+		);
+		await route.fulfill({
+			status: response.status,
+			headers: Object.fromEntries(response.headers),
+			body: await response.text(),
+		});
+	});
+});
 
 Given("the browser clipboard accepts copied instructions", async ({ page }) => {
 	await page.addInitScript(() => {
