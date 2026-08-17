@@ -235,11 +235,11 @@ function CompletionScreen({
 					{messages.beat.completedNote}
 				</p>
 				<div className="mt-9 flex flex-wrap items-center justify-center gap-5">
-					<a href="/" className="primary-button">
-						{messages.beat.home}
-					</a>
-					<a href={`/events/${event.slug}`} className="text-button">
+					<a href={`/events/${event.slug}`} className="primary-button">
 						{messages.beat.returnToArticle}
+					</a>
+					<a href="/" className="secondary-button">
+						{messages.beat.home}
 					</a>
 					<button
 						type="button"

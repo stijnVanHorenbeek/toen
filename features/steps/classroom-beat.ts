@@ -629,13 +629,19 @@ Then("I see that the classroom beat is complete", async ({ page }) => {
 });
 
 Then(
-	"leaving the completed activity is the primary action",
+	"reading the completed activity story is the primary action",
 	async ({ page }) => {
 		await expect(
-			page.getByRole("link", { name: "Terug naar start" }),
+			page.getByRole("link", { name: "Lees het verhaal" }),
 		).toHaveClass(/primary-button/);
 	},
 );
+
+Then("returning home is a secondary action", async ({ page }) => {
+	await expect(
+		page.getByRole("link", { name: "Terug naar start" }),
+	).toHaveClass(/secondary-button/);
+});
 
 Then(
 	"replaying the completed activity is a tertiary action",

@@ -124,7 +124,7 @@ export const messages = {
 		resetConfirm: "Opnieuw beginnen? Je huidige voortgang verdwijnt.",
 		stopConfirm: "Presentatie sluiten en terugkeren naar de startpagina?",
 		completed: "Klaar",
-		completedNote: "Ga verder met de les of lees het verhaal.",
+		completedNote: "Lees het historische verhaal of keer terug naar de start.",
 		restart: "Opnieuw",
 		returnToArticle: "Lees het verhaal",
 		home: "Terug naar start",

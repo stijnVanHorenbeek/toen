@@ -29,7 +29,8 @@ Feature: Classroom history beat
     When I use the classroom control "Klaar"
     Then I see that the classroom beat is complete
     And the completion heading has keyboard focus
-    And leaving the completed activity is the primary action
+    And reading the completed activity story is the primary action
+    And returning home is a secondary action
     And replaying the completed activity is a tertiary action
 
   Scenario: Skip optional evidence, go back safely, and reset
