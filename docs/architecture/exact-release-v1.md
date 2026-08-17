@@ -93,15 +93,15 @@ Legacy `committed-and-triggered` remains readable while migration mode is `legac
 
 ## Reader-first rollout
 
-1. Commit content validator that accepts and validates optional request directory and activation lock.
-2. Commit application readers, status UI, build scripts, and legacy-default mode.
-3. Push content reader before application writer.
-4. Create scoped Builds token and Secrets Store entries only after review/approval.
-5. Configure production trigger exact build/deploy commands and environment.
-6. Deploy reader/admin version while mode remains `legacy`.
-7. Verify canary exact build and status polling.
-8. Set mode to `exact` only after canary and rollback evidence.
-9. Remove Deploy Hook fallback in later cleanup.
+1. Commit content validator that accepts and validates optional request directory and activation lock. Complete.
+2. Commit application readers, status UI, build scripts, and legacy-default mode. Complete.
+3. Push content reader before application writer. Complete.
+4. Deploy static public and private admin readers with publication in dry-run mode. Complete.
+5. Create scoped Builds token and Secrets Store entries only after review and approval.
+6. Configure production trigger with exact build/deploy commands and environment.
+7. Add exact-release bindings while publication remains dry-run.
+8. Run controlled production exact build, status polling, supersession, and A→B→A rollback checks.
+9. Set publishing to live exact mode only after those checks pass.
 
 ## Configuration
 
@@ -134,4 +134,4 @@ Local tests cover:
 - legacy reader compatibility;
 - strict status API and UI transition from building to activated.
 
-No local test calls Cloudflare or GitHub production APIs. Canary must verify user-token scope, first status latency, trigger environment snapshot, exact content checkout, one-version activation, supersession, and A→B→A rollback before production cutover.
+No local test calls Cloudflare or GitHub production APIs. Separate canary was waived for single-user deployment. Before live publication, controlled production validation must verify user-token scope, first status latency, trigger environment snapshot, exact content checkout, one-version activation, supersession, and A→B→A rollback.

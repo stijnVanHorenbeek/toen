@@ -4,9 +4,9 @@
 
 The dedicated content repository stores and validates the canonical Markdown catalog. Before verification or a build, the application resolves its `main` branch once, checks out that exact immutable commit, runs the content repository validation, and generates the local `content/events` directory. Runtime requests never fetch from GitHub.
 
-The current new-event publisher writes canonical Markdown directly to configured content branch. Missing files are created and identical retries do not create duplicate commits. Differing existing file returns conflict instead of overwriting content; safe edits need future edit flow carrying expected content revision. Legacy mode calls vaulted Cloudflare Deploy Hook after reconciliation.
+New-event publisher can write canonical Markdown directly to configured content branch. Missing files are created, and identical retries do not create duplicate commits. Differing existing file returns conflict instead of overwriting content; safe edits need future edit flow carrying expected content revision. Production currently omits GitHub and release-pipeline bindings, so publication runs in dry-run mode. Legacy mode and vaulted Deploy Hook remain inactive.
 
-Exact pipeline is implemented but disabled until approved configuration exists. It triggers Cloudflare Builds API with exact application SHA, writes immutable build-UUID correlation record containing exact content SHA, and reports build state separately. Successful content commit with trigger/correlation failure remains partial success. Retry recognizes unchanged Markdown and starts distinct correlated build without recreating content. Concurrent differing edits still fail closed.
+Exact pipeline is implemented but disabled until approved configuration and controlled production validation exist. It triggers Cloudflare Builds API with exact application SHA, writes immutable build-UUID correlation record containing exact content SHA, and reports build state separately. Successful content commit with trigger/correlation failure remains partial success. Retry recognizes unchanged Markdown and starts distinct correlated build without recreating content. Concurrent differing edits still fail closed.
 
 ## Target model
 

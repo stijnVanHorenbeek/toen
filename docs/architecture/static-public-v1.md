@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Generate public Toen pages as one HTML file per URL. Keep current Next/OpenNext deployment unchanged while shadow output proves route, classroom, search, SEO, and asset parity.
+Generate public Toen pages as one HTML file per URL. Production Static Assets serve routes, classroom flows, search, SEO metadata, and immutable media without OpenNext runtime rendering.
 
 Public origin remains `https://toen.stijnvh.workers.dev`. No paid domain, R2 delivery path, or runtime GitHub read is required.
 
@@ -21,7 +21,7 @@ Build sequence:
 3. Stage content-addressed media and hashed search Worker.
 4. Run Next build to compile shared Tailwind CSS and local font files.
 5. Build and package-check native admin API Worker.
-6. Render shadow public output to `.generated/static-site`.
+6. Render public output to `.generated/static-site`.
 7. Verify manifest, route inventory, symbolic-link policy, sidecar exclusions, and file budget.
 
 Generator consumes canonical parsed events and reuses `EventArticle`, `BeatPlayer`, `EventExplorer`, `HistoricalVisualFigure`, and archive components. Shared browser bundles hydrate homepage search, classroom controls, and protected admin SPA. Article and archive pages ship no page-specific JavaScript.
@@ -79,7 +79,7 @@ Generator targets at most 10,500 HTML files. Complete public output targets 16,0
 
 ## Validation
 
-Current four-event exact-SHA shadow build contains 52 files and 23 HTML files. Final clean build tree SHA-256 is `4328ec0ff3c42999af15835cf10f28b6f3e3bab4c9d85fb0af3a96fc7e0b8620`; same-input regeneration remains byte-identical.
+Current four-event exact-SHA production build contains 52 files and 23 HTML files. Deployed tree SHA-256 is `9681cc87d529c130de0711b91bee56ed6ad4127d624b7669c7ffb108e3d6851c`; same-input regeneration remains byte-identical.
 
 Local Wrangler Static Assets checks proved:
 
@@ -94,6 +94,6 @@ Wrangler logs 71 recursive directory entries for current tree. Asset manifest co
 
 ## Deployment boundary
 
-`wrangler.static.jsonc` targets separate `toen-static-canary` service and routes only `/api/admin/*` through `ADMIN_API` service binding. `wrangler.admin.jsonc` keeps native API Worker private with `workers_dev` and preview URLs disabled. Configuration is shadow-only. Creating either service, uploading version, publishing preview, changing Access, or replacing production remains approval-gated.
+`wrangler.static.jsonc` targets production `toen` and routes only `/api/admin/*` through `ADMIN_API` service binding. `wrangler.admin.jsonc` targets private `toen-admin` with `workers_dev` and preview URLs disabled.
 
-Keep current OpenNext public and admin routes until static/admin canary, rollback drill, and operator cutover approval pass.
+Operator waived separate canary for this single-user deployment and approved controlled production cutover. First smoke used rollback path successfully after a test predicate error. Final version `0ba781ef-bc43-45d1-886b-571c3b400b04` passed public route, article, classroom, archive, sitemap, media, browser Worker, 404, Access redirect, and private-service checks. Previous OpenNext version `d0362db7-0846-441d-8e8c-2313503c26d7` remains known rollback target.

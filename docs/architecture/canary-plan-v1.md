@@ -1,5 +1,9 @@
 # Static-first canary plan v1
 
+## Status
+
+Not executed. Operator waived separate canary because production has one developer-user. Controlled production deployment retained known OpenNext rollback version and ran equivalent route, Access, asset, browser-search, and classroom smoke checks. This document remains reference for future multi-user or high-risk releases.
+
 ## Boundary
 
 Canary validates separate `toen-static-canary` and private `toen-admin-canary`. Production `toen.stijnvh.workers.dev` receives no traffic, route, binding, secret, Access, deployment, or rollback change.
