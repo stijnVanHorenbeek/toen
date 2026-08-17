@@ -1,6 +1,47 @@
-import { expect, it } from "vitest";
-import { POST } from "../src/app/api/admin/events/preview/route";
+import { expect, it, vi } from "vitest";
+import { handlePreviewEventRequest } from "../src/lib/admin/preview-event-handler";
 import { beatSources, voteRevoteBeat } from "./fixtures/interactive-beat";
+
+const environment = {
+	ACCESS_TEAM_DOMAIN: "https://example.cloudflareaccess.com",
+	ACCESS_POLICY_AUD: "application-audience",
+};
+const authenticate = vi.fn().mockResolvedValue({ email: "editor@example.com" });
+
+function POST(request: Request) {
+	const headers = new Headers(request.headers);
+	headers.set("Origin", new URL(request.url).origin);
+	return handlePreviewEventRequest(
+		new Request(request, { headers }),
+		environment,
+		{
+			authenticate,
+		},
+	);
+}
+
+it("rejects unknown top-level fields", async () => {
+	const response = await POST(
+		new Request("https://example.com/api/admin/events/preview", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				title: "Test",
+				date: { year: 1969, era: "ce", precision: "year" },
+				summary: "Samenvatting",
+				body: "Verhaal",
+				profiles: ["algemeen"],
+				topics: ["wetenschap"],
+				sources: beatSources,
+				unexpectedAdminField: true,
+			}),
+		}),
+	);
+	expect(response.status).toBe(400);
+	await expect(response.json()).resolves.toMatchObject({
+		code: "invalid_event",
+	});
+});
 
 it("returns stable codes and field issues for an invalid draft", async () => {
 	const response = await POST(

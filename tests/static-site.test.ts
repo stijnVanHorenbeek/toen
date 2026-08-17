@@ -110,6 +110,14 @@ describe("static public site", () => {
 		);
 		expect(classroom).toContain("data-beat-preparation");
 		expect(classroom).toContain('type="module"');
+		const admin = await readFile(
+			path.join(outputDirectory, "admin.html"),
+			"utf8",
+		);
+		expect(admin).toContain('name="robots" content="noindex,nofollow"');
+		expect(admin).toContain("data-static-admin-root");
+		expect(admin).toContain("static-admin-data");
+		expect(admin).toContain('type="module"');
 
 		const sitemap = await readFile(
 			path.join(outputDirectory, "sitemap.xml"),

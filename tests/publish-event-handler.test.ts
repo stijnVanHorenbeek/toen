@@ -267,7 +267,10 @@ describe("handlePublishEventRequest", () => {
 function createRequest(body: unknown): Request {
 	return new Request("https://example.com/api/admin/events/publish", {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
+		headers: {
+			"Content-Type": "application/json",
+			Origin: "https://example.com",
+		},
 		body: JSON.stringify(body),
 	});
 }

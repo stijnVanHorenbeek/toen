@@ -1,0 +1,68 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "toen-admin-canary",
+	"main": ".generated/workers/admin-api.js",
+	"compatibility_date": "2026-08-08",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"workers_dev": false,
+	"preview_urls": false,
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 0.1
+		}
+	},
+	"secrets_store_secrets": [
+		{
+			"binding": "GITHUB_PUBLISH_MODE_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-publish-mode"
+		},
+		{
+			"binding": "CONTENT_DEPLOY_HOOK_URL_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-content-deploy-hook-url"
+		},
+		{
+			"binding": "GITHUB_APP_ID_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-app-id"
+		},
+		{
+			"binding": "GITHUB_APP_INSTALLATION_ID_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-app-installation-id"
+		},
+		{
+			"binding": "GITHUB_APP_PRIVATE_KEY_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-app-private-key"
+		},
+		{
+			"binding": "GITHUB_REPOSITORY_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-repository"
+		},
+		{
+			"binding": "GITHUB_BASE_BRANCH_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-github-base-branch"
+		},
+		{
+			"binding": "ACCESS_TEAM_DOMAIN_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-access-team-domain"
+		},
+		{
+			"binding": "ACCESS_POLICY_AUD_STORE",
+			"store_id": "544f744dc2994b1b8eeab53d76689f8a",
+			"secret_name": "toen-access-policy-aud"
+		}
+	]
+}

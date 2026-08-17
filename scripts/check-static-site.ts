@@ -23,6 +23,9 @@ async function main() {
 	) {
 		throw new Error("Static site output does not match build manifest");
 	}
+	if (!inspection.paths.includes("admin.html")) {
+		throw new Error("Static site is missing admin.html");
+	}
 	const events = await getAllEvents();
 	for (const event of events) {
 		for (const expected of [

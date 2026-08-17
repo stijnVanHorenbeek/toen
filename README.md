@@ -17,6 +17,7 @@ Current public experience recommends historical events and renders sourced artic
 - [Browser search v1](docs/architecture/browser-search-v1.md)
 - [Static media v1](docs/architecture/static-media-v1.md)
 - [Static public site v1](docs/architecture/static-public-v1.md)
+- [Admin SPA and Worker v1](docs/architecture/admin-worker-v1.md)
 - [Cloudflare routing topology](docs/architecture/cloudflare-routing-topology.md)
 
 ## Teacher flow
@@ -31,7 +32,7 @@ Editors use Access-protected `/admin`. They write or import a draft, verify sour
 
 ## Architecture and ownership
 
-Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Shadow static build emits one article and classroom HTML file per event without Markdown or RSC sidecars. Current production remains on OpenNext until canary and rollback acceptance.
+Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Shadow static build emits public HTML and protected admin SPA without Markdown or RSC sidecars. Native private admin Worker validates Access JWTs internally and receives API requests through service binding. Current production remains on OpenNext until canary and rollback acceptance.
 
 Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. GitHub App may write only canonical content repository. Deploy Hook rebuilds application from committed content. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
