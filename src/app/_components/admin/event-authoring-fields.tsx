@@ -1,13 +1,6 @@
 "use client";
 
-import {
-	cloneElement,
-	isValidElement,
-	type ReactElement,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseExactHistoricalDate } from "@/lib/admin/authoring-draft";
 import { vakrichtingIds } from "@/lib/content/taxonomy";
 import {
@@ -23,9 +16,9 @@ import { messages } from "@/lib/i18n/messages.nl-BE";
 import { ChatGptPromptHandoff } from "./chatgpt-prompt-handoff";
 import { useEventAuthoring } from "./event-authoring-context";
 import { EventStoryEditor } from "./event-story-editor";
+import { Field, FieldError, inputClass } from "./form-controls";
 
-export const inputClass =
-	"min-h-12 w-full rounded-md border border-ink/55 bg-white px-4 text-base text-ink focus:border-accent";
+export { Field, FieldError, inputClass } from "./form-controls";
 
 export function StoryStage() {
 	const { state, actions } = useEventAuthoring();
@@ -108,6 +101,7 @@ export function StoryStage() {
 function HistoricalDateFields() {
 	const { state, actions } = useEventAuthoring();
 	const { draft, errors } = state;
+	const calendarInputRef = useRef<HTMLInputElement>(null);
 	const directParts = draft.precision !== "day" || draft.era === "bce";
 	return (
 		<fieldset className="space-y-5">
@@ -182,11 +176,41 @@ function HistoricalDateFields() {
 							aria-describedby={fieldDescription("exactDate", errors.exactDate)}
 							className={inputClass}
 						/>
-						<label className="secondary-button relative shrink-0 cursor-pointer overflow-hidden focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2">
-							{messages.admin.fields.calendar}
-							<input
-								type="date"
+						<div className="relative shrink-0">
+							<button
+								type="button"
 								aria-label={messages.admin.fields.calendar}
+								title={messages.admin.fields.calendarChoice}
+								onClick={() => {
+									const input = calendarInputRef.current;
+									if (!input) return;
+									const picker = input as {
+										click: () => void;
+										showPicker?: () => void;
+									};
+									if (typeof picker.showPicker === "function")
+										picker.showPicker();
+									else picker.click();
+								}}
+								className="secondary-button size-12 px-0"
+							>
+								<svg aria-hidden="true" viewBox="0 0 24 24" className="size-5">
+									<path
+										d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.75"
+									/>
+								</svg>
+							</button>
+							<input
+								ref={calendarInputRef}
+								data-calendar-input
+								type="date"
+								tabIndex={-1}
+								aria-hidden="true"
 								value={calendarValue(draft.exactDate)}
 								onChange={(event) =>
 									actions.update(
@@ -194,9 +218,9 @@ function HistoricalDateFields() {
 										formatCalendarValue(event.target.value),
 									)
 								}
-								className="absolute inset-0 size-full cursor-pointer opacity-0"
+								className="pointer-events-none absolute inset-0 size-px opacity-0"
 							/>
-						</label>
+						</div>
 					</div>
 				</Field>
 			) : null}
@@ -405,7 +429,7 @@ export function ClassificationStage() {
 				</button>
 				<button
 					type="button"
-					onClick={() => actions.goToStep(3)}
+					onClick={actions.continueClassification}
 					className="primary-button"
 				>
 					{messages.admin.actions.continueActivity}
@@ -551,7 +575,13 @@ function RequiredFieldsNotice() {
 	);
 }
 
-export function ErrorSummary({ errors }: { errors: Record<string, string> }) {
+export function ErrorSummary({
+	errors,
+	onFieldSelect,
+}: {
+	errors: Record<string, string>;
+	onFieldSelect?: (field: string) => void;
+}) {
 	const ref = useRef<HTMLDivElement>(null);
 	const entries = Object.entries(errors);
 	useEffect(() => {
@@ -573,6 +603,11 @@ export function ErrorSummary({ errors }: { errors: Record<string, string> }) {
 					<li key={field}>
 						<a
 							href={`#${field}`}
+							onClick={(event) => {
+								if (!onFieldSelect) return;
+								event.preventDefault();
+								onFieldSelect(field);
+							}}
 							className="font-semibold text-accent underline underline-offset-4"
 						>
 							{message}
@@ -582,62 +617,6 @@ export function ErrorSummary({ errors }: { errors: Record<string, string> }) {
 			</ul>
 		</div>
 	);
-}
-
-export function Field({
-	children,
-	error,
-	hint,
-	label,
-	name,
-}: {
-	children: React.ReactNode;
-	error?: string;
-	hint?: string;
-	label: string;
-	name: string;
-}) {
-	const describedBy = [
-		hint ? `${name}-hint` : null,
-		error ? `${name}-error` : null,
-	]
-		.filter(Boolean)
-		.join(" ");
-	const describedChildren = isValidElement(children)
-		? cloneElement(
-				children as ReactElement<{
-					"aria-describedby"?: string;
-					"aria-invalid"?: "true";
-				}>,
-				{
-					...(describedBy ? { "aria-describedby": describedBy } : {}),
-					...(error ? { "aria-invalid": "true" as const } : {}),
-				},
-			)
-		: children;
-	return (
-		<div className="min-w-0 flex-1">
-			<label htmlFor={name} className="mb-2 block font-semibold text-base">
-				{label}
-			</label>
-			{hint ? (
-				<p id={`${name}-hint`} className="mb-2 text-ink/70 text-sm leading-6">
-					{hint}
-				</p>
-			) : null}
-			{describedChildren}
-			<FieldError id={name} error={error} />
-		</div>
-	);
-}
-
-export function FieldError({ error, id }: { error?: string; id: string }) {
-	return error ? (
-		<p id={`${id}-error`} className="mt-2 font-semibold text-accent text-sm">
-			<span className="sr-only">{messages.admin.errorPrefix} </span>
-			{error}
-		</p>
-	) : null;
 }
 
 function calendarValue(value: string): string {
@@ -688,7 +667,7 @@ export function StageHeader({
 
 export function StageActions({ children }: { children: React.ReactNode }) {
 	return (
-		<div className="mt-10 flex flex-wrap items-center gap-4 border-ink/20 border-t pt-7">
+		<div className="stage-actions mt-10 flex flex-wrap items-center gap-4 border-ink/20 border-t pt-7 max-sm:[&>*]:w-full">
 			{children}
 		</div>
 	);

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getBeatKeyboardAction } from "../src/lib/beats/keyboard";
+import {
+	getBeatGestureAction,
+	getBeatKeyboardAction,
+} from "../src/lib/beats/keyboard";
 
 describe("beat keyboard controls", () => {
 	it("maps unclaimed navigation keys without accepting key repeat", () => {
@@ -67,5 +70,44 @@ describe("beat keyboard controls", () => {
 				canFinish: true,
 			}),
 		).toEqual({ type: "finish" });
+	});
+
+	it("maps one dominant vertical gesture to one deck action", () => {
+		expect(
+			getBeatGestureAction({
+				deltaX: 4,
+				deltaY: 64,
+				canGoBack: true,
+			}),
+		).toEqual({ type: "advance" });
+		expect(
+			getBeatGestureAction({
+				deltaX: 4,
+				deltaY: -64,
+				canGoBack: true,
+			}),
+		).toEqual({ type: "back" });
+		expect(
+			getBeatGestureAction({
+				deltaX: 4,
+				deltaY: 64,
+				canGoBack: true,
+				canFinish: true,
+			}),
+		).toEqual({ type: "finish" });
+		expect(
+			getBeatGestureAction({
+				deltaX: 64,
+				deltaY: 20,
+				canGoBack: true,
+			}),
+		).toBeNull();
+		expect(
+			getBeatGestureAction({
+				deltaX: 0,
+				deltaY: -64,
+				canGoBack: false,
+			}),
+		).toBeNull();
 	});
 });

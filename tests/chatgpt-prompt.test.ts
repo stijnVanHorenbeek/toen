@@ -40,6 +40,20 @@ describe("ChatGPT beat prompt", () => {
 		expect(first).toContain('"sourceCards"');
 		expect(first).toContain("Gebruik geen verzonnen URL");
 		expect(first).toContain("Maak of beschrijf geen historische afbeelding");
+		expect(first).toContain(
+			"Geef uitsluitend één Markdown-codeblok met taal json.",
+		);
+		expect(first).toContain("```json");
+		expect(first).not.toContain("Gebruik geen Markdown-codeblok");
+		expect(first).toContain(
+			"draft.body is een zelfstandig historisch achtergrondartikel",
+		);
+		expect(first).toContain(
+			"Zet lesinstructies alleen in teacherPrompt en expectedStudentAction",
+		);
+		expect(first).toContain(
+			"Noem in draft.summary en draft.body geen minutenroutes",
+		);
 	});
 
 	it("keeps the complete example compatible with the canonical event contract", () => {
@@ -150,7 +164,7 @@ describe("ChatGPT beat prompt", () => {
 
 function extractCompleteResponse(prompt: string) {
 	const match =
-		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n([\s\S]*?)\n\nREGELS VOOR HET OBJECT/.exec(
+		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n```json\n([\s\S]*?)\n```\n\nREGELS VOOR HET OBJECT/.exec(
 			prompt,
 		);
 	if (!match) throw new Error("Complete response example missing from prompt");

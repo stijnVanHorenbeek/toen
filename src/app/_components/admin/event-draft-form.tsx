@@ -59,28 +59,28 @@ function EventAuthoringWorkspace() {
 		});
 		return () => cancelAnimationFrame(frame);
 	}, [state.errors, state.step]);
+	if (!state.storageReady) return null;
+	if (state.restoredDraft) return <RestoreDraftDecision />;
 	return (
 		<div>
-			<RestoreDraftNotice />
 			<div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-ink/20 border-y py-4">
-				<ol
-					aria-label={messages.admin.progress}
-					className="flex flex-wrap gap-x-6 gap-y-2 text-sm"
-				>
-					{messages.admin.steps.map((label, index) => (
-						<li
-							key={label}
-							aria-current={state.step === index + 1 ? "step" : undefined}
-							className={
-								state.step === index + 1
-									? "font-semibold text-accent"
-									: "text-ink/65"
-							}
-						>
-							{index + 1}. {label}
-						</li>
-					))}
-				</ol>
+				<nav aria-label={messages.admin.progress}>
+					<ol className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+						{messages.admin.steps.map((label, index) => (
+							<li
+								key={label}
+								aria-current={state.step === index + 1 ? "step" : undefined}
+								className={
+									state.step === index + 1
+										? "font-semibold text-accent"
+										: "text-ink/65"
+								}
+							>
+								{index + 1}. {label}
+							</li>
+						))}
+					</ol>
+				</nav>
 				<SaveStatus />
 			</div>
 			{state.step === 1 ? <StoryStage /> : null}
@@ -91,18 +91,27 @@ function EventAuthoringWorkspace() {
 	);
 }
 
-function RestoreDraftNotice() {
-	const { state, actions } = useEventAuthoring();
-	if (!state.restoredDraft) return null;
+function RestoreDraftDecision() {
+	const { actions } = useEventAuthoring();
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	useEffect(() => {
+		headingRef.current?.focus();
+	}, []);
 	return (
 		<section
 			aria-labelledby="restore-title"
-			className="mb-8 rounded-md border-2 border-accent bg-white p-6"
+			aria-describedby="restore-description"
+			className="rounded-md border-2 border-accent bg-white p-6"
 		>
-			<h2 id="restore-title" className="font-serif text-2xl font-semibold">
+			<h2
+				ref={headingRef}
+				id="restore-title"
+				tabIndex={-1}
+				className="font-serif text-2xl font-semibold"
+			>
 				{messages.admin.draft.found}
 			</h2>
-			<p className="mt-2 max-w-2xl text-ink/75">
+			<p id="restore-description" className="mt-2 max-w-2xl text-ink/75">
 				{messages.admin.draft.foundDescription}
 			</p>
 			<div className="mt-5 flex flex-wrap gap-3">

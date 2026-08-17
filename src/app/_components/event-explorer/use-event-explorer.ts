@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	collectTopicLabels,
 	type EventCatalogEntry,
@@ -42,13 +42,6 @@ export function useEventExplorerValue(
 			query: "",
 		};
 	});
-
-	useEffect(() => {
-		setState((current) => ({
-			...current,
-			selectedDate: getLocalISODate(),
-		}));
-	}, []);
 
 	const topicOptions = useMemo(
 		() => collectTags(events.flatMap((event) => event.topics)),
@@ -106,12 +99,4 @@ function getYearRange(events: EventCatalogEntry[]) {
 
 function collectTags<Value extends string>(values: Value[]): Value[] {
 	return [...new Set(values)].sort(compareLocalized);
-}
-
-function getLocalISODate(): string {
-	const date = new Date();
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
 }

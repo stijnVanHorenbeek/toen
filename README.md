@@ -13,9 +13,21 @@ Current public experience recommends historical events and renders sourced artic
 - [Event authoring redesign](docs/admin-authoring-redesign.md)
 - [Content publishing](docs/content-publishing.md)
 
-## Architecture
+## Teacher flow
 
-Published Markdown lives in dedicated `toen-content` repository. Builds resolve and validate one immutable content revision before bundling it into Worker. Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. Access route coverage is verified; remaining live-publishing unknowns are recorded in the [implementation baseline](docs/implementation-baseline.md).
+1. Find an activity on homepage.
+2. Open its preparation screen and choose 5, 8, or 12 minutes.
+3. Present it with buttons, keyboard, wheel, or touch gestures.
+4. Use physical response methods; Toen. stores no student identity or answers.
+5. Return to preparation with **Opnieuw**, or close presentation with top-right control.
+
+Editors use Access-protected `/admin`. They write or import a draft, verify sources and claims, preview production article and classroom views, then confirm publication explicitly. ChatGPT output never publishes automatically.
+
+## Architecture and ownership
+
+Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve one immutable content commit, validate it, and bundle it into Worker; runtime requests never fetch content from GitHub.
+
+Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. GitHub App may write only canonical content repository. Deploy Hook rebuilds application from committed content. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
 Read OpenNext Cloudflare documentation at https://opennext.js.org/cloudflare.
 
@@ -62,11 +74,14 @@ Playwright starts an isolated local Wrangler server by default. Set `TOEN_E2E_RE
 
 ## Deploy
 
-Deploy the application to Cloudflare:
+Follow [release hardening runbook](docs/release-hardening.md). Build and inspect package before any production mutation:
 
 ```bash
-pnpm deploy
+pnpm ci:build
+pnpm exec wrangler deploy --dry-run --strict
 ```
+
+Production deploy and rollback require explicit operator confirmation. Do not deploy from an unreviewed dirty worktree.
 
 ## Learn More
 

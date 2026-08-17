@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { formatEventTag } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 import { useEventExplorer } from "./event-explorer-context";
@@ -10,19 +10,43 @@ const controlClassName =
 
 export function EventFilters() {
 	const { state, actions } = useEventExplorer();
+	const [mobileOpen, setMobileOpen] = useState(false);
+
+	function openMobileFilters() {
+		setMobileOpen(true);
+		requestAnimationFrame(() =>
+			document.getElementById("event-search")?.focus(),
+		);
+	}
 
 	return (
 		<section
 			aria-labelledby="activity-filters-title"
-			className="rounded-md border border-ink/15 bg-white/35 p-5 sm:p-6"
+			data-passive-group="filters"
+			className="passive-group sm:p-6"
 		>
+			<button
+				type="button"
+				aria-expanded={mobileOpen}
+				aria-controls="activity-filter-controls"
+				onClick={() =>
+					mobileOpen ? setMobileOpen(false) : openMobileFilters()
+				}
+				className="secondary-button flex w-full items-center justify-between lg:hidden"
+			>
+				{messages.home.filterAccess}
+				<span aria-hidden="true">{mobileOpen ? "−" : "+"}</span>
+			</button>
 			<h2
 				id="activity-filters-title"
-				className="font-semibold text-sm uppercase tracking-[0.12em]"
+				className="hidden font-semibold text-sm uppercase tracking-[0.12em] lg:block"
 			>
 				{messages.home.findTitle}
 			</h2>
-			<div className="mt-4 grid gap-5">
+			<div
+				id="activity-filter-controls"
+				className={`mt-4 gap-5 ${mobileOpen ? "grid" : "hidden"} lg:grid`}
+			>
 				<FilterField htmlFor="event-search" label={messages.home.search}>
 					<input
 						id="event-search"
@@ -67,8 +91,11 @@ function TopicFilters() {
 	return (
 		<fieldset>
 			<legend className="font-semibold text-xs uppercase tracking-[0.14em]">
-				{messages.home.topics}
+				{messages.home.topicPreferences}
 			</legend>
+			<p className="mt-1 text-ink/65 text-xs">
+				{messages.home.topicPreferenceHint}
+			</p>
 			<div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
 				{meta.topicOptions.map((topic) => {
 					const label = meta.topicLabels[topic] ?? formatEventTag(topic);
@@ -143,13 +170,26 @@ function YearFilter({
 	onChange: (value: number) => void;
 	value: number;
 }) {
+	const [inputValue, setInputValue] = useState(String(value));
+
+	useEffect(() => {
+		setInputValue(String(value));
+	}, [value]);
+
 	return (
 		<FilterField htmlFor={id} label={label}>
 			<input
 				id={id}
 				type="number"
-				value={value}
-				onChange={(event) => onChange(Number(event.target.value))}
+				value={inputValue}
+				onChange={(event) => {
+					const nextValue = event.target.value;
+					setInputValue(nextValue);
+					if (/^-?[1-9]\d*$/.test(nextValue)) onChange(Number(nextValue));
+				}}
+				onBlur={() => {
+					if (!/^-?[1-9]\d*$/.test(inputValue)) setInputValue(String(value));
+				}}
 				className={controlClassName}
 			/>
 		</FilterField>

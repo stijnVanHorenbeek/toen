@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { toEventDraftInput } from "../src/lib/admin/authoring-draft";
 import {
@@ -10,6 +11,7 @@ import {
 	parseActiveChatGptRequest,
 	parseChatGptResponse,
 } from "../src/lib/admin/chatgpt-response";
+import { eventDraftInputSchema } from "../src/lib/content/event-draft";
 
 const requestId = "123e4567-e89b-42d3-a456-426614174000";
 const activeRequest = { formatVersion: CHATGPT_PROMPT_VERSION, requestId };
@@ -23,6 +25,33 @@ const promptInput: ChatGptPromptInput = {
 };
 
 describe("ChatGPT response import", () => {
+	it("accepts the verbatim fenced Iron Curtain response and maps it losslessly", () => {
+		const raw = readFileSync(
+			new URL("./fixtures/chatgpt-iron-curtain-response.txt", import.meta.url),
+			"utf8",
+		);
+		const response = JSON.parse(
+			raw.replace(/^```json\n|\n```\s*$/g, ""),
+		) as Record<string, unknown>;
+		const realActiveRequest = {
+			formatVersion: CHATGPT_PROMPT_VERSION,
+			requestId: String(response.requestId),
+		};
+		const result = parseChatGptResponse(raw, realActiveRequest);
+
+		expect(result.kind).toBe("ready");
+		if (result.kind !== "ready") return;
+		expect(toEventDraftInput(result.draft)).toEqual(
+			eventDraftInputSchema.parse(response.draft),
+		);
+		expect(result.claims).toEqual(
+			(response.claims as Array<Record<string, unknown>>).map((claim) => ({
+				...claim,
+				text: String(claim.text).trim(),
+			})),
+		);
+	});
+
 	it("accepts one raw object or one outer json fence and maps losslessly", () => {
 		const response = completeResponse();
 		const raw = JSON.stringify(response);
@@ -205,6 +234,25 @@ describe("ChatGPT response import", () => {
 		}
 	});
 
+	it("rejects stale requests without offering unsafe relabeling instructions", () => {
+		for (const stale of [
+			completeResponse(),
+			{
+				...asRecord(completeResponse()),
+				formatVersion: 2,
+			},
+		]) {
+			asRecord(stale).requestId = "123e4567-e89b-42d3-a456-426614174111";
+			expect(
+				parseChatGptResponse(JSON.stringify(stale), activeRequest),
+			).toMatchObject({
+				kind: "error",
+				code: "stale-request",
+				repairPrompt: null,
+			});
+		}
+	});
+
 	it("rejects unsupported versions and stale or missing requests", () => {
 		const unsupported = completeResponse();
 		asRecord(unsupported).formatVersion = 2;
@@ -367,7 +415,7 @@ function completeResponse(
 ): unknown {
 	const prompt = buildChatGptPrompt({ ...promptInput, mechanic }, requestId);
 	const match =
-		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n([\s\S]*?)\n\nREGELS VOOR HET OBJECT/.exec(
+		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n```json\n([\s\S]*?)\n```\n\nREGELS VOOR HET OBJECT/.exec(
 			prompt,
 		);
 	if (!match) throw new Error("Complete response example missing from prompt");

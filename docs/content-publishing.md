@@ -41,14 +41,27 @@ A failed deployment must keep the previous Worker version active. The admin inte
 
 The Worker must not fetch historical content from GitHub during a request. The build must bundle the validated Markdown files. This keeps public requests fast and makes each deployment reproducible.
 
-## Migration conditions
+## Repository ownership
 
-Complete the migration before another editor gets admin access.
+Application repository owns code, local curated imagery, Worker configuration, publication validation, and deployment pipeline. `toen-content` owns canonical event Markdown and its matching strict schema. Keep schema fixtures in parity until shared package has lower maintenance cost than duplication.
 
-1. Create the content repository.
-2. Move the Markdown catalog to the content repository.
-3. Install the GitHub App only in the content repository.
-4. Change the publisher from pull requests to direct commits.
-5. Add catalog validation and deployment for an exact content commit SHA.
-6. Remove the GitHub App installation from the application repository.
-7. Verify commit attribution, rollback, and failed-deployment behavior.
+GitHub App installation must include only `toen-content` with `contents: write` and `metadata: read`. It must not have write access to application repository. Secrets Store bindings must use `workers` scope and remain unavailable to browser.
+
+## Release procedure
+
+Before granting editor access or enabling live publication:
+
+1. Verify GitHub App repository selection and minimum permissions.
+2. Verify Access covers `/admin*` and `/api/admin/events/*`.
+3. Verify Worker also validates Access JWT for publication route.
+4. Verify nine expected Secrets Store bindings exist and have `workers` scope. Do not retrieve or print values.
+5. Set and record exact content revision used by build.
+6. Run application and content verification.
+7. Run Wrangler package dry-run and inspect bindings.
+8. Deploy only after explicit operator confirmation.
+9. Verify public pages, protected routes, publication mode, logs, and active deployment.
+10. Perform one controlled publication with non-sensitive test event or approved real content.
+11. Verify editor attribution, content commit, Deploy Hook, build result, and rendered event.
+12. Record rollback target before declaring release complete.
+
+Use [release hardening runbook](release-hardening.md) for commands and evidence fields.

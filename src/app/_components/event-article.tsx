@@ -2,8 +2,10 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { formatHistoricalDate } from "@/lib/content/event";
 import type { Event } from "@/lib/content/event-document";
-import { formatEventTag } from "@/lib/i18n/locale";
+import { getEventVisual } from "@/lib/content/event-media";
+import { formatEventTag, formatNumber } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
+import { HistoricalVisualFigure } from "./historical-visual";
 
 type EventArticleProps = {
 	event: Event;
@@ -14,6 +16,7 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 	const page = variant === "page";
 	const Title = page ? "h1" : "h2";
 	const SourceHeading = page ? "h2" : "h3";
+	const visual = getEventVisual(event.slug);
 	return (
 		<article
 			className={
@@ -64,18 +67,48 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 					))}
 				</ul>
 				{page && event.beat ? (
-					<Link
-						href={`/events/${event.slug}/play`}
-						className="primary-button mt-7 inline-flex items-center"
+					<div
+						data-article-activity-introduction
+						className="mt-8 max-w-2xl border-accent border-l-2 pl-4"
 					>
-						{messages.beat.start}
-					</Link>
+						<p className="font-bold text-accent text-xs uppercase tracking-[0.16em]">
+							{messages.home.activity}
+						</p>
+						<p
+							data-activity-question
+							className="mt-2 text-pretty font-serif text-xl font-medium leading-tight"
+						>
+							{event.beat.question}
+						</p>
+						<p className="mt-2 text-ink/65 text-sm">
+							{messages.home.mechanics[event.beat.mechanic]} ·{" "}
+							{event.beat.routes
+								.map(({ durationMinutes }) => formatNumber(durationMinutes))
+								.join(" · ")}{" "}
+							{messages.home.minuteAbbreviation}
+						</p>
+					</div>
 				) : null}
 			</header>
+			{visual ? (
+				<HistoricalVisualFigure
+					visual={visual}
+					className={
+						page
+							? "mt-10 overflow-hidden rounded-md bg-ink text-paper shadow-[0_28px_90px_rgb(33_31_26_/_18%)] [&_figcaption]:px-3 [&_figcaption]:py-2 sm:mt-14 sm:[&_figcaption]:px-5 sm:[&_figcaption]:py-4"
+							: "bg-ink text-paper [&_figcaption]:px-5 [&_figcaption]:py-4 sm:[&_figcaption]:px-10"
+					}
+					imageClassName={
+						page
+							? "aspect-[16/9] w-full object-cover"
+							: "aspect-[16/8] w-full object-cover"
+					}
+				/>
+			) : null}
 			<div
 				className={
 					page
-						? "grid gap-14 pt-12 lg:grid-cols-[minmax(0,1fr)_15rem] lg:pt-16"
+						? "grid gap-14 pt-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:pt-16"
 						: "grid gap-10 px-6 py-9 sm:px-10 lg:grid-cols-[minmax(0,1fr)_14rem]"
 				}
 			>
@@ -93,11 +126,11 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 									href={source.url}
 									target="_blank"
 									rel="noreferrer"
-									className="block max-w-full break-all font-serif text-lg decoration-accent/50 underline underline-offset-4 hover:text-accent"
+									className="block max-w-full break-words font-serif text-lg decoration-accent/50 underline underline-offset-4 hover:text-accent"
 								>
 									{source.title}
 								</a>
-								<p className="mt-1 break-all text-ink/70 text-sm leading-5">
+								<p className="mt-1 break-words text-ink/70 text-sm leading-5">
 									{source.publisher}
 								</p>
 							</li>
@@ -105,6 +138,25 @@ export function EventArticle({ event, variant }: EventArticleProps) {
 					</ul>
 				</aside>
 			</div>
+			{page && event.beat ? (
+				<section
+					data-article-activity-continuation
+					className="mt-14 border-ink/15 border-t pt-10 sm:mt-16"
+				>
+					<h2 className="text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+						{messages.event.continueWithActivity}
+					</h2>
+					<p className="mt-3 max-w-2xl text-pretty text-ink/65 leading-7">
+						{event.beat.question}
+					</p>
+					<Link
+						href={`/events/${event.slug}/play`}
+						className="primary-button mt-6 inline-flex items-center"
+					>
+						{messages.home.startActivity}
+					</Link>
+				</section>
+			) : null}
 		</article>
 	);
 }

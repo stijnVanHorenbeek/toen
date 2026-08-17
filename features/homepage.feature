@@ -13,9 +13,41 @@ Feature: Homepage
     When I start the first recommended classroom activity
     Then I see the classroom activity preparation
 
+  Scenario Outline: Reach filters before the featured recommendation
+    Given the homepage viewport is <width> by <height>
+    When I open the homepage
+    Then compact filter access appears before the featured recommendation
+    When I open the homepage filters
+    Then the activity search receives focus
+
+    Examples:
+      | width | height |
+      | 390   | 844    |
+      | 834   | 1112   |
+
+  Scenario: Topic choices explain preference behavior
+    Given I open the homepage
+    When I open the homepage filters if needed
+    Then topic choices say they give matching activities priority
+    And filter grouping is quiet while filter controls remain bounded
+
+  Scenario: Secondary recommendations are compact
+    Given I open the homepage
+    Then only the first recommendation uses the featured treatment
+    And a secondary recommendation is shorter than the featured recommendation
+    And secondary recommendation titles open background reading
+    And secondary classroom starts use quiet actions
+    And recommendation cards follow the page heading hierarchy
+
+  Scenario: Server and hydrated homepage agree on the first recommendation
+    Given I record the server-rendered first recommendation
+    When I open the homepage
+    Then the hydrated first recommendation is unchanged
+
   Scenario: Find an activity for a lesson context
     Given I open the homepage
-    When I search activities for "D Day"
+    When I open the homepage filters if needed
+    And I search activities for "D Day"
     And I choose the topic "Oorlog"
     Then the first recommended activity starts "/events/d-day-de-geallieerde-landing-in-normandie-1944/play"
     And the recommendation explains why it fits

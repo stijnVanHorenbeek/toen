@@ -5,15 +5,57 @@ import { messages } from "@/lib/i18n/messages.nl-BE";
 import { useEventAuthoring } from "./event-authoring-context";
 
 export function AiDraftReviewPanel() {
-	const { state, actions } = useEventAuthoring();
+	const { state } = useEventAuthoring();
 	const review = state.aiReview;
 	if (!review) return null;
+	return <AiDraftReviewContent review={review} />;
+}
+
+function AiDraftReviewContent({
+	review,
+}: {
+	review: NonNullable<
+		ReturnType<typeof useEventAuthoring>["state"]["aiReview"]
+	>;
+}) {
+	const { state, actions } = useEventAuthoring();
 	const status = getAiDraftReviewStatus(review, state.draft);
+	const reviewLocked = state.isPublishing;
 	const sensitivityNotes = state.preview?.event.beat?.sensitivityNotes ?? [];
+	const confirmedSourceCount = state.draft.sources.filter((source, index) => {
+		const sourceId = source.id ?? `source-${index + 1}`;
+		const sourceReview = review.sourceReviews.find(
+			(item) => item.sourceId === sourceId,
+		);
+		const url = source.url.trim();
+		return sourceReview?.chosenUrl === url && sourceReview.confirmedUrl === url;
+	}).length;
+	const resolvedClaimCount = review.claims.filter(
+		({ status: claimStatus }) => claimStatus !== "pending",
+	).length;
+
+	function focusNextIncomplete() {
+		const sourceId = status.incompleteSourceIds[0];
+		const missingEvidenceClaimId = status.missingEvidenceClaimIds[0];
+		const claimId = status.pendingClaimIds[0];
+		const targetId = sourceId
+			? sourceActionId(sourceId, review, state.draft)
+			: missingEvidenceClaimId
+				? `${missingEvidenceClaimId}-sources`
+				: claimId
+					? `${claimId}-confirm`
+					: "ai-review-status";
+		requestAnimationFrame(() => {
+			const target = document.getElementById(targetId);
+			target?.focus();
+			target?.scrollIntoView({ block: "center" });
+		});
+	}
 
 	return (
 		<section
 			aria-labelledby="ai-draft-review-title"
+			aria-busy={reviewLocked || undefined}
 			className="mt-8 rounded-md border-2 border-amber-700 bg-amber-50/70 p-5 sm:p-7"
 		>
 			<h3
@@ -30,6 +72,22 @@ export function AiDraftReviewPanel() {
 				<p className="mt-2 text-ink/75 text-sm leading-6">
 					{messages.admin.aiReview.linkChoice}
 				</p>
+			</div>
+			<div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-md border border-amber-800/30 bg-white p-4">
+				<p aria-live="polite" className="font-semibold">
+					Bronnen {confirmedSourceCount}/{state.draft.sources.length} ·
+					Beweringen {resolvedClaimCount}/{review.claims.length}
+				</p>
+				{status.complete ? null : (
+					<button
+						type="button"
+						disabled={reviewLocked}
+						onClick={focusNextIncomplete}
+						className="secondary-button"
+					>
+						{messages.admin.aiReview.nextIncomplete}
+					</button>
+				)}
 			</div>
 			{review.draftChangedSinceImport ? (
 				<p
@@ -56,6 +114,93 @@ export function AiDraftReviewPanel() {
 					</ul>
 				</section>
 			) : null}
+
+			<section aria-labelledby="ai-sources-title" className="mt-8">
+				<h4 id="ai-sources-title" className="font-serif text-xl font-semibold">
+					{messages.admin.aiReview.sources}
+				</h4>
+				<p className="mt-2 max-w-3xl text-ink/75 text-sm leading-6">
+					{messages.admin.aiReview.sourcesIntro}
+				</p>
+				<ul className="mt-4 grid gap-4 sm:grid-cols-2">
+					{state.draft.sources.map((source, index) => {
+						const sourceId = source.id ?? `source-${index + 1}`;
+						const sourceReview = review.sourceReviews.find(
+							(item) => item.sourceId === sourceId,
+						);
+						const currentUrl = source.url.trim();
+						const chosen = sourceReview?.chosenUrl === currentUrl;
+						const confirmed = sourceReview?.confirmedUrl === currentUrl;
+						return (
+							<li
+								key={sourceId}
+								className="min-w-0 rounded-md border border-ink/20 bg-white p-4"
+							>
+								<h5 className="break-all font-semibold">
+									{source.title || `Bron ${index + 1}`}
+								</h5>
+								<p className="mt-1 break-all text-ink/70 text-sm">
+									{source.publisher}
+								</p>
+								<p className="mt-2 break-all text-ink/65 text-xs">
+									{source.url}
+								</p>
+								<a
+									id={`${sourceId}-open`}
+									href={source.url}
+									target="_blank"
+									rel="noreferrer"
+									onClick={() => actions.markAiSourceChosen(sourceId)}
+									className="mt-3 inline-block max-w-full break-all font-semibold text-accent underline underline-offset-4"
+								>
+									{source.title || `Bron ${index + 1}`}{" "}
+									{messages.admin.aiReview.openSource}
+								</a>
+								{chosen ? (
+									<p className="mt-2 text-ink/75 text-sm">
+										{messages.admin.aiReview.linkChosen}
+									</p>
+								) : null}
+								<label className="mt-4 flex cursor-pointer items-start gap-3">
+									<input
+										id={`${sourceId}-confirm`}
+										type="checkbox"
+										checked={confirmed}
+										disabled={reviewLocked || !chosen}
+										aria-describedby={
+											!chosen ? `${sourceId}-confirm-hint` : undefined
+										}
+										onChange={(event) =>
+											actions.setAiSourceConfirmed(
+												sourceId,
+												event.target.checked,
+											)
+										}
+										className="mt-0.5 size-5 shrink-0 accent-accent"
+									/>
+									<span className="min-w-0 break-all">
+										Ik heb {source.title || `bron ${index + 1}`}{" "}
+										{messages.admin.aiReview.confirmSource}
+									</span>
+								</label>
+								{!chosen ? (
+									<p
+										id={`${sourceId}-confirm-hint`}
+										className="mt-2 text-ink/70 text-sm"
+									>
+										{messages.admin.aiReview.confirmSourceHint}
+									</p>
+								) : null}
+								{status.unrelatedSourceIds.includes(sourceId) ? (
+									<p className="mt-3 text-amber-900 text-sm">
+										{messages.admin.aiReview.unrelatedSource}
+									</p>
+								) : null}
+							</li>
+						);
+					})}
+				</ul>
+			</section>
 
 			<section aria-labelledby="ai-claims-title" className="mt-8">
 				<h4 id="ai-claims-title" className="font-serif text-xl font-semibold">
@@ -110,6 +255,7 @@ export function AiDraftReviewPanel() {
 									<input
 										type="checkbox"
 										checked={claim.status === "removed"}
+										disabled={reviewLocked}
 										onChange={(event) =>
 											actions.setAiClaimStatus(
 												claim.id,
@@ -125,6 +271,8 @@ export function AiDraftReviewPanel() {
 								{claim.status === "removed" ? null : (
 									<>
 										<fieldset
+											id={`${claim.id}-sources`}
+											tabIndex={-1}
 											className="mt-5"
 											aria-invalid={missingEvidence ? "true" : undefined}
 											aria-describedby={
@@ -150,6 +298,7 @@ export function AiDraftReviewPanel() {
 																checked={claim.currentSourceIds.includes(
 																	sourceId,
 																)}
+																disabled={reviewLocked}
 																onChange={() =>
 																	actions.toggleAiClaimSource(
 																		claim.id,
@@ -178,9 +327,10 @@ export function AiDraftReviewPanel() {
 										) : null}
 										<label className="mt-5 flex cursor-pointer items-start gap-3 rounded-sm border border-ink/25 p-3">
 											<input
+												id={`${claim.id}-confirm`}
 												type="checkbox"
 												checked={claim.status === "confirmed"}
-												disabled={!canConfirm}
+												disabled={reviewLocked || !canConfirm}
 												aria-describedby={
 													!canConfirm
 														? [
@@ -220,91 +370,6 @@ export function AiDraftReviewPanel() {
 				</ol>
 			</section>
 
-			<section aria-labelledby="ai-sources-title" className="mt-8">
-				<h4 id="ai-sources-title" className="font-serif text-xl font-semibold">
-					{messages.admin.aiReview.sources}
-				</h4>
-				<p className="mt-2 max-w-3xl text-ink/75 text-sm leading-6">
-					{messages.admin.aiReview.sourcesIntro}
-				</p>
-				<ul className="mt-4 grid gap-4 sm:grid-cols-2">
-					{state.draft.sources.map((source, index) => {
-						const sourceId = source.id ?? `source-${index + 1}`;
-						const sourceReview = review.sourceReviews.find(
-							(item) => item.sourceId === sourceId,
-						);
-						const currentUrl = source.url.trim();
-						const chosen = sourceReview?.chosenUrl === currentUrl;
-						const confirmed = sourceReview?.confirmedUrl === currentUrl;
-						return (
-							<li
-								key={sourceId}
-								className="min-w-0 rounded-md border border-ink/20 bg-white p-4"
-							>
-								<h5 className="break-all font-semibold">
-									{source.title || `Bron ${index + 1}`}
-								</h5>
-								<p className="mt-1 break-all text-ink/70 text-sm">
-									{source.publisher}
-								</p>
-								<p className="mt-2 break-all text-ink/65 text-xs">
-									{source.url}
-								</p>
-								<a
-									href={source.url}
-									target="_blank"
-									rel="noreferrer"
-									onClick={() => actions.markAiSourceChosen(sourceId)}
-									className="mt-3 inline-block max-w-full break-all font-semibold text-accent underline underline-offset-4"
-								>
-									{source.title || `Bron ${index + 1}`}{" "}
-									{messages.admin.aiReview.openSource}
-								</a>
-								{chosen ? (
-									<p className="mt-2 text-ink/75 text-sm">
-										{messages.admin.aiReview.linkChosen}
-									</p>
-								) : null}
-								<label className="mt-4 flex cursor-pointer items-start gap-3">
-									<input
-										type="checkbox"
-										checked={confirmed}
-										disabled={!chosen}
-										aria-describedby={
-											!chosen ? `${sourceId}-confirm-hint` : undefined
-										}
-										onChange={(event) =>
-											actions.setAiSourceConfirmed(
-												sourceId,
-												event.target.checked,
-											)
-										}
-										className="mt-0.5 size-5 shrink-0 accent-accent"
-									/>
-									<span className="min-w-0 break-all">
-										Ik heb {source.title || `bron ${index + 1}`}{" "}
-										{messages.admin.aiReview.confirmSource}
-									</span>
-								</label>
-								{!chosen ? (
-									<p
-										id={`${sourceId}-confirm-hint`}
-										className="mt-2 text-ink/70 text-sm"
-									>
-										{messages.admin.aiReview.confirmSourceHint}
-									</p>
-								) : null}
-								{status.unrelatedSourceIds.includes(sourceId) ? (
-									<p className="mt-3 text-amber-900 text-sm">
-										{messages.admin.aiReview.unrelatedSource}
-									</p>
-								) : null}
-							</li>
-						);
-					})}
-				</ul>
-			</section>
-
 			<p
 				id="ai-review-status"
 				tabIndex={-1}
@@ -323,6 +388,24 @@ export function AiDraftReviewPanel() {
 			</p>
 		</section>
 	);
+}
+
+function sourceActionId(
+	sourceId: string,
+	review: NonNullable<
+		ReturnType<typeof useEventAuthoring>["state"]["aiReview"]
+	>,
+	draft: ReturnType<typeof useEventAuthoring>["state"]["draft"],
+) {
+	const source = draft.sources.find(
+		(item, index) => (item.id ?? `source-${index + 1}`) === sourceId,
+	);
+	const sourceReview = review.sourceReviews.find(
+		(item) => item.sourceId === sourceId,
+	);
+	return source && sourceReview?.chosenUrl === source.url.trim()
+		? `${sourceId}-confirm`
+		: `${sourceId}-open`;
 }
 
 function claimCanBeConfirmed(

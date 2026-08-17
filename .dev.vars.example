@@ -1,0 +1,11 @@
+# Local development placeholders only. Never commit real values.
+NEXTJS_ENV=development
+GITHUB_PUBLISH_MODE=dry-run
+CONTENT_DEPLOY_HOOK_URL=https://example.invalid/deploy-hook
+GITHUB_APP_ID=replace-me
+GITHUB_APP_INSTALLATION_ID=replace-me
+GITHUB_APP_PRIVATE_KEY="replace-me"
+GITHUB_REPOSITORY=owner/toen-content
+GITHUB_BASE_BRANCH=main
+ACCESS_TEAM_DOMAIN=https://example.cloudflareaccess.com
+ACCESS_POLICY_AUD=replace-me

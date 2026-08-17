@@ -1,10 +1,23 @@
+import { readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 import { createBdd, test } from "playwright-bdd";
 
 const { Given, Then, When } = createBdd(test);
 let pendingPreviewResponse: Promise<unknown> | null = null;
 
-type ClipboardTestWindow = Window & { copiedChatGptInstructions?: string };
+type ClipboardTestWindow = Window & {
+	calendarPickerOpened?: boolean;
+	copiedChatGptInstructions?: string;
+};
+
+const ironCurtainResponse = readFileSync(
+	"tests/fixtures/chatgpt-iron-curtain-response.txt",
+	"utf8",
+);
+const cleopatraResponseTemplate = readFileSync(
+	"tests/fixtures/cleopatra-response.template.txt",
+	"utf8",
+);
 
 Given("the browser clipboard accepts copied instructions", async ({ page }) => {
 	await page.addInitScript(() => {
@@ -15,6 +28,15 @@ Given("the browser clipboard accepts copied instructions", async ({ page }) => {
 					(window as ClipboardTestWindow).copiedChatGptInstructions = value;
 				},
 			},
+		});
+	});
+});
+
+Given("ChatGPT request IDs use the actual response ID", async ({ page }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(crypto, "randomUUID", {
+			configurable: true,
+			value: () => "ede971ad-4a34-4637-abcd-5d689b22d7f7",
 		});
 	});
 });
@@ -31,6 +53,13 @@ Given("the browser clipboard rejects copied instructions", async ({ page }) => {
 		});
 	});
 });
+
+Given(
+	"the admin viewport is {int} by {int}",
+	async ({ page }, width: number, height: number) => {
+		await page.setViewportSize({ width, height });
+	},
+);
 
 Given("I open the event admin", async ({ page }) => {
 	await page.goto("/admin");
@@ -152,7 +181,11 @@ When("I enter only spaces as the ChatGPT topic", async ({ page }) => {
 When(
 	"I change the ChatGPT topic to {string}",
 	async ({ page }, topic: string) => {
-		await page.getByLabel("Onderwerp of gebeurtenis").fill(topic);
+		const topicField = page.getByLabel("Onderwerp of gebeurtenis");
+		if (!(await topicField.isVisible())) {
+			await page.getByRole("button", { name: "Voorkeuren wijzigen" }).click();
+		}
+		await topicField.fill(topic);
 	},
 );
 
@@ -199,9 +232,27 @@ When(
 	},
 );
 
+When("I paste the actual Iron Curtain ChatGPT answer", async ({ page }) => {
+	await page.getByLabel("Antwoord van ChatGPT").fill(ironCurtainResponse);
+});
+
+When("I paste the request-bound Cleopatra response", async ({ page }) => {
+	const stored = await page.evaluate(() =>
+		sessionStorage.getItem("toen:chatgpt-request:v1"),
+	);
+	if (!stored) throw new Error("No active ChatGPT request");
+	const active = JSON.parse(stored) as { requestId: string };
+	await page
+		.getByLabel("Antwoord van ChatGPT")
+		.fill(
+			cleopatraResponseTemplate.replace("{{REQUEST_ID}}", active.requestId),
+		);
+});
+
 When(
 	"I paste the malformed ChatGPT answer {string}",
 	async ({ page }, value: string) => {
+		await openChatGptResponseStep(page);
 		await page.getByLabel("Antwoord van ChatGPT").fill(value);
 	},
 );
@@ -223,6 +274,7 @@ When(
 			formatVersion: number;
 			requestId: string;
 		};
+		await openChatGptResponseStep(page);
 		await page.getByLabel("Antwoord van ChatGPT").fill(
 			JSON.stringify({
 				formatVersion: active.formatVersion,
@@ -260,6 +312,56 @@ When(
 	},
 );
 
+When("I choose an exact date with the calendar button", async ({ page }) => {
+	await page.getByLabel("Hoe precies is de datum bekend?").selectOption("day");
+	await page.getByLabel("Tijdrekening").selectOption("ce");
+	await page.evaluate(() => {
+		Object.defineProperty(HTMLInputElement.prototype, "showPicker", {
+			configurable: true,
+			value() {
+				(window as ClipboardTestWindow).calendarPickerOpened = true;
+			},
+		});
+	});
+	await page.getByRole("button", { name: "Kalender openen" }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() => (window as ClipboardTestWindow).calendarPickerOpened ?? false,
+			),
+		)
+		.toBe(true);
+	await page.locator("[data-calendar-input]").evaluate((input) => {
+		const dateInput = input as HTMLInputElement;
+		const setValue = Object.getOwnPropertyDescriptor(
+			HTMLInputElement.prototype,
+			"value",
+		)?.set;
+		setValue?.call(dateInput, "1453-05-29");
+		dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+		dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+	});
+});
+
+Then('the exact date field contains "29.05.1453"', async ({ page }) => {
+	await expect(page.getByLabel("Exacte datum", { exact: true })).toHaveValue(
+		"29.05.1453",
+	);
+});
+
+Then("the calendar button is icon-only and accessible", async ({ page }) => {
+	const calendarButton = page.getByRole("button", { name: "Kalender openen" });
+	await expect(calendarButton).toHaveAttribute(
+		"title",
+		"Datum in kalender kiezen",
+	);
+	await expect(calendarButton).not.toContainText("Kalender openen");
+	await expect(calendarButton.locator("svg")).toHaveAttribute(
+		"aria-hidden",
+		"true",
+	);
+});
+
 When(
 	"I complete a {string} historical story",
 	async ({ page }, precision: string) => {
@@ -291,6 +393,71 @@ When(
 	},
 );
 
+When(
+	"I manually author the approximate BCE dinosaur event with an activity",
+	async ({ page }) => {
+		await page
+			.getByLabel("Titel")
+			.fill("Het einde van de niet-vliegende dinosauriërs");
+		await page
+			.getByLabel("Hoe precies is de datum bekend?")
+			.selectOption("approximate");
+		await page.getByLabel("Tijdrekening").selectOption("bce");
+		await page.getByLabel("Jaar").fill("66000000");
+		await page
+			.getByLabel("Korte samenvatting")
+			.fill(
+				"Ongeveer 66 miljoen jaar geleden droeg een grote inslag bij aan een massa-uitsterving waarbij alle niet-vliegende dinosauriërs verdwenen.",
+			);
+		await page
+			.getByRole("textbox", { name: "Verhaal" })
+			.fill(
+				"Aan het einde van het Krijt sloeg een grote planetoïde in bij het huidige Yucatán. Stof en aerosolen beperkten zonlicht en verstoorden klimaat en voedselketens. Alle niet-vliegende dinosauriërs stierven uit, terwijl vogels als dinosauriërlijn overleefden.",
+			);
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.click();
+		await page.getByLabel("Algemeen").check();
+		await page.getByRole("button", { name: "Wetenschap" }).click();
+		await page.getByLabel("Nieuw onderwerp").fill("Dinosauriërs");
+		await page.getByRole("button", { name: "Onderwerp toevoegen" }).click();
+		await page
+			.getByLabel("Titel van bron 1")
+			.fill("What killed the dinosaurs?");
+		await page.getByLabel("Uitgever van bron 1").fill("Natural History Museum");
+		await page
+			.getByLabel("URL van bron 1")
+			.fill("https://www.nhm.ac.uk/discover/dinosaur-extinction.html");
+		await page.getByRole("button", { name: "Nog een bron toevoegen" }).click();
+		await page
+			.getByLabel("Titel van bron 2")
+			.fill("Sediment Swirls Off the Yucatán");
+		await page.getByLabel("Uitgever van bron 2").fill("NASA Science");
+		await page
+			.getByLabel("URL van bron 2")
+			.fill(
+				"https://science.nasa.gov/earth/earth-observatory/sediment-swirls-off-the-yucatan-149114/",
+			);
+		await page
+			.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+			.click();
+		await page.getByLabel("Een verhaal met klasactiviteit").check();
+		await fillManualDinosaurBeat(page);
+		await page.getByRole("button", { name: "Voorbeeld bekijken" }).click();
+	},
+);
+
+When("I edit and reload the dinosaur draft", async ({ page }) => {
+	await page.getByRole("button", { name: "Verhaal wijzigen" }).click();
+	await page
+		.getByLabel("Titel")
+		.fill("Het einde van de niet-vliegende dinosauriërs — herzien");
+	await expect(
+		page.getByText("Concept opgeslagen op dit apparaat"),
+	).toBeVisible();
+	await page.reload();
+});
+
 When("I select story text for a link", async ({ page }) => {
 	const editor = page.getByRole("textbox", { name: "Verhaal" });
 	await editor.fill("Meer informatie");
@@ -321,6 +488,12 @@ When("I continue to classification and sources", async ({ page }) => {
 		.click();
 });
 
+When("I try to continue to the activity", async ({ page }) => {
+	await page
+		.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+		.click();
+});
+
 When("I complete classification and two sources", async ({ page }) => {
 	await completeMinimumClassification(page);
 	await page.getByRole("button", { name: "Nog een bron toevoegen" }).click();
@@ -335,18 +508,46 @@ When("I complete the minimum classification and source", async ({ page }) => {
 	await completeMinimumClassification(page);
 });
 
+When("I begin a classroom activity", async ({ page }) => {
+	await continueToActivity(page);
+	await page.getByLabel("Een verhaal met klasactiviteit").check();
+});
+
+When(
+	"I enter the central activity question {string}",
+	async ({ page }, question: string) => {
+		await page.locator('[id="beat.question"]').fill(question);
+	},
+);
+
+When("I go to the next activity part", async ({ page }) => {
+	await page.getByRole("button", { name: "Volgende onderdeel" }).click();
+});
+
+When("I go to the previous activity part", async ({ page }) => {
+	await page.getByRole("button", { name: "Vorig onderdeel" }).click();
+});
+
+When(
+	"I clear the projected text in activity part {string}",
+	async ({ page }, part: string) => {
+		if (part !== "Startvraag")
+			throw new Error(`Unknown activity part: ${part}`);
+		await selectActivityPart(page, 1);
+		await page.locator('[id="beat.stages.0.stimulus"]').fill("");
+	},
+);
+
 When("I create a vote activity with response cards", async ({ page }) => {
 	await continueToActivity(page);
 	await page.getByLabel("Een verhaal met klasactiviteit").check();
+	await selectActivityPart(page, 0);
 	await page
 		.getByLabel("Hoe antwoorden leerlingen?")
 		.selectOption("response-cards");
 	await page.locator('[id="beat.question"]').fill("Welke keuze maak je?");
 	await page.locator('[id="beat.choices.0.label"]').fill("Doorgaan");
 	await page.locator('[id="beat.choices.1.label"]').fill("Stoppen");
-	await page
-		.locator('[id="beat.vocationalConnection"]')
-		.fill("Vergelijk dit met veilig beslissen op de werkvloer.");
 	for (const [index, stage] of [
 		[0, { stimulus: "De situatie verandert onverwacht." }],
 		[
@@ -382,10 +583,24 @@ When("I create a vote activity with response cards", async ({ page }) => {
 		],
 		[11, { bridge: "Welke afweging herken je in de rest van de les?" }],
 	] as const) {
+		await selectActivityPart(page, index + 1);
 		for (const [field, value] of Object.entries(stage)) {
 			await page.locator(`[id="beat.stages.${index}.${field}"]`).fill(value);
 		}
 	}
+	await selectActivityPart(page, 13);
+	await page
+		.locator('[id="beat.vocationalConnection"]')
+		.fill("Vergelijk dit met veilig beslissen op de werkvloer.");
+	await page
+		.locator('[id="beat.sensitivityNotes.0"]')
+		.fill("Aandachtspunt voor gevoelige inhoud.");
+	await selectActivityPart(page, 0);
+});
+
+When("I confirm article-only activity removal", async ({ page }) => {
+	page.once("dialog", async (dialog) => dialog.accept());
+	await page.getByLabel("Alleen een achtergrondverhaal").click();
 });
 
 When("I choose article-only but cancel activity removal", async ({ page }) => {
@@ -404,6 +619,108 @@ Then("the activity and central question remain", async ({ page }) => {
 		"Welke keuze maak je?",
 	);
 });
+
+Then(
+	"the ChatGPT grouping is quiet while its controls remain bounded",
+	async ({ page }) => {
+		const grouping = page.locator("[data-passive-group='chatgpt']");
+		await expect(grouping).toBeVisible();
+		await expect(grouping).toHaveCSS("border-top-width", "0px");
+		await expect(grouping).toHaveCSS(
+			"background-color",
+			"rgba(255, 255, 255, 0.38)",
+		);
+		await page
+			.locator("summary")
+			.filter({ hasText: "Begin met hulp van ChatGPT" })
+			.click();
+		await expect(page.getByLabel("Onderwerp of gebeurtenis")).toHaveCSS(
+			"border-top-width",
+			"1px",
+		);
+	},
+);
+
+Then(
+	"the active activity group is quiet while its controls remain bounded",
+	async ({ page }) => {
+		const grouping = page.locator("[data-passive-group='activity-part']");
+		await expect(grouping).toBeVisible();
+		await expect(grouping).toHaveCSS("border-top-width", "0px");
+		await expect(grouping).toHaveCSS(
+			"background-color",
+			"rgba(255, 255, 255, 0.38)",
+		);
+		await expect(page.locator('[id="beat.question"]')).toHaveCSS(
+			"border-top-width",
+			"1px",
+		);
+	},
+);
+
+Then(
+	"the activity part change uses restrained continuity",
+	async ({ page }) => {
+		const part = page.locator("[data-passive-group='activity-part']");
+		await expect(part).toHaveCSS("animation-duration", "0.24s");
+		await expect(part).toHaveCSS("animation-name", "authoring-part-enter");
+	},
+);
+
+Then("the guided activity editor shows one active part", async ({ page }) => {
+	await expect(page.getByRole("heading", { name: "Basis" })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "Startvraag" })).toHaveCount(
+		0,
+	);
+	await expect(
+		page.getByRole("navigation", { name: "Onderdelen van de klasactiviteit" }),
+	).toBeVisible();
+});
+
+Then("the guided activity editor fits the viewport", async ({ page }) => {
+	const layout = await page
+		.getByRole("region", { name: "Basis" })
+		.evaluate((region) => ({
+			left: region.getBoundingClientRect().left,
+			right: region.getBoundingClientRect().right,
+			documentWidth: document.documentElement.scrollWidth,
+			viewportWidth: window.innerWidth,
+		}));
+	expect(layout.left).toBeGreaterThanOrEqual(0);
+	expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+	expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+});
+
+Then(
+	"activity part heading {string} has focus",
+	async ({ page }, heading: string) => {
+		await expect(page.getByRole("heading", { name: heading })).toBeFocused();
+	},
+);
+
+Then(
+	"the central activity question remains {string}",
+	async ({ page }, question: string) => {
+		await expect(page.locator('[id="beat.question"]')).toHaveValue(question);
+	},
+);
+
+Then("the activity preview action remains available", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Voorbeeld bekijken" }),
+	).toBeVisible();
+});
+
+Then("activity field {string} is focused", async ({ page }, field: string) => {
+	await expect(page.locator(`[id="${field}"]`)).toBeFocused();
+});
+
+Then(
+	"activity part heading {string} is visible",
+	async ({ page }, heading: string) => {
+		await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+	},
+);
 
 When("I clear the central activity question", async ({ page }) => {
 	await page.locator('[id="beat.question"]').fill("");
@@ -446,6 +763,17 @@ Then(
 	},
 );
 
+Then(
+	"the classroom correction action is inside the classroom review",
+	async ({ page }) => {
+		await expect(
+			page
+				.getByRole("region", { name: "Klasactiviteit" })
+				.getByRole("button", { name: "Klasactiviteit wijzigen" }),
+		).toBeVisible();
+	},
+);
+
 Then("authored teacher cues are available in review", async ({ page }) => {
 	await page
 		.getByText("Aanwijzingen voor de leerkracht", { exact: true })
@@ -470,6 +798,27 @@ Then("I can open the exact classroom preview", async ({ page }) => {
 	).toBeVisible();
 });
 
+Then(
+	"trusted image attribution remains usable in classroom preview",
+	async ({ page }) => {
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		const sourceLink = dialog.getByRole("link", { name: "Beeldbron" });
+		await expect(sourceLink).toHaveAttribute("target", "_blank");
+		await expect(sourceLink).toHaveAttribute("rel", "noreferrer");
+		await page
+			.context()
+			.route("https://commons.wikimedia.org/**", (route) =>
+				route.fulfill({ status: 200, body: "beeldbron" }),
+			);
+		const popupPromise = page.waitForEvent("popup");
+		await sourceLink.click();
+		const popup = await popupPromise;
+		await expect(popup).toHaveURL(/commons\.wikimedia\.org/);
+		await popup.close();
+		await expect(dialog).toBeVisible();
+	},
+);
+
 Then("the classroom preview shows response cards", async ({ page }) => {
 	await expect(
 		page.getByRole("dialog", { name: "Klasactiviteit" }),
@@ -493,7 +842,20 @@ Then(
 );
 
 Then(
-	"classroom preview preparation remains reachable on a narrow screen",
+	"classroom preview preparation shows the response method and sensitivity guidance",
+	async ({ page }) => {
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		await expect(dialog.locator("[data-classroom-setup]")).toContainText(
+			"Antwoordvorm: Antwoordkaarten",
+		);
+		await expect(dialog.locator("[data-classroom-sensitivity]")).toContainText(
+			"Aandachtspunt voor gevoelige inhoud",
+		);
+	},
+);
+
+Then(
+	"classroom preview preparation fits on a narrow screen",
 	async ({ page }) => {
 		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
 		const player = dialog.locator("[data-classroom-preview-player]");
@@ -506,7 +868,7 @@ Then(
 			scrollHeight: element.scrollHeight,
 		}));
 		expect(layout.overflowY).toBe("auto");
-		expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
+		expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight + 1);
 	},
 );
 
@@ -514,7 +876,7 @@ Then(
 	"the vocational connection appears in the lesson bridge",
 	async ({ page }) => {
 		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
-		await dialog.getByText("5 minuten", { exact: true }).click();
+		await dialog.getByText("5 min", { exact: true }).click();
 		await dialog.getByRole("button", { name: "Start", exact: true }).click();
 		for (let step = 0; step < 6; step += 1) {
 			await dialog.getByRole("button", { name: /Volgende|Toon meer/ }).click();
@@ -577,6 +939,10 @@ When(
 		}
 	},
 );
+
+When("I go to the next incomplete AI review item", async ({ page }) => {
+	await page.getByRole("button", { name: "Volgende open controle" }).click();
+});
 
 When("I choose and confirm every imported source", async ({ page }) => {
 	for (const source of [
@@ -724,6 +1090,52 @@ When("I retry the deployment", async ({ page }) => {
 		.click();
 });
 
+Then(
+	"story and source correction actions border the article preview",
+	async ({ page }) => {
+		await expect(page.locator('[data-review-edit="story"]')).toBeVisible();
+		await expect(page.locator('[data-review-edit="sources"]')).toBeVisible();
+		const positions = await page.evaluate(() => {
+			const article = document.querySelector("article");
+			const story = document.querySelector('[data-review-edit="story"]');
+			const sources = document.querySelector('[data-review-edit="sources"]');
+			if (!article || !story || !sources)
+				throw new Error("Missing review actions");
+			return {
+				articleTop: article.getBoundingClientRect().top,
+				articleBottom: article.getBoundingClientRect().bottom,
+				storyTop: story.getBoundingClientRect().top,
+				sourcesTop: sources.getBoundingClientRect().top,
+			};
+		});
+		expect(positions.storyTop).toBeLessThan(positions.articleTop);
+		expect(positions.sourcesTop).toBeGreaterThan(positions.articleBottom);
+	},
+);
+
+Then("the publish action is in the review action area", async ({ page }) => {
+	await expect(
+		page
+			.locator("[data-review-actions]")
+			.getByRole("button", { name: "Publiceren" }),
+	).toBeVisible();
+	await expect(page.getByRole("button", { name: "Publiceren" })).toHaveCount(1);
+});
+
+Then("contextual review actions fit the viewport", async ({ page }) => {
+	const geometry = await page
+		.locator("[data-review-actions]")
+		.evaluate((element) => ({
+			left: element.getBoundingClientRect().left,
+			right: element.getBoundingClientRect().right,
+			documentWidth: document.documentElement.scrollWidth,
+			viewportWidth: window.innerWidth,
+		}));
+	expect(geometry.left).toBeGreaterThanOrEqual(0);
+	expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+	expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+});
+
 Then("no slug field is shown", async ({ page }) => {
 	await expect(page.getByLabel("Slug")).toHaveCount(0);
 });
@@ -753,10 +1165,9 @@ Then(
 Then(
 	"source {string} appears before {string}",
 	async ({ page }, first: string, second: string) => {
-		await expect(page.getByRole("article").getByRole("link")).toHaveText([
-			first,
-			second,
-		]);
+		await expect(
+			page.getByRole("article").getByRole("complementary").getByRole("link"),
+		).toHaveText([first, second]);
 	},
 );
 
@@ -856,6 +1267,36 @@ Then("publication progress is announced", async ({ page }) => {
 	).toBeVisible();
 });
 
+Then(
+	"publication progress is shown in the review action area",
+	async ({ page }) => {
+		await expect(
+			page
+				.locator("[data-review-actions]")
+				.getByRole("status")
+				.filter({ hasText: "Publiceren…" }),
+		).toBeVisible();
+	},
+);
+
+Then(
+	"the publication result has focus in the review action area",
+	async ({ page }) => {
+		await expect(
+			page.locator("[data-review-actions] [data-publish-status]"),
+		).toBeFocused();
+	},
+);
+
+Then("AI review controls are disabled while publishing", async ({ page }) => {
+	for (const checkbox of await page
+		.getByRole("region", { name: "Controle van ChatGPT-voorstel" })
+		.getByRole("checkbox")
+		.all()) {
+		await expect(checkbox).toBeDisabled();
+	}
+});
+
 Then("review navigation is disabled while publishing", async ({ page }) => {
 	await expect(
 		page.getByRole("button", { name: "Verhaal wijzigen" }),
@@ -869,6 +1310,42 @@ Then("the copy action has focus", async ({ page }) => {
 	await expect(
 		page.getByRole("button", { name: "Instructies kopiëren" }),
 	).toBeFocused();
+});
+
+Then(
+	"ChatGPT handoff step {string} is current",
+	async ({ page }, step: string) => {
+		await expect(
+			page.getByRole("heading", { name: new RegExp(`^\\d+\\. ${step}$`) }),
+		).toHaveAttribute("aria-current", "step");
+	},
+);
+
+Then("future ChatGPT response controls are unavailable", async ({ page }) => {
+	await expect(page.getByLabel("Antwoord van ChatGPT")).toHaveCount(0);
+	await expect(
+		page.getByRole("button", { name: "Antwoord controleren en invullen" }),
+	).toHaveCount(0);
+});
+
+Then("the ChatGPT preference fields are unavailable", async ({ page }) => {
+	await expect(page.getByLabel("Onderwerp of gebeurtenis")).toHaveCount(0);
+});
+
+Then("the Open ChatGPT action has focus", async ({ page }) => {
+	await expect(
+		page.getByRole("link", { name: "Open ChatGPT in een nieuw tabblad" }),
+	).toBeFocused();
+});
+
+Then("the ChatGPT handoff fits the viewport", async ({ page }) => {
+	const geometry = await page
+		.locator("#chatgpt-handoff-title")
+		.evaluate(() => ({
+			documentWidth: document.documentElement.scrollWidth,
+			viewportWidth: window.innerWidth,
+		}));
+	expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
 });
 
 Then(
@@ -900,6 +1377,20 @@ Then(
 				sessionStorage.getItem("toen:chatgpt-request:v1"),
 			),
 		).toBe(JSON.stringify({ formatVersion: 1, requestId }));
+	},
+);
+
+Then(
+	"the copied request requires one JSON code block in the answer",
+	async ({ page }) => {
+		const copied = await page.evaluate(
+			() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
+		);
+		expect(copied).toContain(
+			"Geef uitsluitend één Markdown-codeblok met taal json.",
+		);
+		expect(copied).toContain("```json");
+		expect(copied).not.toContain("Gebruik geen Markdown-codeblok");
 	},
 );
 
@@ -954,7 +1445,7 @@ Then(
 		await expect(topic).toHaveAttribute("aria-invalid", "true");
 		const descriptionId = await topic.getAttribute("aria-describedby");
 		expect(descriptionId).toBeTruthy();
-		await expect(page.locator(`[id="${descriptionId}"]`)).toHaveText(
+		await expect(page.locator(`[id="${descriptionId}"]`)).toContainText(
 			"Vul een onderwerp of gebeurtenis in.",
 		);
 	},
@@ -997,27 +1488,82 @@ Then(
 );
 
 Then(
-	"the exact AI classroom preview remains scrollable on a narrow teacher screen",
+	"the exact AI classroom preview fits as a slide on a narrow teacher screen",
 	async ({ page }) => {
 		await page.setViewportSize({ width: 320, height: 568 });
 		await page.getByRole("button", { name: "Klasvoorbeeld openen" }).click();
 		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
-		await dialog.getByText("12 minuten", { exact: true }).click();
+		await dialog.getByText("12 min", { exact: true }).click();
 		await dialog.getByRole("button", { name: "Start", exact: true }).click();
-		const stageRegion = dialog.locator("[data-classroom-stage-region]");
+		const preview = dialog.locator('[data-classroom-player-variant="preview"]');
+		await expect(preview).toBeVisible();
+		await expect(preview.locator('[data-beat-phase="opening"]')).toBeVisible();
+		await expect(preview.locator("[data-source-card]")).toHaveCount(2);
+		await expect(
+			preview.getByRole("button", { name: "Volgende", exact: true }),
+		).toBeVisible();
+		await expect(
+			preview.getByRole("button", { name: "Terug", exact: true }),
+		).toBeDisabled();
+		const stageRegion = preview.locator("[data-classroom-stage-region]");
 		const layout = await stageRegion.evaluate((element) => ({
+			overflowX: getComputedStyle(element).overflowX,
 			overflowY: getComputedStyle(element).overflowY,
 			clientHeight: element.clientHeight,
 			scrollHeight: element.scrollHeight,
-			clientWidth: element.clientWidth,
-			scrollWidth: element.scrollWidth,
+			documentClientWidth: document.documentElement.clientWidth,
+			documentScrollWidth: document.documentElement.scrollWidth,
 		}));
-		expect(layout.overflowY).toBe("auto");
-		expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
-		expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+		expect(["auto", "hidden"]).toContain(layout.overflowY);
+		if (layout.scrollHeight > layout.clientHeight + 1) {
+			expect(layout.overflowY).toBe("auto");
+		}
+		expect(layout.overflowX).toBe("hidden");
+		expect(layout.documentScrollWidth).toBeLessThanOrEqual(
+			layout.documentClientWidth + 1,
+		);
 		await dialog.getByRole("button", { name: "Terug naar controle" }).click();
 	},
 );
+
+Then("AI source review comes before claim review", async ({ page }) => {
+	const positions = await page.evaluate(() => ({
+		sources: document.getElementById("ai-sources-title")?.offsetTop ?? 0,
+		claims: document.getElementById("ai-claims-title")?.offsetTop ?? 0,
+	}));
+	expect(positions.sources).toBeLessThan(positions.claims);
+});
+
+Then("AI review progress starts incomplete", async ({ page }) => {
+	await expect(
+		page.getByText(/Bronnen 0\/2 · Beweringen 0\/\d+/),
+	).toBeVisible();
+});
+
+Then("the first incomplete AI source action has focus", async ({ page }) => {
+	await expect(
+		page.getByRole("link", {
+			name: "Werkelijke eerste brontitel openen in een nieuw tabblad",
+		}),
+	).toBeFocused();
+});
+
+Then(
+	"AI review progress shows all sources checked before claims",
+	async ({ page }) => {
+		await expect(
+			page.getByText(/Bronnen 2\/2 · Beweringen 0\/\d+/),
+		).toBeVisible();
+	},
+);
+
+Then("the first AI claim confirmation has focus", async ({ page }) => {
+	await expect(
+		page.getByRole("checkbox", {
+			name: "Ik heb bewering 1 met de gekoppelde bronnen gecontroleerd",
+		}),
+	).toBeFocused();
+});
 
 Then(
 	"I see AI claims, source relationships, and editorial warnings",
@@ -1169,6 +1715,80 @@ Then("every AI claim needs review again", async ({ page }) => {
 	}
 });
 
+Then(
+	"the Cleopatra BCE story, sources, and activity are restored",
+	async ({ page }) => {
+		await expect(
+			page.getByLabel("Hoe precies is de datum bekend?"),
+		).toHaveValue("year");
+		await expect(page.getByLabel("Tijdrekening")).toHaveValue("bce");
+		await expect(page.getByLabel("Jaar")).toHaveValue("31");
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.click();
+		await expect(page.getByLabel("Titel van bron 1")).toHaveValue(
+			"Cleopatra VII",
+		);
+		await expect(page.getByLabel("Titel van bron 2")).toHaveValue(
+			"Battle of Actium",
+		);
+		await page
+			.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+			.click();
+		await expect(page.locator('[id="beat.question"]')).toHaveValue(
+			/Welke bron helpt het best/,
+		);
+		await expect(page.getByLabel("Hoe antwoorden leerlingen?")).toHaveValue(
+			"response-cards",
+		);
+	},
+);
+
+Then("the Cleopatra article and AI review are shown", async ({ page }) => {
+	await expect(
+		page.getByRole("article").getByRole("heading", {
+			name: "Cleopatra VII en de slag bij Actium",
+		}),
+	).toBeVisible();
+	const review = page.getByRole("region", {
+		name: "Controle van ChatGPT-voorstel",
+	});
+	await expect(
+		review.getByRole("heading", { name: "Bewering 4" }),
+	).toBeVisible();
+	await expect(review).toContainText("Romeinse controle");
+});
+
+Then(
+	"the actual Iron Curtain sources and activity are restored",
+	async ({ page }) => {
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.click();
+		await expect(page.getByLabel("Titel van bron 1")).toHaveValue(
+			"The Sinews of Peace, 1946",
+		);
+		await expect(page.getByLabel("Titel van bron 3")).toHaveValue(
+			/Foreign Relations of the United States/,
+		);
+		await page
+			.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+			.click();
+		await expect(page.locator('[id="beat.question"]')).toHaveValue(
+			/Toen Churchill op 5 maart 1946/,
+		);
+	},
+);
+
+Then("the actual Iron Curtain claims are restored", async ({ page }) => {
+	await expect(
+		page.getByRole("region", { name: "Controle van ChatGPT-voorstel" }),
+	).toContainText(
+		"Het IJzeren Gordijn had niet overal en op elk moment dezelfde fysieke vorm",
+	);
+	await expect(page.getByRole("heading", { name: "Bewering 5" })).toBeVisible();
+});
+
 Then("the imported sources and activity are editable", async ({ page }) => {
 	await page
 		.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
@@ -1187,6 +1807,70 @@ Then("the imported sources and activity are editable", async ({ page }) => {
 	await expect(page.getByLabel("Hoe antwoorden leerlingen?")).toHaveValue(
 		"response-cards",
 	);
+});
+
+Then(
+	"the dinosaur article and exact classroom activity are previewed",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("article").getByRole("heading", {
+				name: "Het einde van de niet-vliegende dinosauriërs",
+			}),
+		).toBeVisible();
+		await expect(page.getByText("ca. 66.000.000 v.Chr.")).toBeVisible();
+		await page.getByRole("button", { name: "Klasvoorbeeld openen" }).click();
+		const dialog = page.getByRole("dialog", { name: "Klasactiviteit" });
+		await expect(dialog).toContainText(
+			"Het einde van de niet-vliegende dinosauriërs",
+		);
+		await expect(dialog.getByRole("button", { name: "Start" })).toBeVisible();
+		await dialog.getByRole("button", { name: "Terug naar controle" }).click();
+	},
+);
+
+Then("dry-run publication is clearly not published", async ({ page }) => {
+	await expect(
+		page.getByText("Niet gepubliceerd", { exact: true }),
+	).toBeVisible();
+	await expect(page.locator("body")).toContainText(
+		"Deze omgeving bewaart niets. Je voorbeeld blijft beschikbaar.",
+	);
+});
+
+Then(
+	"the dinosaur edit, sources, activity, and approximate date are restored",
+	async ({ page }) => {
+		await expect(page.getByLabel("Titel")).toHaveValue(
+			"Het einde van de niet-vliegende dinosauriërs — herzien",
+		);
+		await expect(
+			page.getByLabel("Hoe precies is de datum bekend?"),
+		).toHaveValue("approximate");
+		await expect(page.getByLabel("Tijdrekening")).toHaveValue("bce");
+		await expect(page.getByLabel("Jaar")).toHaveValue("66000000");
+		await page
+			.getByRole("button", { name: "Ga verder naar indeling & bronnen" })
+			.click();
+		await expect(page.getByLabel("Titel van bron 2")).toHaveValue(
+			"Sediment Swirls Off the Yucatán",
+		);
+		await page
+			.getByRole("button", { name: "Ga verder naar klasactiviteit" })
+			.click();
+		await expect(
+			page.getByLabel("Een verhaal met klasactiviteit"),
+		).toBeChecked();
+		await expect(page.locator('[id="beat.question"]')).toHaveValue(
+			/Waardoor verdwenen/,
+		);
+	},
+);
+
+Then("only the background article is previewed", async ({ page }) => {
+	await expect(page.getByRole("article")).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Klasvoorbeeld openen" }),
+	).toHaveCount(0);
 });
 
 Then("the active ChatGPT request was consumed", async ({ page }) => {
@@ -1209,7 +1893,11 @@ Then("my story title remains {string}", async ({ page }, title: string) => {
 });
 
 Then("the pasted ChatGPT answer remains visible", async ({ page }) => {
-	await expect(page.getByLabel("Antwoord van ChatGPT")).not.toHaveValue("");
+	const response = page.getByLabel("Antwoord van ChatGPT");
+	if (!(await response.isVisible())) {
+		await page.getByRole("button", { name: "Ik heb al een antwoord" }).click();
+	}
+	await expect(response).not.toHaveValue("");
 });
 
 Then("a plain Dutch import error has focus", async ({ page }) => {
@@ -1232,12 +1920,13 @@ Then("the old import error and repair action are cleared", async ({ page }) => {
 });
 
 Then(
-	"the clipboard contains repair instructions without the hostile paste",
+	"the clipboard contains fenced repair instructions without the hostile paste",
 	async ({ page }) => {
 		const copied = await page.evaluate(
 			() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
 		);
 		expect(copied).toContain("Herstel je vorige antwoord");
+		expect(copied).toContain("één Markdown-codeblok met taal json");
 		expect(copied).not.toContain("<script>kapot</script>");
 	},
 );
@@ -1250,6 +1939,33 @@ Then("I see that ChatGPT import needs an empty draft", async ({ page }) => {
 	await expect(alert).toBeFocused();
 });
 
+Then(
+	"I remain on classification with its required fields marked invalid",
+	async ({ page }) => {
+		await expect(
+			page.getByRole("heading", { name: "Indeling & bronnen", level: 2 }),
+		).toBeVisible();
+		await expect(page.locator("#profiles")).toHaveAttribute(
+			"aria-invalid",
+			"true",
+		);
+		await expect(page.locator("#topics")).toHaveAttribute(
+			"aria-invalid",
+			"true",
+		);
+		for (const field of [
+			"sources.0.title",
+			"sources.0.publisher",
+			"sources.0.url",
+		]) {
+			await expect(page.locator(`[id="${field}"]`)).toHaveAttribute(
+				"aria-invalid",
+				"true",
+			);
+		}
+	},
+);
+
 Then("the saved draft can still be restored", async ({ page }) => {
 	await expect(
 		page.getByRole("heading", { name: "Onvoltooid concept gevonden" }),
@@ -1257,6 +1973,41 @@ Then("the saved draft can still be restored", async ({ page }) => {
 	await expect(
 		page.getByRole("button", { name: "Concept herstellen" }),
 	).toBeEnabled();
+});
+
+Then("the stored draft decision has focus", async ({ page }) => {
+	await expect(
+		page.getByRole("heading", { name: "Onvoltooid concept gevonden" }),
+	).toBeFocused();
+});
+
+Then(
+	"the authoring workspace is unavailable until I decide",
+	async ({ page }) => {
+		await expect(page.getByLabel("Titel")).toHaveCount(0);
+		await expect(
+			page.getByRole("navigation", { name: "Voortgang" }),
+		).toHaveCount(0);
+	},
+);
+
+Then("the stored draft decision fits the viewport", async ({ page }) => {
+	const geometry = await page
+		.getByRole("region", { name: "Onvoltooid concept gevonden" })
+		.evaluate((region) => ({
+			left: region.getBoundingClientRect().left,
+			right: region.getBoundingClientRect().right,
+			documentWidth: document.documentElement.scrollWidth,
+			viewportWidth: window.innerWidth,
+		}));
+	expect(geometry.left).toBeGreaterThanOrEqual(0);
+	expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+	expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+});
+
+Then("the empty authoring workspace is available", async ({ page }) => {
+	await expect(page.getByLabel("Titel")).toBeVisible();
+	await expect(page.getByLabel("Titel")).toHaveValue("");
 });
 
 Then(
@@ -1269,6 +2020,12 @@ Then(
 		).toBeVisible();
 	},
 );
+
+Then("no repair action can relabel the stale answer", async ({ page }) => {
+	await expect(
+		page.getByRole("button", { name: "Herstelinstructies kopiëren" }),
+	).toHaveCount(0);
+});
 
 Then("I see why ChatGPT could not make a safe proposal", async ({ page }) => {
 	const alert = page.getByRole("alert").filter({
@@ -1563,6 +2320,84 @@ async function completeExactStory({
 		.fill("De stad werd na een beleg ingenomen.");
 }
 
+async function fillManualDinosaurBeat(page: import("@playwright/test").Page) {
+	await selectActivityPart(page, 0);
+	for (const [id, value] of Object.entries({
+		"beat.question": "Waardoor verdwenen de niet-vliegende dinosauriërs?",
+		"beat.choices.0.label": "Vooral de inslag",
+		"beat.choices.1.label": "Vooral vulkanisme",
+	})) {
+		await page.locator(`[id="${id}"]`).fill(value);
+	}
+	const stages: Record<number, Record<string, string>> = {
+		0: {
+			stimulus:
+				"Aan het einde van het Krijt verandert het leven op aarde plotseling.",
+		},
+		2: {
+			title: "De krater",
+			evidence:
+				"De Chicxulubkrater wijst op een grote inslag ongeveer 66 miljoen jaar geleden.",
+		},
+		3: { prompt: "Welk detail steunt jouw eerste keuze?" },
+		4: {
+			title: "Donkere atmosfeer",
+			evidence:
+				"Stof en aerosolen konden zonlicht beperken en voedselketens verstoren.",
+		},
+		5: { prompt: "Wat verandert deze informatie aan je verklaring?" },
+		6: {
+			title: "Meer dan één factor",
+			evidence: "Onderzoekers bespreken ook vulkanisme en klimaatverandering.",
+		},
+		7: { prompt: "Wat weten we zeker en waarover bestaat debat?" },
+		10: {
+			title: "Wat overleefde?",
+			feedback:
+				"Niet-vliegende dinosauriërs stierven uit; vogels overleefden als dinosauriërlijn.",
+		},
+		11: {
+			bridge:
+				"Hoe reconstrueren wetenschappers gebeurtenissen uit het diepe verleden?",
+		},
+	};
+	for (const [stageIndex, fields] of Object.entries(stages)) {
+		await selectActivityPart(page, Number(stageIndex) + 1);
+		for (const [field, value] of Object.entries(fields)) {
+			await page
+				.locator(`[id="beat.stages.${stageIndex}.${field}"]`)
+				.fill(value);
+		}
+	}
+	await selectActivityPart(page, 11);
+	await page
+		.locator('[id="beat.stages.10.sourceIds"]')
+		.getByLabel("Sediment Swirls Off the Yucatán")
+		.check();
+	await selectActivityPart(page, 13);
+	await page
+		.locator('[id="beat.sensitivityNotes.0"]')
+		.fill("Spreek over niet-vliegende dinosauriërs; vogels zijn dinosauriërs.");
+}
+
+async function openChatGptResponseStep(page: import("@playwright/test").Page) {
+	const response = page.getByLabel("Antwoord van ChatGPT");
+	if (await response.isVisible()) return;
+	await page.getByRole("button", { name: "Ik heb al een antwoord" }).click();
+}
+
+async function selectActivityPart(
+	page: import("@playwright/test").Page,
+	part: number,
+) {
+	const select = page.locator("#activity-part-select");
+	if (await select.isVisible()) {
+		await select.selectOption(String(part));
+		return;
+	}
+	await page.locator(`[data-activity-part="${part}"]`).click();
+}
+
 async function continueToActivity(page: import("@playwright/test").Page) {
 	const continueButton = page.getByRole("button", {
 		name: "Ga verder naar klasactiviteit",
@@ -1590,7 +2425,7 @@ async function completeChatGptAnswer(
 		() => (window as ClipboardTestWindow).copiedChatGptInstructions ?? "",
 	);
 	const match =
-		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n([\s\S]*?)\n\nREGELS VOOR HET OBJECT/.exec(
+		/Gebruik bij succes exact deze envelop en vul alle voorbeeldtekst inhoudelijk in:\n```json\n([\s\S]*?)\n```\n\nREGELS VOOR HET OBJECT/.exec(
 			prompt,
 		);
 	if (!match)

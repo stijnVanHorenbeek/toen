@@ -6,7 +6,8 @@ export const messages = {
 	home: {
 		events: "Activiteiten en achtergrond",
 		createActivity: "Nieuwe activiteit",
-		findTitle: "Zoeken en filteren",
+		findTitle: "Zoeken en voorkeuren",
+		filterAccess: "Zoeken en voorkeuren",
 		search: "Zoek op onderwerp of gebeurtenis",
 		searchPlaceholder: "Bijvoorbeeld maanlanding of democratie",
 		week: "Lesweek",
@@ -14,6 +15,8 @@ export const messages = {
 		toYear: "Tot jaar",
 		dateAndPeriod: "Datum en periode",
 		topics: "Onderwerpen",
+		topicPreferences: "Voorkeursonderwerpen",
+		topicPreferenceHint: "Geef passende activiteiten voorrang",
 		recommended: "Kies een activiteit",
 		noPeriodEvent: "Geen gebeurtenis in deze periode.",
 		periodFallback: "Daarom tonen we passende opties buiten de gekozen jaren.",
@@ -28,7 +31,9 @@ export const messages = {
 			"context-decision": "Beslissen met context",
 		},
 		duration: "Duur",
+		minuteAbbreviation: "min",
 		startActivity: "Start activiteit",
+		activity: "Klasactiviteit",
 		readBackground: "Lees achtergrond",
 		readStory: "Lees verhaal",
 		articleOnly: "Achtergrondverhaal",
@@ -48,6 +53,7 @@ export const messages = {
 		allEvents: "Alle gebeurtenissen",
 		sources: "Bronnen",
 		topics: "Onderwerpen",
+		continueWithActivity: "Bespreek het verhaal in de klas",
 	},
 	beat: {
 		preparation: "Kies de duur",
@@ -67,6 +73,11 @@ export const messages = {
 			8: "8 minuten",
 			12: "12 minuten",
 		},
+		compactDurations: {
+			5: "5 min",
+			8: "8 min",
+			12: "12 min",
+		},
 		start: "Start",
 		phases: {
 			opening: "De situatie",
@@ -85,14 +96,19 @@ export const messages = {
 			skip: "Overslaan",
 			reset: "Opnieuw",
 			stop: "Stoppen",
+			close: "Presentatie sluiten",
 			finish: "Klaar",
 		},
-		teacherCue: "Voor de leerkracht",
+		teacherCue: "Leerkracht",
+		studentAction: "Leerlingen",
+		suggestedTime: "Richttijd",
+		scrollForMore: "Scroll voor meer",
+		sensitivity: "Let op",
 		resetConfirm: "Opnieuw beginnen? Je huidige voortgang verdwijnt.",
-		stopConfirm: "Presentatie stoppen en terugkeren naar de voorbereiding?",
+		stopConfirm: "Presentatie sluiten en terugkeren naar de startpagina?",
 		completed: "Klaar",
 		completedNote: "Ga verder met de les of lees het verhaal.",
-		restart: "Nog een keer",
+		restart: "Opnieuw",
 		returnToArticle: "Lees het verhaal",
 		home: "Terug naar start",
 		reloadNotice: "Na herladen begin je opnieuw.",
@@ -119,6 +135,19 @@ export const messages = {
 			"Koppel het verhaal aan vakrichtingen en voeg de bronnen toe die je controleerde.",
 		activityIntro:
 			"Maak een korte activiteit met vaste lesfasen, of publiceer alleen het achtergrondverhaal.",
+		activityEditor: {
+			title: "Onderdelen van de klasactiviteit",
+			intro:
+				"Werk één onderdeel tegelijk af. De routes van 5, 8 en 12 minuten worden automatisch opgebouwd.",
+			navigation: "Onderdelen van de klasactiviteit",
+			currentPart: "Huidig onderdeel",
+			basics: "Basis",
+			finishing: "Afronding",
+			previous: "Vorig onderdeel",
+			next: "Volgende onderdeel",
+			complete: "afgerond",
+			incomplete: "nog niet afgerond",
+		},
 		removeActivityConfirm:
 			"Klasactiviteit verwijderen? De ingevulde activiteit gaat verloren.",
 		reviewIntro:
@@ -127,6 +156,12 @@ export const messages = {
 			title: "Begin met hulp van ChatGPT",
 			intro:
 				"Geef alleen onderwerp en lesvoorkeuren. Je maakt zelf instructies voor een eerste voorstel; niets wordt automatisch verstuurd of gepubliceerd.",
+			steps: "Stappen voor ChatGPT-hulp",
+			stepLabels: [
+				"Voorstel beschrijven",
+				"Kopiëren naar ChatGPT",
+				"Antwoord terugzetten",
+			],
 			topic: "Onderwerp of gebeurtenis",
 			topicError: "Vul een onderwerp of gebeurtenis in.",
 			context: "Extra lescontext (optioneel)",
@@ -141,6 +176,11 @@ export const messages = {
 			privacyLink: "Lees het privacybeleid van OpenAI in een nieuw tabblad",
 			make: "Instructies maken",
 			remake: "Instructies opnieuw maken",
+			editPreferences: "Voorkeuren wijzigen",
+			goToResponse: "Ik heb al een antwoord",
+			copyAgain: "Instructies opnieuw kopiëren",
+			copyIntro:
+				"Kopieer deze instructies. Alleen wat je hierboven invulde, wordt naar je klembord gekopieerd.",
 			ready: "De instructies zijn klaar om te kopiëren.",
 			copy: "Instructies kopiëren",
 			copied:
@@ -152,10 +192,10 @@ export const messages = {
 			openChatGpt: "Open ChatGPT in een nieuw tabblad",
 			responseTitle: "Antwoord terugzetten",
 			responseIntro:
-				"Plak het volledige antwoord uit ChatGPT. We controleren alleen of de opbouw veilig en bruikbaar is; jij controleert feiten en bronnen.",
+				"Gebruik in ChatGPT de kopieerknop bij het antwoord en plak het hier. We controleren alleen of de opbouw veilig en bruikbaar is; jij controleert feiten en bronnen.",
 			responseLabel: "Antwoord van ChatGPT",
 			responseHint:
-				"Bij een fout blijft het antwoord hier staan zodat je het kunt herstellen.",
+				"Plak het volledige gekopieerde antwoord. Bij een fout blijft het hier staan zodat je het kunt herstellen.",
 			applyResponse: "Antwoord controleren en invullen",
 			applied:
 				"Voorstel ingevuld. Controleer nu feiten, bronnen, verhaal en klasactiviteit.",
@@ -170,7 +210,7 @@ export const messages = {
 			repairLabel: "Herstelinstructies om zelf te kopiëren",
 			importErrors: {
 				"invalid-fence":
-					"Plak het volledige antwoord zonder extra tekst ervoor of erna.",
+					"Gebruik de kopieerknop bij het antwoord in ChatGPT en plak alleen die volledige inhoud.",
 				"invalid-json": "Het antwoord is niet volledig of niet leesbaar.",
 				"invalid-envelope": "Het antwoord volgt de afgesproken opbouw niet.",
 				"duplicate-key":
@@ -325,10 +365,12 @@ export const messages = {
 				"Deze bron is nog niet aan een huidige bewering gekoppeld.",
 			complete: "Alle bronnen en beweringen zijn inhoudelijk nagekeken.",
 			incomplete: "Publiceren kan pas na de volledige inhoudelijke controle.",
+			nextIncomplete: "Volgende open controle",
 			sensitivity: "Aandachtspunten voor gevoelige inhoud",
 		},
 		review: {
 			loading: "Voorbeeld laden…",
+			ready: "Voorbeeld klaar voor laatste controle.",
 			profiles: "Vakrichtingen",
 			publicUrl: "Publieke URL",
 			technical: "Technische details",

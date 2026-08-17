@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type {
 	AuthoringBeatDraft,
 	AuthoringBeatStage,
@@ -31,7 +32,7 @@ export function ActivityStage() {
 			>
 				{messages.admin.activityIntro}
 			</StageHeader>
-			<ErrorSummary errors={state.errors} />
+			{beat ? null : <ErrorSummary errors={state.errors} />}
 			{state.previewError ? (
 				<p
 					role="alert"
@@ -113,18 +114,238 @@ function ActivityKindChoice({
 
 function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 	const { state, actions } = useEventAuthoring();
+	const [activePart, setActivePart] = useState(0);
+	const pendingFocus = useRef<string | null>(null);
+	const previousError = useRef<string | null>(null);
+	const lastPart = beat.stages.length + 1;
+	const labels = [
+		messages.admin.activityEditor.basics,
+		...beat.stages.map(stageNavigationLabel),
+		messages.admin.activityEditor.finishing,
+	];
 	const update = (next: AuthoringBeatDraft) => actions.updateBeat(next);
 	const updateField = <Key extends keyof AuthoringBeatDraft>(
 		field: Key,
 		value: AuthoringBeatDraft[Key],
 	) => update({ ...beat, [field]: value });
+	const showPart = (
+		part: number,
+		focusId = activityPartHeadingId(part, beat),
+	) => {
+		pendingFocus.current = focusId;
+		if (part === activePart) {
+			requestAnimationFrame(() => document.getElementById(focusId)?.focus());
+			return;
+		}
+		setActivePart(part);
+	};
+	const firstError = Object.keys(state.errors).find((field) =>
+		field.startsWith("beat"),
+	);
+
+	useEffect(() => {
+		if (!firstError) {
+			previousError.current = null;
+			return;
+		}
+		if (previousError.current === firstError) return;
+		previousError.current = firstError;
+		const part = activityPartForField(firstError, beat);
+		pendingFocus.current = firstError;
+		if (part === activePart) {
+			const frame = requestAnimationFrame(() => {
+				document.getElementById(firstError)?.focus();
+			});
+			return () => cancelAnimationFrame(frame);
+		}
+		setActivePart(part);
+	}, [activePart, beat, firstError]);
+
+	useEffect(() => {
+		const focusId = pendingFocus.current;
+		if (!focusId) return;
+		const frame = requestAnimationFrame(() => {
+			const target = document.getElementById(focusId);
+			target?.focus();
+			target?.scrollIntoView({ block: "nearest" });
+			pendingFocus.current = null;
+		});
+		return () => cancelAnimationFrame(frame);
+	});
+
 	return (
-		<div className="mt-10 space-y-10 border-ink/20 border-t pt-8">
+		<div className="mt-10 space-y-8 border-ink/20 border-t pt-8">
+			<ErrorSummary
+				errors={state.errors}
+				onFieldSelect={(field) =>
+					showPart(activityPartForField(field, beat), field)
+				}
+			/>
+			<section aria-labelledby="activity-sequence-title">
+				<h3
+					id="activity-sequence-title"
+					className="font-serif text-2xl font-semibold"
+				>
+					{messages.admin.activityEditor.title}
+				</h3>
+				<p className="mt-2 max-w-2xl text-ink/70 text-sm">
+					{messages.admin.activityEditor.intro}
+				</p>
+				<RouteTotals beat={beat} />
+			</section>
+			<div className="grid items-start gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+				<ActivityPartNavigation
+					activePart={activePart}
+					beat={beat}
+					labels={labels}
+					onSelect={showPart}
+				/>
+				<div className="min-w-0 space-y-5">
+					<div
+						key={activityPartKey(activePart, beat)}
+						data-passive-group="activity-part"
+						className="authoring-part-enter passive-group"
+					>
+						{activePart === 0 ? (
+							<BaseBeatFields
+								beat={beat}
+								update={update}
+								updateField={updateField}
+							/>
+						) : null}
+						{activePart > 0 && activePart <= beat.stages.length ? (
+							<StageFields
+								beat={beat}
+								stage={beat.stages[activePart - 1]}
+								index={activePart - 1}
+								update={update}
+							/>
+						) : null}
+						{activePart === lastPart ? (
+							<FinishingBeatFields beat={beat} updateField={updateField} />
+						) : null}
+					</div>
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<button
+							type="button"
+							disabled={activePart === 0}
+							onClick={() => showPart(activePart - 1)}
+							className="secondary-button"
+						>
+							{messages.admin.activityEditor.previous}
+						</button>
+						<p className="text-ink/65 text-sm">
+							{activePart + 1} / {labels.length}
+						</p>
+						<button
+							type="button"
+							disabled={activePart === lastPart}
+							onClick={() => showPart(activePart + 1)}
+							className="primary-button"
+						>
+							{messages.admin.activityEditor.next}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ActivityPartNavigation({
+	activePart,
+	beat,
+	labels,
+	onSelect,
+}: {
+	activePart: number;
+	beat: AuthoringBeatDraft;
+	labels: string[];
+	onSelect: (part: number) => void;
+}) {
+	return (
+		<nav
+			aria-label={messages.admin.activityEditor.navigation}
+			className="lg:sticky lg:top-5"
+		>
+			<label
+				htmlFor="activity-part-select"
+				className="mb-2 block font-semibold lg:hidden"
+			>
+				{messages.admin.activityEditor.currentPart}
+			</label>
+			<select
+				id="activity-part-select"
+				value={activePart}
+				onChange={(event) => onSelect(Number(event.target.value))}
+				className={`${inputClass} lg:hidden`}
+			>
+				{labels.map((label, index) => (
+					<option key={activityPartKey(index, beat)} value={index}>
+						{index + 1}. {label}
+						{activityPartComplete(index, beat) ? " · klaar" : ""}
+					</option>
+				))}
+			</select>
+			<ol className="hidden space-y-1 lg:block">
+				{labels.map((label, index) => {
+					const complete = activityPartComplete(index, beat);
+					return (
+						<li key={activityPartKey(index, beat)}>
+							<button
+								type="button"
+								data-activity-part={index}
+								aria-current={activePart === index ? "step" : undefined}
+								onClick={() => onSelect(index)}
+								className={`flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${
+									activePart === index
+										? "bg-accent font-semibold text-white"
+										: "hover:bg-white"
+								}`}
+							>
+								<span aria-hidden="true">{complete ? "✓" : index + 1}</span>
+								<span>{label}</span>
+								<span className="sr-only">
+									{complete
+										? messages.admin.activityEditor.complete
+										: messages.admin.activityEditor.incomplete}
+								</span>
+							</button>
+						</li>
+					);
+				})}
+			</ol>
+		</nav>
+	);
+}
+
+function BaseBeatFields({
+	beat,
+	update,
+	updateField,
+}: {
+	beat: AuthoringBeatDraft;
+	update: (beat: AuthoringBeatDraft) => void;
+	updateField: <Key extends keyof AuthoringBeatDraft>(
+		field: Key,
+		value: AuthoringBeatDraft[Key],
+	) => void;
+}) {
+	const errors = useEventAuthoring().state.errors;
+	return (
+		<section aria-labelledby="activity-part-basis" className="space-y-6">
+			<h4
+				id="activity-part-basis"
+				tabIndex={-1}
+				className="font-serif text-2xl font-semibold"
+			>
+				{messages.admin.activityEditor.basics}
+			</h4>
 			<div className="grid gap-5 sm:grid-cols-2">
 				<Field
 					label={messages.admin.fields.mechanic}
 					name="beat.mechanic"
-					error={state.errors["beat.mechanic"]}
+					error={errors["beat.mechanic"]}
 				>
 					<select
 						id="beat.mechanic"
@@ -149,7 +370,7 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 				<Field
 					label={messages.admin.fields.responseMethod}
 					name="beat.responseMethod"
-					error={state.errors["beat.responseMethod"]}
+					error={errors["beat.responseMethod"]}
 				>
 					<select
 						id="beat.responseMethod"
@@ -173,7 +394,7 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 			<Field
 				label={messages.admin.fields.activityQuestion}
 				name="beat.question"
-				error={state.errors["beat.question"]}
+				error={errors["beat.question"]}
 			>
 				<textarea
 					id="beat.question"
@@ -189,7 +410,7 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 				<Field
 					label={messages.admin.fields.perspective}
 					name="beat.perspective"
-					error={state.errors["beat.perspective"]}
+					error={errors["beat.perspective"]}
 				>
 					<textarea
 						id="beat.perspective"
@@ -204,34 +425,34 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 			{beat.mechanic === "source-duel" ? (
 				<SourceCardFields beat={beat} update={update} />
 			) : null}
-			<section aria-labelledby="activity-sequence-title">
-				<h3
-					id="activity-sequence-title"
-					className="font-serif text-2xl font-semibold"
-				>
-					Vaste lesfasen
-				</h3>
-				<p className="mt-2 text-ink/70 text-sm">
-					De volgorde en duurkeuzes van 5, 8 en 12 minuten worden automatisch
-					opgebouwd.
-				</p>
-				<RouteTotals beat={beat} />
-				<div className="mt-5 space-y-5">
-					{beat.stages.map((stage, index) => (
-						<StageFields
-							key={stage.id}
-							beat={beat}
-							stage={stage}
-							index={index}
-							update={update}
-						/>
-					))}
-				</div>
-			</section>
+		</section>
+	);
+}
+
+function FinishingBeatFields({
+	beat,
+	updateField,
+}: {
+	beat: AuthoringBeatDraft;
+	updateField: <Key extends keyof AuthoringBeatDraft>(
+		field: Key,
+		value: AuthoringBeatDraft[Key],
+	) => void;
+}) {
+	const errors = useEventAuthoring().state.errors;
+	return (
+		<section aria-labelledby="activity-part-finishing" className="space-y-6">
+			<h4
+				id="activity-part-finishing"
+				tabIndex={-1}
+				className="font-serif text-2xl font-semibold"
+			>
+				{messages.admin.activityEditor.finishing}
+			</h4>
 			<Field
 				label={messages.admin.fields.vocationalConnection}
 				name="beat.vocationalConnection"
-				error={state.errors["beat.vocationalConnection"]}
+				error={errors["beat.vocationalConnection"]}
 				hint={messages.admin.fields.vocationalConnectionHint}
 			>
 				<textarea
@@ -248,7 +469,7 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 			<Field
 				label={messages.admin.fields.sensitivityNote}
 				name="beat.sensitivityNotes.0"
-				error={state.errors["beat.sensitivityNotes.0"]}
+				error={errors["beat.sensitivityNotes.0"]}
 			>
 				<textarea
 					id="beat.sensitivityNotes.0"
@@ -264,10 +485,9 @@ function BeatFields({ beat }: { beat: AuthoringBeatDraft }) {
 					className={textareaClass}
 				/>
 			</Field>
-		</div>
+		</section>
 	);
 }
-
 function ChoicesFields({
 	beat,
 	update,
@@ -447,13 +667,13 @@ function StageFields({
 		update({ ...beat, stages });
 	};
 	return (
-		<section
-			id={path}
-			aria-labelledby={`${path}.heading`}
-			className="rounded-md border border-ink/25 bg-white p-5"
-		>
+		<section id={path} aria-labelledby={`${path}.heading`}>
 			<div className="flex flex-wrap items-baseline justify-between gap-3">
-				<h4 id={`${path}.heading`} className="font-serif text-xl font-semibold">
+				<h4
+					id={`${path}.heading`}
+					tabIndex={-1}
+					className="font-serif text-xl font-semibold"
+				>
 					{stageLabel(stage)}
 				</h4>
 				{stageTier(stage) ? (
@@ -844,6 +1064,88 @@ function stageLabel(stage: AuthoringBeatStage) {
 			"lesson-bridge": "Terug naar de les",
 		} as const
 	)[stage.phase];
+}
+
+function stageNavigationLabel(stage: AuthoringBeatStage) {
+	const tier = stageTier(stage);
+	return tier && tier > 5
+		? `${stageLabel(stage)} · ${tier} min`
+		: stageLabel(stage);
+}
+
+function activityPartKey(part: number, beat: AuthoringBeatDraft) {
+	if (part === 0) return "basis";
+	if (part === beat.stages.length + 1) return "finishing";
+	return beat.stages[part - 1].id;
+}
+
+function activityPartHeadingId(part: number, beat: AuthoringBeatDraft) {
+	if (part === 0) return "activity-part-basis";
+	if (part === beat.stages.length + 1) return "activity-part-finishing";
+	return `beat.stages.${part - 1}.heading`;
+}
+
+function activityPartForField(field: string, beat: AuthoringBeatDraft) {
+	if (field === "beat.routes") return beat.stages.length + 1;
+	const stageMatch = /^beat\.stages\.(\d+)/.exec(field);
+	if (stageMatch)
+		return Math.min(Number(stageMatch[1]) + 1, beat.stages.length);
+	if (
+		field === "beat.vocationalConnection" ||
+		field.startsWith("beat.sensitivityNotes")
+	) {
+		return beat.stages.length + 1;
+	}
+	return 0;
+}
+
+function activityPartComplete(part: number, beat: AuthoringBeatDraft) {
+	if (part === 0) {
+		return (
+			beat.question.trim().length > 0 &&
+			beat.choices.length >= 2 &&
+			beat.choices.every(({ label }) => label.trim().length > 0) &&
+			(beat.mechanic !== "context-decision" ||
+				beat.perspective.trim().length > 0) &&
+			(beat.mechanic !== "source-duel" ||
+				beat.sourceCards.every(
+					({ label, excerpt, sourceId }) =>
+						label.trim() && excerpt.trim() && sourceId,
+				))
+		);
+	}
+	if (part === beat.stages.length + 1) return true;
+	return stageComplete(beat.stages[part - 1]);
+}
+
+function stageComplete(stage: AuthoringBeatStage) {
+	const common =
+		stage.teacherPrompt.trim() &&
+		stage.expectedStudentAction.trim() &&
+		Number(stage.suggestedSeconds) > 0;
+	if (!common) return false;
+	switch (stage.phase) {
+		case "opening":
+			return Boolean(stage.stimulus.trim());
+		case "commitment":
+		case "revision":
+		case "reasoning":
+			return Boolean(stage.prompt.trim());
+		case "discussion":
+			return Boolean(stage.prompt.trim());
+		case "evidence":
+			return Boolean(
+				stage.title.trim() && stage.evidence.trim() && stage.sourceId,
+			);
+		case "resolution":
+			return Boolean(
+				stage.title.trim() &&
+					stage.feedback.trim() &&
+					stage.sourceIds.length > 0,
+			);
+		case "lesson-bridge":
+			return Boolean(stage.bridge.trim());
+	}
 }
 
 function nextChoiceId(beat: AuthoringBeatDraft) {

@@ -1,0 +1,279 @@
+```json
+{
+  "formatVersion": 1,
+  "requestId": "{{REQUEST_ID}}",
+  "status": "complete",
+  "draft": {
+    "title": "Cleopatra VII en de slag bij Actium",
+    "date": {
+      "year": 31,
+      "era": "bce",
+      "precision": "year"
+    },
+    "summary": "Cleopatra VII en Marcus Antonius verloren in 31 v.Chr. de zeeslag bij Actium tegen Octavianus, een keerpunt in de machtsstrijd om Rome en Egypte.",
+    "body": "## Cleopatra als vorstin\n\nCleopatra VII regeerde over Egypte in de laatste fase van de Ptolemeïsche dynastie. Haar politieke positie raakte nauw verbonden met de Romeinse machtsstrijd.\n\n## Actium\n\nIn 31 v.Chr. versloeg Octavianus de vloot van Marcus Antonius en Cleopatra bij Actium. De nederlaag maakte hun positie onhoudbaar. In 30 v.Chr. stierven Antonius en Cleopatra en kwam Egypte onder Romeinse controle.\n\n## Bronnen lezen\n\nLatere voorstellingen van Cleopatra zijn gekleurd door Romeinse propaganda en moderne beeldvorming. Daarom moeten leerlingen onderscheid maken tussen vastgestelde gebeurtenissen en interpretaties van haar rol.",
+    "profiles": [
+      "algemeen"
+    ],
+    "topics": [
+      "cleopatra",
+      "romeinse-rijk",
+      "egypte"
+    ],
+    "topicLabels": {
+      "cleopatra": "Cleopatra",
+      "romeinse-rijk": "Romeinse Rijk",
+      "egypte": "Egypte"
+    },
+    "sources": [
+      {
+        "title": "Cleopatra VII",
+        "publisher": "UCL Digital Egypt",
+        "url": "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html"
+      },
+      {
+        "title": "Battle of Actium",
+        "publisher": "World History Encyclopedia",
+        "url": "https://www.worldhistory.org/Battle_of_Actium/"
+      }
+    ],
+    "beat": {
+      "version": 2,
+      "mechanic": "source-duel",
+      "responseMethod": "response-cards",
+      "question": "Welke bron helpt het best om Cleopatra’s nederlaag bij Actium te verklaren?",
+      "choices": [
+        {
+          "id": "bron-a-sterker",
+          "label": "Bron A helpt meer"
+        },
+        {
+          "id": "bron-b-sterker",
+          "label": "Bron B helpt meer"
+        },
+        {
+          "id": "nog-niet-zeker",
+          "label": "Nog niet zeker"
+        }
+      ],
+      "stages": [
+        {
+          "id": "opening",
+          "phase": "opening",
+          "suggestedSeconds": 20,
+          "teacherPrompt": "Toon alleen de situatie en centrale vraag. Geef nog geen verklaring.",
+          "expectedStudentAction": "Lees de situatie en denk zelfstandig na.",
+          "stimulus": "Het rijk van Cleopatra raakt betrokken bij een Romeinse burgeroorlog. Welke bron verklaart het keerpunt het best?"
+        },
+        {
+          "id": "commitment",
+          "phase": "commitment",
+          "suggestedSeconds": 20,
+          "teacherPrompt": "Laat iedereen tegelijk een antwoordkaart tonen.",
+          "expectedStudentAction": "Kies eerst zonder overleg een bron.",
+          "prompt": "Kies eerst welke bron volgens jou het meest verklaart."
+        },
+        {
+          "id": "evidence-5",
+          "phase": "evidence",
+          "suggestedSeconds": 55,
+          "teacherPrompt": "Lees de chronologische aanwijzing en vraag wat ze verklaart.",
+          "expectedStudentAction": "Zoek één tijdlijngegeven dat je keuze ondersteunt.",
+          "title": "Een chronologische aanwijzing",
+          "evidence": "Cleopatra regeerde in Egypte en haar politieke lot raakte verbonden met Marcus Antonius.",
+          "sourceUrl": "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html",
+          "earliestDurationMinutes": 5
+        },
+        {
+          "id": "discussion-5",
+          "phase": "discussion",
+          "suggestedSeconds": 60,
+          "teacherPrompt": "Laat duo’s het gekozen tijdlijngegeven vergelijken.",
+          "expectedStudentAction": "Leg met de zinsstarter uit waarom bron A helpt.",
+          "prompt": "Welk detail uit de tijdlijn helpt bij je keuze?",
+          "sentenceStarter": "Bron A helpt omdat…"
+        },
+        {
+          "id": "evidence-8",
+          "phase": "evidence",
+          "suggestedSeconds": 60,
+          "teacherPrompt": "Toon de militaire aanwijzing zonder al een winnaar te noemen.",
+          "expectedStudentAction": "Vergelijk het nieuwe bewijs met de eerste bron.",
+          "title": "De zeeslag",
+          "evidence": "Bij Actium versloeg Octavianus in 31 v.Chr. de vloot van Antonius en Cleopatra.",
+          "sourceUrl": "https://www.worldhistory.org/Battle_of_Actium/",
+          "earliestDurationMinutes": 8,
+          "optional": true
+        },
+        {
+          "id": "discussion-8",
+          "phase": "discussion",
+          "suggestedSeconds": 55,
+          "teacherPrompt": "Vraag welke verklaring door het slagverloop sterker wordt.",
+          "expectedStudentAction": "Herweeg je keuze en benoem het doorslaggevende detail.",
+          "prompt": "Verandert de militaire uitleg je keuze?",
+          "optional": true,
+          "sentenceStarter": "Bron B weegt zwaarder omdat…"
+        },
+        {
+          "id": "evidence-12",
+          "phase": "evidence",
+          "suggestedSeconds": 75,
+          "teacherPrompt": "Voeg de waarschuwing over beeldvorming en latere interpretatie toe.",
+          "expectedStudentAction": "Scheid vastgestelde gebeurtenissen van interpretatie.",
+          "title": "Beeldvorming",
+          "evidence": "Latere teksten en beelden vragen bronkritiek: onderscheid gebeurtenissen van interpretaties over Cleopatra.",
+          "sourceUrl": "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html",
+          "earliestDurationMinutes": 12,
+          "optional": true
+        },
+        {
+          "id": "discussion-12",
+          "phase": "discussion",
+          "suggestedSeconds": 60,
+          "teacherPrompt": "Laat leerlingen één zekere conclusie en één onzeker punt formuleren.",
+          "expectedStudentAction": "Benoem wat de bronnen tonen en wat je afleidt.",
+          "prompt": "Wat weten we zeker, en wat blijft interpretatie?",
+          "optional": true,
+          "sentenceStarter": "Zeker is…; onzeker blijft…"
+        },
+        {
+          "id": "revision",
+          "phase": "revision",
+          "suggestedSeconds": 30,
+          "teacherPrompt": "Laat iedereen opnieuw een antwoordkaart tonen.",
+          "expectedStudentAction": "Behoud of wijzig je eerste keuze.",
+          "prompt": "Kies opnieuw na het vergelijken van de bronnen."
+        },
+        {
+          "id": "reasoning",
+          "phase": "reasoning",
+          "suggestedSeconds": 45,
+          "teacherPrompt": "Vraag twee verschillende keuzes te onderbouwen.",
+          "expectedStudentAction": "Koppel je tweede keuze aan concreet bewijs.",
+          "prompt": "Welk bewijs bepaalde je tweede keuze?",
+          "optional": true
+        },
+        {
+          "id": "resolution",
+          "phase": "resolution",
+          "suggestedSeconds": 65,
+          "teacherPrompt": "Verbind Actium met het einde van Cleopatra’s regering en Romeinse controle over Egypte.",
+          "expectedStudentAction": "Controleer je redenering en corrigeer een vereenvoudiging.",
+          "title": "Wat gebeurde er?",
+          "feedback": "Actium was een beslissende nederlaag. In 30 v.Chr. stierven Cleopatra en Antonius en kwam Egypte onder Romeinse controle.",
+          "misconception": "Cleopatra verloor haar macht niet door één romantische keuze; de uitkomst hing samen met een bredere Romeinse burgeroorlog.",
+          "sourceUrls": [
+            "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html",
+            "https://www.worldhistory.org/Battle_of_Actium/"
+          ]
+        },
+        {
+          "id": "lesson-bridge",
+          "phase": "lesson-bridge",
+          "suggestedSeconds": 30,
+          "teacherPrompt": "Koppel bronkritiek aan de bredere les over macht en propaganda.",
+          "expectedStudentAction": "Formuleer één vraag voor verder onderzoek.",
+          "bridge": "Hoe beïnvloeden macht en propaganda onze kijk op historische leiders?"
+        }
+      ],
+      "routes": [
+        {
+          "durationMinutes": 5,
+          "stageIds": [
+            "opening",
+            "commitment",
+            "evidence-5",
+            "discussion-5",
+            "revision",
+            "resolution",
+            "lesson-bridge"
+          ]
+        },
+        {
+          "durationMinutes": 8,
+          "stageIds": [
+            "opening",
+            "commitment",
+            "evidence-5",
+            "discussion-5",
+            "evidence-8",
+            "discussion-8",
+            "revision",
+            "reasoning",
+            "resolution",
+            "lesson-bridge"
+          ]
+        },
+        {
+          "durationMinutes": 12,
+          "stageIds": [
+            "opening",
+            "commitment",
+            "evidence-5",
+            "discussion-5",
+            "evidence-8",
+            "discussion-8",
+            "evidence-12",
+            "discussion-12",
+            "revision",
+            "reasoning",
+            "resolution",
+            "lesson-bridge"
+          ]
+        }
+      ],
+      "sourceCards": [
+        {
+          "id": "bron-a",
+          "label": "Bron A: tijdlijn",
+          "excerpt": "De tijdlijn plaatst Cleopatra’s regering, Actium en haar dood in de politieke machtsstrijd.",
+          "sourceUrl": "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html"
+        },
+        {
+          "id": "bron-b",
+          "label": "Bron B: slag",
+          "excerpt": "De beschrijving van Actium legt uit hoe Octavianus de vloot van Antonius en Cleopatra versloeg.",
+          "sourceUrl": "https://www.worldhistory.org/Battle_of_Actium/"
+        }
+      ],
+      "sensitivityNotes": [
+        "Vermijd exotiserende of uitsluitend romantische voorstellingen van Cleopatra.",
+        "Maak onderscheid tussen vastgestelde gebeurtenissen en latere interpretaties."
+      ]
+    }
+  },
+  "claims": [
+    {
+      "text": "Cleopatra VII regeerde over Egypte in de laatste fase van de Ptolemeïsche dynastie.",
+      "sourceUrls": [
+        "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html"
+      ],
+      "uncertainty": null
+    },
+    {
+      "text": "Octavianus versloeg de vloot van Marcus Antonius en Cleopatra bij Actium in 31 v.Chr.",
+      "sourceUrls": [
+        "https://www.worldhistory.org/Battle_of_Actium/"
+      ],
+      "uncertainty": null
+    },
+    {
+      "text": "Cleopatra en Marcus Antonius stierven in 30 v.Chr.",
+      "sourceUrls": [
+        "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html",
+        "https://www.worldhistory.org/Battle_of_Actium/"
+      ],
+      "uncertainty": null
+    },
+    {
+      "text": "Na hun nederlaag kwam Egypte onder Romeinse controle.",
+      "sourceUrls": [
+        "https://www.ucl.ac.uk/museums-static/digitalegypt/chronology/cleopatravii.html",
+        "https://www.worldhistory.org/Battle_of_Actium/"
+      ],
+      "uncertainty": null
+    }
+  ]
+}
+```

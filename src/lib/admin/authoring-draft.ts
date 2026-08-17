@@ -319,6 +319,37 @@ export function validateAuthoringStory(
 	return errors;
 }
 
+export function validateAuthoringClassification(
+	draft: AuthoringDraft,
+): Record<string, string> {
+	const errors: Record<string, string> = {};
+	if (draft.profiles.length === 0) errors.profiles = messages.errors.profiles;
+	if (draft.topics.length === 0) errors.topics = messages.errors.topics;
+	for (const [index, source] of draft.sources.entries()) {
+		if (!source.title.trim()) {
+			errors[`sources.${index}.title`] = messages.errors.source;
+		}
+		if (!source.publisher.trim()) {
+			errors[`sources.${index}.publisher`] = messages.errors.source;
+		}
+		if (!isHttpUrl(source.url)) {
+			errors[`sources.${index}.url`] = source.url.trim()
+				? messages.errors.sourceUrl
+				: messages.errors.source;
+		}
+	}
+	return errors;
+}
+
+function isHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 export function parseExactHistoricalDate(value: string): {
 	year: number;
 	month: number;

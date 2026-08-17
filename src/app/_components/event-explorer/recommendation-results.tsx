@@ -19,6 +19,9 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 	const [first, ...remaining] = displayedEvents;
 	return (
 		<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-12">
+			<aside className="row-start-1 lg:col-start-2 lg:row-span-3">
+				{filters}
+			</aside>
 			<section
 				aria-labelledby="recommendations-title"
 				className="min-w-0 lg:col-start-1 lg:row-start-1"
@@ -30,7 +33,7 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 				{periodFallback ? <PeriodFallback /> : null}
 				{first ? (
 					<ul className="mt-4 border-ink/15 border-y">
-						<li data-recommended-event>
+						<li data-recommended-event data-featured-recommendation>
 							<EventCard recommendation={first} preferences={state} />
 						</li>
 					</ul>
@@ -38,9 +41,6 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 					<NoMatches />
 				)}
 			</section>
-			<aside className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-				{filters}
-			</aside>
 			{remaining.length > 0 ? (
 				<section
 					aria-label={messages.home.moreRecommendations}
@@ -51,10 +51,15 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 						className="divide-y divide-ink/15 border-ink/15 border-b"
 					>
 						{remaining.map((recommendation) => (
-							<li key={recommendation.event.slug} data-recommended-event>
+							<li
+								key={recommendation.event.slug}
+								data-recommended-event
+								data-compact-recommendation
+							>
 								<EventCard
 									recommendation={recommendation}
 									preferences={state}
+									variant="compact"
 								/>
 							</li>
 						))}
@@ -123,9 +128,9 @@ function RecommendationHeader({
 function NoMatches() {
 	return (
 		<div role="status" className="mt-5 border-ink/15 border-y py-7">
-			<h3 className="font-serif text-2xl font-semibold">
+			<h2 className="font-serif text-2xl font-semibold">
 				{messages.home.noMatchesTitle}
-			</h3>
+			</h2>
 			<p className="mt-2 max-w-xl text-ink/65 leading-6">
 				{messages.home.noMatches}
 			</p>
