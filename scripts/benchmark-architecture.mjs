@@ -462,7 +462,7 @@ async function measureCurrentArchitecture({
 			signal,
 		});
 		assertCommandSucceeded(staticMedia, "stage benchmark static media");
-		const build = await runCommand("pnpm", ["build:worker:synced"], {
+		const build = await runCommand("pnpm", ["build:static:synced"], {
 			cwd: worktree,
 			timeoutMs,
 			env: {
@@ -475,8 +475,8 @@ async function measureCurrentArchitecture({
 			signal,
 		});
 		const nextOutput = await measureDirectory(path.join(worktree, ".next"));
-		const openNextOutput = await measureDirectory(
-			path.join(worktree, ".open-next"),
+		const staticOutput = await measureDirectory(
+			path.join(worktree, ".generated", "static-site"),
 		);
 		const generatedRoutes = await countGeneratedEventRoutes(worktree);
 		const homePayload = await measureHomePayload(worktree);
@@ -487,7 +487,16 @@ async function measureCurrentArchitecture({
 			const dryRunOutput = path.join(temporaryRoot, "wrangler-dry-run");
 			wrangler = await runCommand(
 				"pnpm",
-				["exec", "wrangler", "deploy", "--dry-run", "--outdir", dryRunOutput],
+				[
+					"exec",
+					"wrangler",
+					"deploy",
+					"--dry-run",
+					"--config",
+					"wrangler.static.jsonc",
+					"--outdir",
+					dryRunOutput,
+				],
 				{
 					cwd: worktree,
 					timeoutMs: 5 * 60_000,
@@ -504,6 +513,7 @@ async function measureCurrentArchitecture({
 					"wrangler",
 					"check",
 					"startup",
+					"--args=--config wrangler.static.jsonc",
 					`--outfile=${path.join(temporaryRoot, "worker-startup.cpuprofile")}`,
 				],
 				{
@@ -528,7 +538,7 @@ async function measureCurrentArchitecture({
 			wrangler,
 			startup,
 			nextOutput,
-			openNextOutput,
+			staticOutput,
 			generatedRoutes,
 			homePayload,
 			cleanup,

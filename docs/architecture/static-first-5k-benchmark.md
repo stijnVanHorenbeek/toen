@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This benchmark measures current OpenNext scaling and candidate static-first budgets before migration. It uses synthetic filenames and verified canonical templates in a detached temporary worktree. It never writes fixtures into active `content/events`.
+This benchmark preserves original OpenNext baseline and measures current static-first build against same synthetic catalog. It uses synthetic filenames and verified canonical templates in a detached temporary worktree. It never writes fixtures into active `content/events`.
 
 Run:
 
@@ -10,11 +10,11 @@ Run:
 pnpm benchmark:architecture --count=5000 --output=/tmp/toen-architecture-benchmark-5000.json
 ```
 
-Use `--skip-current-build` for projection-only checks. Complete current-build measurement supports macOS and Linux. It creates a cold application worktree, installs dependencies from pnpm store, generates and validates 5,000 event files, runs `build:worker:synced`, runs Wrangler dry-run and startup profiling, executes throttled Chromium projection, writes JSON report, and verifies worktree removal.
+Use `--skip-current-build` for projection-only checks. Complete current-build measurement supports macOS and Linux. It creates a cold application worktree, installs dependencies from pnpm store, generates and validates 5,000 event files, runs `build:static:synced`, profiles `wrangler.static.jsonc`, executes throttled Chromium projection, writes JSON report, and verifies worktree removal.
 
-## Baseline
+## Historical OpenNext baseline
 
-Measured on 2026-08-17 with:
+Measured before migration on 2026-08-17 with:
 
 - Application SHA: `dad104bc1da5e6e5f61fa72a20df34703b59d8d6`
 - Content template SHA: `5e94da774fe06659695fd41eb023c93000dca16a`
@@ -29,7 +29,7 @@ Measured on 2026-08-17 with:
 
 Fixture cycles four verified canonical event documents across deterministic slugs. This preserves representative bodies and beats while preventing synthetic material from entering canonical content. Report records application/content SHAs, template hashes, tracked-diff hash, untracked-file hashes, benchmark-script hash, runtime versions, and host profile. It measures structural and approximate content-volume costs, not editorial diversity.
 
-## Current OpenNext result
+## Historical OpenNext result
 
 | Measurement | Result |
 | --- | ---: |
@@ -52,7 +52,28 @@ Fixture cycles four verified canonical event documents across deterministic slug
 
 Wrangler accepted the dry-run, but this result leaves about 454 KB below the 3 MiB compressed Worker limit. Raw upload also approaches the 64 MiB pre-compression limit. Small runtime or dependency growth can exhaust either margin.
 
-Current build therefore scales route count faster than useful public files, embeds the complete catalog in the homepage, and attaches 5,000 Markdown modules to the Worker. Build duration is acceptable on this machine; output shape, browser payload, and deployment headroom are not.
+Historical build therefore scaled route count faster than useful public files, embedded complete catalog in homepage, and attached 5,000 Markdown modules to Worker. Build duration was acceptable on this machine; output shape, browser payload, and deployment headroom were not.
+
+## Current static-first result
+
+Phase-1 runtime retirement reran full 5,000-event benchmark from application `c74f35ea30a67f60f6a2b7edd31a69fcb074444d`:
+
+| Measurement | Result |
+| --- | ---: |
+| Static output | 92,051,935 bytes / 10,040 files |
+| Static HTML | 10,015 files |
+| Public router upload | 686 bytes raw / 358 bytes gzip |
+| Local router startup profile | 6.3 ms active / 11.7 ms window |
+| Homepage HTML | 21,642 bytes |
+| Homepage RSC | 8,401 bytes |
+| Build wall time | 140.7 s |
+| Peak build process-tree RSS | 3.86 GB |
+| `.next` output | 1.25 GB / 216,819 files |
+| Event-route files inside `.next` | 105,018 |
+
+All required gates passed. Production package no longer contains OpenNext server, Markdown modules, Images binding, or self-reference service. Next compilation still generates duplicate event/article route output; phase 2 will remove `generateStaticParams` while retaining `.next/static` CSS and font inputs.
+
+Report: `/tmp/toen-architecture-static-phase1-5000-final.json`.
 
 ## Candidate static-first projection
 
@@ -99,5 +120,5 @@ All required benchmark gates passed. Later tasks must still measure:
 - Final static generator output size and file count
 - Native admin Worker compressed size and CPU
 - Final deduplicated WebP count, bytes, and changed-asset upload behavior
-- Asset-first page and media routing on approved canary infrastructure
-- Exact-SHA activation and A→B→A rollback
+- Longer production observation after asset-first routing activation
+- Exact-SHA activation and A→B→A rollback before live publication

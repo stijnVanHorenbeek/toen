@@ -2,10 +2,14 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { toEventCatalogEntry } from "../src/lib/content/event-catalog";
+import {
+	collectTopicLabels,
+	toEventCatalogEntry,
+} from "../src/lib/content/event-catalog";
 import { getAllEvents } from "../src/lib/content/events";
 import {
 	assertSearchArtifactBudgets,
+	createFacetsArtifact,
 	createReleaseId,
 } from "../src/lib/content/release-artifacts";
 import { createEventSearchArtifact } from "../src/lib/content/search-artifact";
@@ -31,12 +35,18 @@ async function main() {
 	const events = (await getAllEvents()).map(toEventCatalogEntry);
 	const artifact = createEventSearchArtifact(events, { releaseId });
 	const bytes = Buffer.from(`${JSON.stringify(artifact)}\n`);
+	const facetsBytes = Buffer.from(
+		`${JSON.stringify(
+			createFacetsArtifact(events, collectTopicLabels(events), releaseId),
+		)}\n`,
+	);
 	assertSearchArtifactBudgets(bytes);
 	const publicReleases = path.join(appRoot, "public", "releases");
 	const releaseDirectory = path.join(publicReleases, releaseId);
 	await rm(publicReleases, { recursive: true, force: true });
 	await mkdir(releaseDirectory, { recursive: true });
 	await writeFile(path.join(releaseDirectory, "search.json"), bytes);
+	await writeFile(path.join(releaseDirectory, "facets.json"), facetsBytes);
 	await mkdir(path.join(appRoot, ".generated"), { recursive: true });
 	await writeFile(
 		path.join(appRoot, ".generated", "discovery.json"),
@@ -57,6 +67,7 @@ async function main() {
 			releaseId,
 			events: events.length,
 			bytes: bytes.byteLength,
+			facetsBytes: facetsBytes.byteLength,
 		}),
 	);
 }

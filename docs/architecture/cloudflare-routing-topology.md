@@ -12,7 +12,9 @@ Read-only inspection on 2026-08-17 found:
 - Existing Static Assets, Images, self-reference service, and Secrets Store bindings plus observability configuration in `wrangler.jsonc`
 - Unauthenticated requests to `/admin`, `/admin/`, `/api/admin/events/preview`, and `/api/admin/events/publish` returned Access login redirects
 
-No secret values were read. No Worker, route, domain, Access policy, DNS record, bucket, or binding was changed.
+No secret values were read during inventory.
+
+Production cutover later replaced monolithic bindings with Static Assets plus `ADMIN_API` service binding. Private `toen-admin` binds Access settings only and has no public target. Automatic Git build trigger was disconnected after it restored obsolete OpenNext once. Current static version is `b1389016-05ce-40b2-80b2-e4fba4b1e096`.
 
 ## Constraint
 

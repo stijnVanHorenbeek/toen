@@ -19,17 +19,32 @@ describe("exact release scripts", () => {
 		});
 	});
 
-	it("binds release commands without replacing normal deployment scripts", async () => {
+	it("binds exact release and explicit static deployment commands", async () => {
 		const manifest = JSON.parse(await readFile("package.json", "utf8"));
+		const runbook = await readFile("docs/release-hardening.md", "utf8");
 		expect(manifest.scripts["release:build"]).toContain(
 			"build-exact-release.ts",
 		);
 		expect(manifest.scripts["release:activate"]).toContain(
 			"activate-exact-release.ts",
 		);
-		expect(manifest.scripts.deploy).toBe(
-			"pnpm build:worker && pnpm deploy:worker",
+		expect(manifest.scripts["deploy:admin"]).toContain("wrangler.admin.jsonc");
+		expect(manifest.scripts["deploy:static"]).toContain(
+			"wrangler.static.jsonc",
 		);
+		for (const retired of [
+			"assets:check",
+			"build:worker",
+			"build:worker:synced",
+			"deploy",
+			"deploy:worker",
+			"upload",
+			"preview",
+		]) {
+			expect(manifest.scripts[retired]).toBeUndefined();
+		}
+		expect(manifest.scripts["ci:build"]).toContain("build:static:synced");
+		expect(manifest.scripts["ci:build"]).not.toContain("opennext");
 		const contract = JSON.parse(
 			await readFile("config/release-trigger.v1.json", "utf8"),
 		);
@@ -41,5 +56,6 @@ describe("exact release scripts", () => {
 		expect(contract.requiredBuildEnvironment).toContain(
 			"TOEN_RELEASE_ACTIVATION_APPROVED",
 		);
+		expect(runbook).toContain("wrangler rollback <VERSION_ID> --name toen");
 	});
 });
