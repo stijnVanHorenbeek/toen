@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 import { createBdd, test } from "playwright-bdd";
 import { handlePreviewEventRequest } from "../../src/lib/admin/preview-event-handler";
+import { messages } from "../../src/lib/i18n/messages.nl-BE";
 
 const { Before, Given, Then, When } = createBdd(test);
 let pendingPreviewResponse: Promise<unknown> | null = null;
@@ -127,6 +128,35 @@ Given("publish responses are delayed", async ({ page }) => {
 			status: 201,
 			contentType: "application/json",
 			body: JSON.stringify(publishResult("committed-and-triggered", "created")),
+		});
+	});
+});
+
+Given("an exact release build activates", async ({ page }) => {
+	const buildUuid = "123e4567-e89b-42d3-a456-426614174000";
+	await page.route("**/api/admin/events/publish", async (route) => {
+		await route.fulfill({
+			status: 202,
+			contentType: "application/json",
+			body: JSON.stringify({
+				...publishResult("committed-and-triggered", "created"),
+				status: "building",
+				buildUuid,
+				releaseRequestCommitSha: "release-request-sha",
+			}),
+		});
+	});
+	let statusRequests = 0;
+	await page.route("**/api/admin/releases/status", async (route) => {
+		statusRequests += 1;
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({
+				status: statusRequests > 1 ? "activated" : "building",
+				buildUuid,
+				applicationSha: "a".repeat(40),
+			}),
 		});
 	});
 });
@@ -2204,6 +2234,13 @@ Then(
 		await expect(page.getByText("De website-update is gestart.")).toBeVisible();
 	},
 );
+
+Then("the exact release moves from building to active", async ({ page }) => {
+	await expect(page.getByText(messages.admin.status.building)).toBeVisible();
+	await expect(page.getByText(messages.admin.status.activated)).toBeVisible({
+		timeout: 5_000,
+	});
+});
 
 Then("the same draft cannot be published again", async ({ page }) => {
 	await expect(page.getByRole("button", { name: "Publiceren" })).toHaveCount(0);

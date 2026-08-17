@@ -11,6 +11,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseEventDocument } from "../src/lib/content/event-document";
 import {
+	computeStaticPublicSiteTreeSha256,
 	generateStaticPublicSite,
 	inspectStaticPublicSite,
 } from "../src/lib/content/static-site";
@@ -149,6 +150,14 @@ describe("static public site", () => {
 				(entry) => entry === "events/release-parity-event/play.html",
 			),
 		).toHaveLength(1);
+		const treeSha256 = await computeStaticPublicSiteTreeSha256(outputDirectory);
+		await writeFile(
+			path.join(outputDirectory, "events/release-parity-event.html"),
+			"changed bytes",
+		);
+		expect(await computeStaticPublicSiteTreeSha256(outputDirectory)).not.toBe(
+			treeSha256,
+		);
 
 		const externalWorkers = path.join(root, "external-workers");
 		await mkdir(externalWorkers);
@@ -176,6 +185,21 @@ describe("static public site", () => {
 				publicDirectory,
 			}),
 		).rejects.toThrow("symbolic link");
+	});
+
+	it("frames paths and file hashes without tree-boundary ambiguity", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "toen-tree-framing-"));
+		const first = path.join(root, "first");
+		const second = path.join(root, "second");
+		await mkdir(first);
+		await mkdir(second);
+		await writeFile(path.join(first, "a"), "X");
+		await writeFile(path.join(first, "b"), "Yc\0Z");
+		await writeFile(path.join(second, "a"), "Xb\0Y");
+		await writeFile(path.join(second, "c"), "Z");
+		expect(await computeStaticPublicSiteTreeSha256(first)).not.toBe(
+			await computeStaticPublicSiteTreeSha256(second),
+		);
 	});
 
 	it("rejects output symlinks and file counts above release hard stop", async () => {

@@ -48,6 +48,24 @@ describe("content revision resolution", () => {
 		expect(runGit).not.toHaveBeenCalled();
 	});
 
+	it("requires Workers build SHA to match checked-out application HEAD", async () => {
+		const matchingGit = vi.fn().mockResolvedValue(`${revisionA}\n`);
+		await expect(
+			resolveApplicationRevision({
+				appRoot: "/app",
+				environmentRevision: revisionA,
+				runGit: matchingGit,
+			}),
+		).resolves.toBe(revisionA);
+		await expect(
+			resolveApplicationRevision({
+				appRoot: "/app",
+				environmentRevision: revisionB,
+				runGit: matchingGit,
+			}),
+		).rejects.toThrow("does not match checked-out HEAD");
+	});
+
 	it("resolves application HEAD when a Deploy Hook supplies no commit SHA", async () => {
 		const runGit = vi.fn().mockResolvedValue(`${revisionA}\n`);
 

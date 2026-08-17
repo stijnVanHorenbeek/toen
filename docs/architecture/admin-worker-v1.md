@@ -71,15 +71,15 @@ Esbuild rejects Markdown, synchronized content files, OpenNext, and Next runtime
 
 Measured final API Worker:
 
-- source bundle: 900,833 raw bytes / 252,454 gzip bytes;
-- Wrangler package: 1,268,324 raw bytes / 295,733 gzip bytes;
+- source bundle: 910,497 raw bytes / 255,036 gzip bytes;
+- Wrangler package: 1,280,279 raw bytes / 298,595 gzip bytes;
 - target: less than 1 MiB gzip;
 - Cloudflare Free maximum: 3 MiB compressed.
 
 1,000-request preview benchmark includes real local RS256 Access JWT verification against cached key, bounded body reading, JSON parsing, strict event validation, and preview projection. It measures CPU path after JWK availability; canary must measure first-fetch latency separately:
 
-- p95: 0.305 ms;
-- maximum: 1.439 ms;
+- p95: 0.281 ms;
+- maximum: 1.055 ms;
 - target: p95 below 5 ms.
 
 Report: `/tmp/toen-admin-api-benchmark-final.json`.
@@ -90,8 +90,8 @@ Report: `/tmp/toen-admin-api-benchmark-final.json`.
 - Worker route tests cover both exact paths, methods, 404, route-level unread-body cancellation, and no-store behavior.
 - Public router tests prove only `/api/admin/*` reaches private binding.
 - Local dual-Worker run showed service binding transition from disconnected to connected and returned 20 controlled `401` responses without request-stream or process failure.
-- Static admin SPA passed 74/74 existing admin BDD journeys.
-- Existing OpenNext application passed complete 135/135 BDD suite after handler and lazy-loading changes.
+- Static admin SPA passed 75/75 BDD journeys, including exact build-to-activation state transition.
+- Existing OpenNext application passed complete 136/136 BDD suite after release-reader and polling changes.
 - Public static homepage/event/classroom suite passed 61/61.
 - Dry-runs validated both Worker configurations. No upload or deployment occurred.
 

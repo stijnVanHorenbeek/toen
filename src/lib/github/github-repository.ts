@@ -53,6 +53,51 @@ export class GitHubRepository {
 		this.#token = token;
 	}
 
+	async readTextFile(path: string): Promise<{
+		commitSha: string;
+		blobSha: string;
+		content: string;
+	} | null> {
+		const snapshot = await this.#snapshotFile(path);
+		return snapshot.file
+			? {
+					commitSha: snapshot.commitSha,
+					blobSha: snapshot.file.sha,
+					content: decodeBase64(snapshot.file.content),
+				}
+			: null;
+	}
+
+	async replaceFile({
+		content,
+		expectedBlobSha,
+		message,
+		path,
+	}: {
+		content: string;
+		expectedBlobSha: string;
+		message: string;
+		path: string;
+	}): Promise<{ commitSha: string }> {
+		try {
+			const commit = await this.#request({
+				method: "PUT",
+				path: `/contents/${path}`,
+				body: {
+					branch: this.#config.baseBranch,
+					content: encodeBase64(content),
+					message,
+					sha: expectedBlobSha,
+				},
+				schema: contentCommitSchema,
+			});
+			return { commitSha: commit.commit.sha };
+		} catch (error) {
+			if (isWriteConflict(error)) throw new ContentConflictError(path);
+			throw error;
+		}
+	}
+
 	async upsertFile({
 		content,
 		message,

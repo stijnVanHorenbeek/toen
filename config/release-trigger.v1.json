@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"buildCommand": "pnpm release:build",
+	"deployCommand": "pnpm release:activate",
+	"rootDirectory": "/",
+	"applicationBranch": "main",
+	"requiredBuildEnvironment": [
+		"WORKERS_CI",
+		"WORKERS_CI_BUILD_UUID",
+		"WORKERS_CI_COMMIT_SHA",
+		"RELEASE_PIPELINE_MODE",
+		"CLOUDFLARE_BUILDS_API_TOKEN",
+		"CLOUDFLARE_ACCOUNT_ID",
+		"CLOUDFLARE_BUILD_TRIGGER_UUID",
+		"CLOUDFLARE_WORKER_TAG",
+		"RELEASE_APPLICATION_SHA",
+		"TOEN_RELEASE_ACTIVATION_APPROVED"
+	]
+}

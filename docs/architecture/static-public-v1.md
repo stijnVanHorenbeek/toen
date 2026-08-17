@@ -79,7 +79,7 @@ Generator targets at most 10,500 HTML files. Complete public output targets 16,0
 
 ## Validation
 
-Current four-event exact-SHA shadow build contains 52 files and 23 HTML files. Final clean build tree SHA-256 is `7be69d947e15217fabd5e8c254fabb6c621c55e63d398c525c03712f6461c22a`; same-input regeneration remains byte-identical.
+Current four-event exact-SHA shadow build contains 52 files and 23 HTML files. Final clean build tree SHA-256 is `4328ec0ff3c42999af15835cf10f28b6f3e3bab4c9d85fb0af3a96fc7e0b8620`; same-input regeneration remains byte-identical.
 
 Local Wrangler Static Assets checks proved:
 
@@ -87,7 +87,7 @@ Local Wrangler Static Assets checks proved:
 - trailing-slash article URL redirects to canonical URL;
 - unknown event returns `404` with generated 404 page;
 - public homepage, event, and classroom BDD suite passes 61/61;
-- protected admin SPA BDD suite passes 74/74;
+- protected admin SPA BDD suite passes 75/75;
 - Wrangler dry-run accepts public router with assets and private admin service bindings without deployment.
 
 Wrangler logs 71 recursive directory entries for current tree. Asset manifest contains 52 actual files; directory entries are not uploaded assets.

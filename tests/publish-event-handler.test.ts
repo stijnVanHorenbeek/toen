@@ -243,6 +243,44 @@ describe("handlePublishEventRequest", () => {
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 	});
 
+	it("passes exact release configuration and reports building as accepted", async () => {
+		const publish = vi.fn().mockResolvedValue({
+			status: "building",
+			change: "created",
+			commitSha: "a".repeat(40),
+			buildUuid: "123e4567-e89b-42d3-a456-426614174000",
+		});
+		const exactEnvironment = {
+			...liveEnvironment,
+			CONTENT_DEPLOY_HOOK_URL: undefined,
+			RELEASE_PIPELINE_MODE: "exact" as const,
+			CLOUDFLARE_BUILDS_API_TOKEN: "token-value-long-enough",
+			CLOUDFLARE_ACCOUNT_ID: "b".repeat(32),
+			CLOUDFLARE_BUILD_TRIGGER_UUID: "223e4567-e89b-42d3-a456-426614174000",
+			CLOUDFLARE_WORKER_TAG: "c".repeat(32),
+			RELEASE_APPLICATION_SHA: "d".repeat(40),
+		};
+		const response = await handlePublishEventRequest(
+			createRequest(draft),
+			exactEnvironment,
+			{
+				authenticate: vi
+					.fn()
+					.mockResolvedValue({ email: "editor@example.com" }),
+				publish,
+			},
+		);
+		expect(response.status).toBe(202);
+		expect(publish).toHaveBeenCalledWith(
+			expect.objectContaining({
+				pipelineMode: "exact",
+				releaseConfig: expect.objectContaining({
+					applicationSha: "d".repeat(40),
+				}),
+			}),
+		);
+	});
+
 	it("returns a dry run when GitHub App credentials are missing", async () => {
 		const githubFetch = vi.fn<GitHubFetch>();
 		const authenticate = vi

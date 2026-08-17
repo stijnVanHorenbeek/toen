@@ -4,9 +4,9 @@
 
 The dedicated content repository stores and validates the canonical Markdown catalog. Before verification or a build, the application resolves its `main` branch once, checks out that exact immutable commit, runs the content repository validation, and generates the local `content/events` directory. Runtime requests never fetch from GitHub.
 
-The current new-event publisher writes canonical Markdown directly to the configured content branch. Missing files are created and identical retries do not create duplicate commits. A differing existing file returns a conflict instead of overwriting content; safe edits need a future edit flow carrying the expected content revision. After each successful reconciliation, the Worker calls a vaulted Cloudflare Deploy Hook.
+The current new-event publisher writes canonical Markdown directly to configured content branch. Missing files are created and identical retries do not create duplicate commits. Differing existing file returns conflict instead of overwriting content; safe edits need future edit flow carrying expected content revision. Legacy mode calls vaulted Cloudflare Deploy Hook after reconciliation.
 
-A successful commit with a failed hook call is reported as partial success. The editor can retry safely: the publisher recognizes unchanged Markdown and retries only the deployment trigger. Concurrent differing edits return a conflict instead of overwriting content. Infrastructure migration remains incomplete until the replacement GitHub App, vault value, and Deploy Hook are configured.
+Exact pipeline is implemented but disabled until approved configuration exists. It triggers Cloudflare Builds API with exact application SHA, writes immutable build-UUID correlation record containing exact content SHA, and reports build state separately. Successful content commit with trigger/correlation failure remains partial success. Retry recognizes unchanged Markdown and starts distinct correlated build without recreating content. Concurrent differing edits still fail closed.
 
 ## Target model
 
@@ -22,7 +22,7 @@ The application repository stores the application code. The GitHub App must not 
 - The Worker validates and serializes all Markdown.
 - The browser never receives GitHub credentials.
 - The GitHub App installation includes only the content repository.
-- The GitHub App writes only canonical content paths.
+- The GitHub App writes only canonical event paths and validated `.toen/releases` coordination records.
 
 ## Publish flow
 
@@ -30,12 +30,15 @@ The application repository stores the application code. The GitHub App must not 
 2. The Worker validates the content request.
 3. The Worker gets a short-lived GitHub App installation token.
 4. The GitHub App commits the Markdown file to the default content branch.
-5. A Cloudflare Deploy Hook starts an application build. Rapid commits may coalesce to the latest content snapshot.
-6. The build resolves the content branch once and checks out that exact commit SHA.
-7. The build validates the complete content catalog and records the application and content revisions.
-8. The build deploys the Worker only when all checks pass.
+5. GitHub App conditionally acquires activation lock in content Git; queued/running owner blocks concurrent trigger.
+6. Exact mode triggers Cloudflare build with configured immutable application SHA and receives build UUID.
+7. Lock binds to build UUID; GitHub App writes integrity-checked correlation record with returned content SHA.
+8. Build resolves correlation record, verifies application SHA, and checks out exact content SHA.
+9. Build validates catalog, release/media/static budgets, native admin package, and hashed byte-tree receipt.
+10. Deploy command rechecks clean checkout, every static byte, active lock, and newest-build ownership.
+11. One public Worker version activates only after all checks pass.
 
-A failed deployment must keep the previous Worker version active. The admin interface currently shows the content commit and whether deployment triggering succeeded; build-result reporting remains future work.
+Failed build leaves previous Worker version active. Newer build suppresses stale activation. Admin reports committed, building, activated, failed, or superseded state. Deploy Hook acceptance remains legacy transition signal, never exact deployment success.
 
 ## Runtime behavior
 
@@ -52,9 +55,9 @@ GitHub App installation must include only `toen-content` with `contents: write` 
 Before granting editor access or enabling live publication:
 
 1. Verify GitHub App repository selection and minimum permissions.
-2. Verify Access covers `/admin*` and `/api/admin/events/*`.
-3. Verify Worker also validates Access JWT for publication route.
-4. Verify nine expected Secrets Store bindings exist and have `workers` scope. Do not retrieve or print values.
+2. Verify Access covers `/admin*` and `/api/admin/*`.
+3. Verify Worker validates Access JWT for publication and release-status routes.
+4. Verify all legacy and exact-release Secrets Store bindings exist with `workers` scope. Do not retrieve or print values.
 5. Set and record exact content revision used by build.
 6. Run application and content verification.
 7. Run Wrangler package dry-run and inspect bindings.
