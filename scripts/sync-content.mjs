@@ -139,12 +139,15 @@ export async function publishContentRevision(
 export async function synchronizeContent({
 	repository = defaultRepository,
 	appRoot = process.cwd(),
-	appRevision = null,
+	appRevision = /** @type {string | null} */ (null),
 	override = /** @type {string | undefined} */ (undefined),
 	localDirectory = /** @type {string | undefined} */ (undefined),
 	runGit = defaultRunGit,
 	verifyCheckout = verifyContentCheckout,
 	verifyLocalDirectory = verifyLocalContentDirectory,
+	projectRelease = /** @type {null | ((input: { appRoot: string, appRevision: string | null, checkoutDirectory: string, contentRevision: string }) => Promise<void>)} */ (
+		null
+	),
 }) {
 	const configuredLocalDirectory = localDirectory?.trim();
 	if (configuredLocalDirectory) {
@@ -175,6 +178,12 @@ export async function synchronizeContent({
 			revision,
 			dirty,
 		);
+		await projectRelease?.({
+			appRoot,
+			appRevision,
+			checkoutDirectory,
+			contentRevision: revision,
+		});
 		console.log(
 			JSON.stringify({
 				event: "content-synchronized",
@@ -216,6 +225,12 @@ export async function synchronizeContent({
 			path.join(appRoot, "content"),
 			revision,
 		);
+		await projectRelease?.({
+			appRoot,
+			appRevision,
+			checkoutDirectory,
+			contentRevision: revision,
+		});
 	} finally {
 		await rm(temporaryDirectory, { recursive: true, force: true });
 	}
@@ -239,10 +254,28 @@ if (
 		appRoot,
 		environmentRevision: process.env.WORKERS_CI_COMMIT_SHA,
 	});
+	const shouldProjectRelease = process.env.TOEN_PROJECT_RELEASE === "1";
 	await synchronizeContent({
 		appRoot,
 		appRevision,
 		override: process.env.TOEN_CONTENT_SHA,
 		localDirectory: process.env.TOEN_CONTENT_DIR,
+		projectRelease: shouldProjectRelease
+			? async ({ checkoutDirectory, contentRevision }) => {
+					await run(
+						"pnpm",
+						[
+							"content:project",
+							`--content-dir=${checkoutDirectory}`,
+							`--app-sha=${appRevision}`,
+							`--content-sha=${contentRevision}`,
+						],
+						{ cwd: appRoot },
+					);
+				}
+			: null,
 	});
+	if (shouldProjectRelease) {
+		await run("pnpm", ["content:stage"], { cwd: appRoot });
+	}
 }

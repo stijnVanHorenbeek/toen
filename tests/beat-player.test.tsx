@@ -20,7 +20,7 @@ import {
 const beat = interactiveBeatSchema.parse(voteRevoteBeat);
 const sources = beatSources.map((source) => ({ ...source }));
 const visual = {
-	src: "/media/events/apollo-11-aldrin.webp",
+	src: "/media/assets/2d514da09e22846759e1552189646ee456a973fa641399599875dc10bae7c5cb.webp",
 	width: 1_800,
 	height: 1_800,
 	alt: "Buzz Aldrin staat op het maanoppervlak.",

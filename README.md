@@ -12,6 +12,11 @@ Current public experience recommends historical events and renders sourced artic
 - [Implementation baseline](docs/implementation-baseline.md)
 - [Event authoring redesign](docs/admin-authoring-redesign.md)
 - [Content publishing](docs/content-publishing.md)
+- [Static-first 5,000-event benchmark](docs/architecture/static-first-5k-benchmark.md)
+- [Release artifacts v1](docs/architecture/release-artifacts-v1.md)
+- [Browser search v1](docs/architecture/browser-search-v1.md)
+- [Static media v1](docs/architecture/static-media-v1.md)
+- [Cloudflare routing topology](docs/architecture/cloudflare-routing-topology.md)
 
 ## Teacher flow
 
@@ -25,7 +30,7 @@ Editors use Access-protected `/admin`. They write or import a draft, verify sour
 
 ## Architecture and ownership
 
-Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve one immutable content commit, validate it, and bundle it into Worker; runtime requests never fetch content from GitHub.
+Application repository owns Next.js UI, strict runtime validation, admin workflow, publication service, local licensed imagery, and Cloudflare Worker configuration. Dedicated `toen-content` repository owns canonical event Markdown and mirrored catalog validation. Builds resolve exact clean application and content commits, validate them, generate deterministic release artifacts, and stage checksum-verified search assets. Runtime requests never fetch content from GitHub. Transitional article and classroom routes still package Markdown until static page migration removes OpenNext content reads.
 
 Publication validates Cloudflare Access identity, and GitHub credentials never enter browser. GitHub App may write only canonical content repository. Deploy Hook rebuilds application from committed content. See [content publishing](docs/content-publishing.md) and [release hardening](docs/release-hardening.md).
 
@@ -45,7 +50,7 @@ When `toen-content` is checked out beside this repository, use its current files
 pnpm dev:local
 ```
 
-`TOEN_CONTENT_DIR` is resolved from the application root. Local content is verified before it is copied into the generated content directory. CI and production leave this variable unset and continue to fetch and verify an immutable Git revision.
+`TOEN_CONTENT_DIR` is resolved from the application root. Local content is verified before it is copied into generated content directory. Development also creates a marked development search artifact, content-hashed browser Worker, and verified content-addressed media assets. CI and production leave this variable unset, verify immutable Git revisions, and reject development search artifacts.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
@@ -68,7 +73,7 @@ pnpm test
 pnpm test:e2e
 ```
 
-Browser journeys build current OpenNext Worker with the immutable content revision pinned in `scripts/test-e2e.sh`. Set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead.
+Browser journeys build current OpenNext Worker with immutable content revision pinned in `scripts/test-e2e.sh`. They generate explicit development-only search assets before build. Set `TOEN_CONTENT_SHA` to test another canonical content checkpoint. For local cross-repository changes, run `TOEN_CONTENT_DIR=../toen-content pnpm test:e2e` instead.
 
 Playwright starts an isolated local Wrangler server by default. Set `TOEN_E2E_REUSE_SERVER=1` only when you intentionally want to reuse a server on `http://localhost:8787`. CI always starts an isolated server. Feature tests never use Cloudflare Access login or production routes.
 

@@ -1,22 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { getRecommendationPagination } from "@/lib/content/recommendation-pagination";
 import { formatNumber } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages.nl-BE";
 import { EventCard } from "./event-card";
 import { useEventExplorer } from "./event-explorer-context";
 
 export function RecommendationResults({ filters }: { filters: ReactNode }) {
-	const { state, meta } = useEventExplorer();
-	const { events, additionalEvents, periodFallback, totalCount } =
-		meta.recommendations;
-	const [expanded, setExpanded] = useState(false);
+	const { state, actions, meta } = useEventExplorer();
+	const { events, periodFallback, totalCount } = meta.recommendations;
+	const [focusAfterLoad, setFocusAfterLoad] = useState(false);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	const [first, ...remaining] = events;
+	const { pageNumber, pageCount, hasPrevious, hasNext, showNavigation } =
+		getRecommendationPagination({
+			eventCount: events.length,
+			isInitialPage: meta.isInitialPage,
+			offset: meta.offset,
+			pageSize: meta.pageSize,
+			totalCount,
+		});
+	const canExpandInitial =
+		meta.isInitialPage && totalCount > events.length && !meta.loading;
+
+	useEffect(() => {
+		if (!focusAfterLoad || meta.loading || meta.error) return;
+		headingRef.current?.focus();
+		setFocusAfterLoad(false);
+	}, [focusAfterLoad, meta.error, meta.loading]);
 
 	if (meta.catalogSize === 0) return <EmptyCatalog />;
 
-	const displayedEvents = expanded ? [...events, ...additionalEvents] : events;
-	const [first, ...remaining] = displayedEvents;
 	return (
 		<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-12">
 			<aside className="row-start-1 lg:col-start-2 lg:row-span-3">
@@ -24,12 +40,20 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 			</aside>
 			<section
 				aria-labelledby="recommendations-title"
+				aria-busy={meta.loading}
 				className="min-w-0 lg:col-start-1 lg:row-start-1"
 			>
 				<RecommendationHeader
-					count={displayedEvents.length}
+					headingRef={headingRef}
+					count={events.length}
 					totalCount={totalCount}
 				/>
+				{meta.loading ? (
+					<p role="status" className="mt-3 text-ink/65 text-sm">
+						{messages.home.loadingResults}
+					</p>
+				) : null}
+				{meta.error ? <SearchFailure retry={actions.retry} /> : null}
 				{periodFallback ? <PeriodFallback /> : null}
 				{first ? (
 					<ul className="mt-4 border-ink/15 border-y">
@@ -41,44 +65,91 @@ export function RecommendationResults({ filters }: { filters: ReactNode }) {
 					<NoMatches />
 				)}
 			</section>
-			{remaining.length > 0 ? (
+			{remaining.length > 0 || canExpandInitial || showNavigation ? (
 				<section
 					aria-label={messages.home.moreRecommendations}
 					className="min-w-0 lg:col-start-1"
 				>
-					<ul
-						id="additional-recommendations"
-						className="divide-y divide-ink/15 border-ink/15 border-b"
-					>
-						{remaining.map((recommendation) => (
-							<li
-								key={recommendation.event.slug}
-								data-recommended-event
-								data-compact-recommendation
-							>
-								<EventCard
-									recommendation={recommendation}
-									preferences={state}
-									variant="compact"
-								/>
-							</li>
-						))}
-					</ul>
-					{additionalEvents.length > 0 ? (
+					{remaining.length > 0 ? (
+						<ul
+							id="additional-recommendations"
+							className="divide-y divide-ink/15 border-ink/15 border-b"
+						>
+							{remaining.map((recommendation) => (
+								<li
+									key={recommendation.event.slug}
+									data-recommended-event
+									data-compact-recommendation
+								>
+									<EventCard
+										recommendation={recommendation}
+										preferences={state}
+										variant="compact"
+									/>
+								</li>
+							))}
+						</ul>
+					) : null}
+					{canExpandInitial ? (
 						<button
 							type="button"
 							aria-controls="additional-recommendations"
-							aria-expanded={expanded}
-							onClick={() => setExpanded((current) => !current)}
+							onClick={() => {
+								setFocusAfterLoad(true);
+								actions.showAll();
+							}}
 							className="secondary-button mt-6 inline-flex items-center"
 						>
-							{expanded
-								? messages.home.showLess
-								: `${messages.home.showAll} ${formatNumber(totalCount)} ${messages.home.results}`}
+							{messages.home.showAll} {formatNumber(totalCount)}{" "}
+							{messages.home.results}
 						</button>
+					) : null}
+					{showNavigation ? (
+						<nav
+							aria-label={messages.home.moreRecommendations}
+							className="mt-6 flex flex-wrap items-center gap-3"
+						>
+							<button
+								type="button"
+								disabled={!hasPrevious || meta.loading}
+								onClick={() => {
+									setFocusAfterLoad(true);
+									actions.previousPage();
+								}}
+								className="secondary-button"
+							>
+								{messages.home.previousResults}
+							</button>
+							<p className="font-mono text-ink/55 text-xs uppercase tracking-widest">
+								{messages.home.page} {formatNumber(pageNumber)} /{" "}
+								{formatNumber(pageCount)}
+							</p>
+							<button
+								type="button"
+								disabled={!hasNext || meta.loading}
+								onClick={() => {
+									setFocusAfterLoad(true);
+									actions.nextPage();
+								}}
+								className="secondary-button"
+							>
+								{messages.home.nextResults}
+							</button>
+						</nav>
 					) : null}
 				</section>
 			) : null}
+		</div>
+	);
+}
+
+function SearchFailure({ retry }: { retry: () => void }) {
+	return (
+		<div role="alert" className="mt-4 border-accent border-l-2 py-1 pl-4">
+			<p className="text-sm">{messages.home.searchUnavailable}</p>
+			<button type="button" onClick={retry} className="text-button mt-2">
+				{messages.home.retrySearch}
+			</button>
 		</div>
 	);
 }
@@ -97,9 +168,11 @@ function PeriodFallback() {
 
 function RecommendationHeader({
 	count,
+	headingRef,
 	totalCount,
 }: {
 	count: number;
+	headingRef: React.RefObject<HTMLHeadingElement | null>;
 	totalCount: number;
 }) {
 	const countLabel =
@@ -110,8 +183,10 @@ function RecommendationHeader({
 	return (
 		<header className="flex flex-wrap items-end justify-between gap-4">
 			<h1
+				ref={headingRef}
+				tabIndex={-1}
 				id="recommendations-title"
-				className="font-serif text-3xl font-semibold tracking-tight"
+				className="font-serif text-3xl font-semibold tracking-tight focus:outline-none"
 			>
 				{messages.home.recommended}
 			</h1>

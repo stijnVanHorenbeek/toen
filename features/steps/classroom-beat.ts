@@ -168,7 +168,7 @@ Then(
 		const visual = page.locator("[data-classroom-visual]");
 		await expect(visual.getByRole("img")).toHaveAttribute(
 			"src",
-			"/media/events/apollo-11-aldrin.webp",
+			"/media/assets/2d514da09e22846759e1552189646ee456a973fa641399599875dc10bae7c5cb.webp",
 		);
 		await expect(visual).toContainText("Neil A. Armstrong / NASA");
 		await expect(

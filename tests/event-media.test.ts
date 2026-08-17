@@ -6,14 +6,18 @@ import {
 	getEventVisual,
 	historicalVisuals,
 } from "../src/lib/content/event-media";
+import { historicalVisualSourcePaths } from "../src/lib/content/static-media-sources";
 
 describe("historical event media", () => {
-	it("keeps curated media local, attributed, and accessible", () => {
-		for (const visual of Object.values(historicalVisuals)) {
-			expect(visual.src).toMatch(/^\/media\/events\/[a-z0-9-]+\.webp$/);
-			expect(existsSync(path.join(process.cwd(), "public", visual.src))).toBe(
-				true,
-			);
+	it("keeps curated media local, attributed, and content-addressed", () => {
+		for (const [id, visual] of Object.entries(historicalVisuals)) {
+			const sourcePath =
+				historicalVisualSourcePaths[
+					id as keyof typeof historicalVisualSourcePaths
+				];
+			expect(sourcePath).toMatch(/^media\/sources\/[a-z0-9-]+\.webp$/);
+			expect(visual.src).toBe(`/media/assets/${visual.sha256}.webp`);
+			expect(existsSync(path.join(process.cwd(), sourcePath))).toBe(true);
 			expect(visual.alt.trim()).not.toBe("");
 			expect(visual.caption.trim()).not.toBe("");
 			expect(visual.credit.trim()).not.toBe("");
@@ -26,9 +30,7 @@ describe("historical event media", () => {
 			expect(visual.sourceUrl).toMatch(
 				/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/,
 			);
-			const asset = readFileSync(
-				path.join(process.cwd(), "public", visual.src),
-			);
+			const asset = readFileSync(path.join(process.cwd(), sourcePath));
 			expect(createHash("sha256").update(asset).digest("hex")).toBe(
 				visual.sha256,
 			);

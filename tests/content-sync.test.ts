@@ -112,13 +112,25 @@ describe("content synchronization", () => {
 		await execute("git", ["commit", "-am", "second"], { cwd: repository });
 
 		const verifyCheckout = vi.fn().mockResolvedValue(undefined);
+		const projectRelease = vi.fn(
+			async ({ checkoutDirectory }: { checkoutDirectory: string }) => {
+				await expect(
+					readFile(
+						path.join(checkoutDirectory, "content/events/test-event.md"),
+						"utf8",
+					),
+				).resolves.toBe("first\n");
+			},
+		);
 		const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 		try {
 			await synchronizeContent({
 				repository,
 				appRoot,
+				appRevision: revisionB,
 				override: firstRevision,
 				verifyCheckout,
+				projectRelease,
 			});
 		} finally {
 			log.mockRestore();
@@ -131,6 +143,13 @@ describe("content synchronization", () => {
 			readFile(path.join(appRoot, "content/revision.json"), "utf8"),
 		).resolves.toBe(`${JSON.stringify({ sha: firstRevision }, null, "\t")}\n`);
 		expect(verifyCheckout).toHaveBeenCalledOnce();
+		expect(projectRelease).toHaveBeenCalledWith(
+			expect.objectContaining({
+				appRoot,
+				appRevision: revisionB,
+				contentRevision: firstRevision,
+			}),
+		);
 	});
 
 	it("copies and validates uncommitted content from an explicit local checkout", async () => {
